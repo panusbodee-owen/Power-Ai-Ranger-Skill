@@ -4,170 +4,278 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>AI Command Center</title>
+<title>AI Team Studio</title>
 <style>
-:root{--bg:#090919;--p1:#12122b;--p2:#191937;--ln:#2b2b58;--tx:#e8e9ff;--mu:#8486b5;
---cy:#5de0ff;--vi:#8b7cff;--or:#ffa94d;--pk:#c78bff;--gr:#46e6a0;--rd:#ff6b81}
+:root{--bg:#070b16;--sb:#0a1020;--p:#0e1527;--p2:#121b30;--ln:#1f2a44;--tx:#e6ebf7;--mu:#8693b3;
+--bl:#3b82f6;--vi:#8b5cf6;--or:#f59e0b;--gr:#22c55e;--rd:#ef4444;--cy:#22d3ee;--pk:#c084fc}
 *{box-sizing:border-box}
-body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#1b1b4a55,transparent),var(--bg);color:var(--tx);
-font:14px/1.5 system-ui,"Noto Sans Thai",sans-serif;min-height:100vh}
-.top{display:grid;grid-template-columns:auto 220px 1fr auto;gap:16px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--ln);background:#0c0c24cc;backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
-.logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.02em}
-.logo i{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--vi),var(--cy));display:grid;place-items:center;font-style:normal;color:#0b0b20;font-weight:800}
-.search{background:var(--p1);border:1px solid var(--ln);border-radius:9px;color:var(--tx);padding:8px 12px;font:inherit;width:100%}
-.search:focus{outline:2px solid var(--vi);outline-offset:-1px}
-.spark{height:34px;width:100%}
-.live{font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px;white-space:nowrap}
-.live b{width:8px;height:8px;border-radius:50%;background:var(--gr);box-shadow:0 0 8px var(--gr);animation:bl 2s infinite}
-@keyframes bl{50%{opacity:.3}}
-.wrap{display:grid;grid-template-columns:310px 1fr;gap:14px;padding:14px 16px}
-.col{display:flex;flex-direction:column;gap:14px;min-width:0}
-.pn{background:linear-gradient(180deg,var(--p2),var(--p1));border:1px solid var(--ln);border-radius:12px;padding:12px 14px;min-width:0}
-.pn h3{margin:0 0 8px;font-size:12px;font-weight:600;color:var(--mu);letter-spacing:.06em;text-transform:uppercase;display:flex;justify-content:space-between}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-.kpi b{display:block;font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
-.kpi span{font-size:12px;color:var(--mu)}
-.kpi.w b{color:var(--or)} .kpi.e b{color:var(--rd)} .kpi.o b{color:var(--gr)} .kpi.m b{color:var(--cy)}
-.leg{display:flex;gap:12px;font-size:11px;color:var(--mu);margin-top:4px;flex-wrap:wrap}
-.leg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
-.bar{display:grid;grid-template-columns:70px 1fr 56px;gap:8px;align-items:center;font-size:12px;margin:7px 0;color:var(--mu)}
-.bar div{height:8px;border-radius:9px;background:#ffffff10;overflow:hidden}
-.bar div i{display:block;height:100%;border-radius:9px}
-.bar em{font-style:normal;text-align:right;color:var(--tx);font-variant-numeric:tabular-nums}
-.map{position:relative;overflow:hidden}
-.map svg{width:100%;height:auto;display:block}
-.chip{position:absolute;top:12px;left:14px;display:flex;gap:8px;align-items:center;background:#0c0c24cc;border:1px solid var(--ln);border-radius:99px;padding:4px 12px;font-size:12px;color:var(--or)}
-.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px}
-.tab{flex:none;background:var(--p1);border:1px solid var(--ln);color:var(--mu);border-radius:9px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tab.on{color:var(--tx);border-color:var(--vi);box-shadow:0 0 0 1px var(--vi) inset,0 0 14px #8b7cff40}
-.tab.busy::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--or);margin-right:7px;animation:bl 1s infinite}
-.jh{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:8px 2px 12px}
-.jh strong{font-size:16px}
-.pill{font-size:11px;padding:2px 10px;border-radius:99px;border:1px solid;font-weight:600}
-.pill.work{color:var(--or);border-color:var(--or)} .pill.done{color:var(--gr);border-color:var(--gr)} .pill.err{color:var(--rd);border-color:var(--rd)}
-.note{border-left:3px solid var(--or);background:#ffa94d12;padding:8px 12px;border-radius:0 8px 8px 0;margin:0 0 12px;font-size:13px}
-.note small{color:var(--or);display:block;font-weight:600}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--tx);font:13px/1.45 system-ui,"Noto Sans Thai",sans-serif}
+.app{display:grid;grid-template-columns:200px 1fr;height:100vh}
+/* sidebar */
+.sb{background:var(--sb);border-right:1px solid var(--ln);padding:14px 12px;display:flex;flex-direction:column;gap:6px;overflow:auto}
+.brand{display:flex;gap:9px;align-items:center;font-weight:700;font-size:15px;margin-bottom:8px}
+.brand i{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--bl),var(--vi));display:grid;place-items:center;font-style:normal;font-size:14px}
+.ws{border:1px solid var(--ln);border-radius:9px;padding:7px 10px;color:var(--gr);font-size:12px;margin-bottom:10px;background:var(--p)}
+.sb h6{margin:12px 8px 4px;font-size:10px;letter-spacing:.1em;color:var(--mu);font-weight:600}
+.nv{display:flex;gap:9px;align-items:center;padding:7px 10px;border-radius:8px;color:var(--mu);cursor:pointer;border:0;background:none;font:inherit;text-align:left;width:100%}
+.nv:hover{background:var(--p2);color:var(--tx)}
+.nv.on{background:#3b82f622;color:#7db0ff;box-shadow:inset 2px 0 0 var(--bl)}
+.nv b{width:16px;text-align:center;font-weight:400}
+/* main */
+.main{display:grid;grid-template-columns:1fr 330px;grid-template-rows:auto 1fr;min-width:0;min-height:0}
+.hd{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:12px 18px 0;border-bottom:1px solid var(--ln);flex-wrap:wrap}
+.crumb{color:var(--mu);font-size:12px;width:100%}
+.hd h1{margin:0;font-size:20px;display:flex;align-items:center;gap:10px}
+.draft{font-size:11px;padding:2px 9px;border-radius:99px;background:#22c55e22;color:var(--gr);border:1px solid #22c55e55;font-weight:600}
+.draft.idle{background:#ffffff0d;color:var(--mu);border-color:var(--ln)}
+.tabsx{display:flex;gap:2px;width:100%}
+.tabx{padding:8px 14px;border:0;background:none;color:var(--mu);font:inherit;cursor:pointer;border-bottom:2px solid transparent}
+.tabx.on{color:#7db0ff;border-color:var(--bl)}
+.sp{flex:1}
+.btn{padding:7px 14px;border-radius:8px;border:1px solid var(--ln);background:var(--p);color:var(--tx);font:inherit;cursor:pointer}
+.btn.pr{background:var(--bl);border-color:var(--bl);font-weight:600}
+.cen{padding:14px;display:flex;flex-direction:column;gap:14px;overflow:auto;min-width:0}
+.canvas{background:radial-gradient(circle,#ffffff10 1px,transparent 1px) 0 0/22px 22px,var(--p);border:1px solid var(--ln);border-radius:12px;position:relative;overflow:hidden}
+.canvas svg{width:100%;display:block}
+.zoom{position:absolute;left:12px;bottom:10px;font-size:11px;color:var(--mu)}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{background:var(--p);border:1px solid var(--ln);border-radius:12px;padding:12px 14px;min-width:0}
+.card h3{margin:0 0 10px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.card h3 a{color:var(--bl);font-weight:400;font-size:12px}
+.src{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:12px}
+.src i{width:20px;height:20px;border-radius:5px;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:11px;color:#0a0f1c}
+.src .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.src .m{color:var(--mu);font-size:11px}
+.badge{font-size:11px;padding:1px 9px;border-radius:6px;border:1px solid}
+.badge.ok{color:var(--gr);border-color:#22c55e66;background:#22c55e14}
+.badge.wk{color:var(--or);border-color:#f59e0b66;background:#f59e0b14}
+.badge.er{color:var(--rd);border-color:#ef444466;background:#ef444414}
+.badge.id{color:var(--mu);border-color:var(--ln)}
+.mon{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mon div{border:1px solid var(--ln);border-radius:8px;padding:6px 8px;background:var(--p2)}
+.mon small{color:var(--mu);font-size:10px;display:block}
+.mon b{font-size:17px;display:block}
+.mon svg{width:100%;height:26px;display:block}
+/* right */
+.rt{border-left:1px solid var(--ln);background:var(--sb);display:flex;flex-direction:column;min-height:0}
+.rtabs{display:flex;border-bottom:1px solid var(--ln)}
+.rtabs button{flex:1;padding:11px 4px;border:0;background:none;color:var(--mu);font:inherit;cursor:pointer;border-bottom:2px solid transparent}
+.rtabs button.on{color:#7db0ff;border-color:var(--bl)}
+.rbody{padding:14px;overflow:auto;display:flex;flex-direction:column;gap:18px}
+.sec h4{margin:0 0 8px;font-size:13px;display:flex;justify-content:space-between}
+.sec h4 a{color:var(--bl);font-weight:400;font-size:12px}
+.gate{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:12.5px}
+.gate .ic{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:10px;color:#04130a;background:var(--gr)}
+.gate .ic.w{background:var(--or)}
+.gate span{flex:1}
+.gate em{font-style:normal;color:var(--mu);font-size:11px}
+.tc{display:flex;align-items:center;gap:16px}
+.leg{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--mu)}
+.leg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px}
+.tr{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--ln);font-size:12px;cursor:pointer}
+.tr:last-child{border:0}
+.tr span.t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tr small{color:var(--mu)}
+.kv{display:grid;grid-template-columns:90px 1fr;gap:4px 10px;font-size:12px}
+.kv dt{color:var(--mu)} .kv dd{margin:0;word-break:break-all}
+.txt{white-space:pre-wrap;word-break:break-word;font-size:12px;color:var(--mu);background:var(--p);border:1px solid var(--ln);border-radius:8px;padding:8px 10px;margin-top:6px;max-height:160px;overflow:auto}
+.txt.r{color:var(--tx)}
+.empty{color:var(--mu);font-size:12px}
+/* views */
 .kan{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.kc{background:#0a0a1f;border:1px solid var(--ln);border-radius:10px;padding:10px;min-height:120px}
+.kc{background:var(--p);border:1px solid var(--ln);border-radius:10px;padding:10px;min-height:120px}
 .kc h4{margin:0 0 8px;font-size:12px;display:flex;justify-content:space-between;color:var(--mu)}
-.kc h4 b{color:var(--c)}
-.cd{border:1px solid var(--ln);border-left:3px solid var(--c);border-radius:8px;padding:8px 10px;margin-bottom:8px;background:var(--p1);cursor:pointer}
-.cd:hover{border-color:var(--c)}
+.cd{border:1px solid var(--ln);border-left:3px solid var(--c);border-radius:8px;padding:8px 10px;margin-bottom:8px;background:var(--p2);cursor:pointer}
 .cd .t{display:flex;justify-content:space-between;font-size:12px;color:var(--c);font-weight:600}
 .cd .t span{color:var(--mu);font-weight:400}
 .cd p{margin:4px 0 0;font-size:12px;color:var(--mu);white-space:pre-wrap;word-break:break-word}
-.cd p.r{color:var(--tx);margin-top:8px;border-top:1px dashed var(--ln);padding-top:6px}
-.cd.run{animation:gl 1.4s infinite}
-@keyframes gl{50%{box-shadow:0 0 14px color-mix(in srgb,var(--c) 45%,transparent)}}
-.empty{color:var(--mu);font-size:13px;padding:6px 0}
-@media(max-width:900px){.top{grid-template-columns:auto 1fr;}.spark,.live{display:none}.wrap{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.kan{grid-template-columns:1fr}}
+.cd p.r{color:var(--tx);border-top:1px dashed var(--ln);padding-top:6px;margin-top:8px}
+.jtabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px}
+.jt{flex:none;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--p);border:1px solid var(--ln);color:var(--mu);border-radius:8px;padding:5px 12px;font:inherit;cursor:pointer}
+.jt.on{color:var(--tx);border-color:var(--bl)}
+.note{border-left:3px solid var(--or);background:#f59e0b12;padding:7px 12px;border-radius:0 8px 8px 0;margin:0 0 10px}
+.note small{color:var(--or);display:block;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;color:var(--mu);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--ln)}
+td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
+@keyframes fl{to{stroke-dashoffset:-24}}
+@keyframes gl{50%{opacity:.45}}
+.sec>svg{width:100%;height:70px;display:block}
+@media(max-width:1100px){html,body{height:auto}.app{height:auto;min-height:100vh}.main{display:block}.cen{overflow:visible}.rt{border-left:0;border-top:1px solid var(--ln)}.row3{grid-template-columns:1fr}.kan{grid-template-columns:1fr}}
+@media(max-width:760px){.app{grid-template-columns:1fr}.sb{display:none}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 </head>
 <body>
-<div class="top">
-  <div class="logo"><i>A</i>AI Command Center</div>
-  <input class="search" id="q" placeholder="ค้นหางาน / brief…" aria-label="ค้นหางาน">
-  <svg class="spark" id="spark" viewBox="0 0 400 34" preserveAspectRatio="none"></svg>
-  <div class="live"><b></b>อัปเดตสด</div>
+<div class="app">
+<nav class="sb">
+  <div class="brand"><i>◆</i>AI Team</div>
+  <div class="ws">● Claude Workspace</div>
+  <h6>BUILD</h6>
+  <button class="nv" data-v="design"><b>◇</b>ผังงาน</button>
+  <button class="nv" data-v="jobs"><b>▤</b>งานที่แจก</button>
+  <h6>GOVERN</h6>
+  <button class="nv" data-r="eval"><b>✓</b>Boundary</button>
+  <button class="nv" data-v="audit"><b>≡</b>Audit log</button>
+  <h6>OBSERVE</h6>
+  <button class="nv" data-s="mon"><b>∿</b>Monitoring</button>
+  <button class="nv" data-r="hist"><b>↺</b>Traces</button>
+</nav>
+<div class="main">
+  <div class="hd">
+    <div class="crumb">AI Team › Command Center</div>
+    <h1>Claude Command Center <span class="draft" id="live">Live</span></h1>
+    <div class="sp"></div>
+    <button class="btn" id="exp">Export log</button>
+    <div class="tabsx" id="vt">
+      <button class="tabx" data-v="design">Design</button><button class="tabx" data-v="jobs">Jobs</button><button class="tabx" data-v="audit">Audit</button>
+    </div>
+  </div>
+  <div class="cen" id="cen"></div>
+  <aside class="rt">
+    <div class="rtabs" id="rt"><button data-r="insp">Inspector</button><button data-r="eval">Evaluations</button><button data-r="hist">History</button></div>
+    <div class="rbody" id="rb"></div>
+  </aside>
 </div>
-<div class="wrap">
-  <div class="col">
-    <div class="pn"><h3>การเรียกต่อนาที <span>30 นาที</span></h3><svg id="ch1" viewBox="0 0 280 120" style="width:100%"></svg><div class="leg" id="leg1"></div></div>
-    <div class="pn"><h3>สำเร็จ / ปัญหา</h3><div id="don"></div></div>
-    <div class="pn"><h3>เวลาตอบเฉลี่ย</h3><div id="ms"></div></div>
-  </div>
-  <div class="col">
-    <div class="kpis" id="kpis"></div>
-    <div class="pn map"><div class="chip" id="chip">● พร้อมสั่งงาน</div><svg id="map" viewBox="0 0 800 330"></svg></div>
-    <div class="pn"><h3>งานที่ Claude แจกจ่าย</h3><div class="tabs" id="tabs"></div><div id="job"></div></div>
-  </div>
 </div>
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const COL={claude:'#ffa94d',worker:'#5de0ff',intern:'#c78bff'}; const col=n=>COL[n]||'#8b7cff';
+const COL={claude:'#f59e0b',worker:'#22d3ee',intern:'#c084fc'}, PAL=['#22d3ee','#c084fc','#3b82f6','#22c55e'];
+const col=n=>COL[n]||PAL[Math.abs([...String(n)].reduce((a,c)=>a+c.charCodeAt(0),0))%4];
 const now=()=>Date.now()/1000, hm=t=>new Date(t*1000).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+const ago=t=>{const s=now()-t;return s<5?'เมื่อกี้':s<60?Math.floor(s)+'s ago':s<3600?Math.floor(s/60)+'m ago':Math.floor(s/3600)+'h ago'};
 const pend=a=>a.reply==null&&a.blocked==null&&now()-a.t<300;
+const isErr=a=>a.blocked!=null&&a.blocked.startsWith('error:');
+const isBlk=a=>a.blocked!=null&&!isErr(a);
 const st=a=>a.blocked!=null?'err':pend(a)?'work':'done';
 const NOJOB='(ไม่ระบุชื่องาน)';
-let S={agents:[],audit:[],notes:[]}, sel=null, q='', open=new Set();
-$('q').oninput=e=>{q=e.target.value.toLowerCase();render()};
+let S={agents:[],audit:[],notes:[]}, view='design', rtab='eval', selNode='claude', selJob=null, open=new Set();
 
-function lineChart(el,series,max,w=280,h=120){
-  const pad=4,B=30; let g='';
-  for(let i=0;i<=3;i++)g+=`<line x1="0" x2="${w}" y1="${pad+i*(h-2*pad)/3}" y2="${pad+i*(h-2*pad)/3}" stroke="#ffffff10"/>`;
-  series.forEach(s=>{
-    const pts=s.v.map((v,i)=>[i*(w/(B-1)),h-pad-(v/max)*(h-2*pad)]);
-    const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
-    g+=`<path d="${d} L${w} ${h} L0 ${h}Z" fill="${s.c}" opacity=".12"/><path d="${d}" fill="none" stroke="${s.c}" stroke-width="2" style="filter:drop-shadow(0 0 4px ${s.c})"/>`;
-  });
-  el.innerHTML=g;
+function spark(vals,c,w=100,h=26){const m=Math.max(1,...vals),n=vals.length||1;
+  const p=vals.map((v,i)=>[i*(w/Math.max(1,n-1)),h-2-(v/m)*(h-4)]);
+  const d=p.map((q,i)=>(i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ')||'M0 '+h;
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d} L${w} ${h} L0 ${h}Z" fill="${c}" opacity=".15"/><path d="${d}" fill="none" stroke="${c}" stroke-width="1.6"/></svg>`}
+function buckets(rows,n=20,step=60){const b=Array(n).fill(0);rows.forEach(a=>{const i=n-1-Math.floor((now()-a.t)/step);if(i>=0&&i<n)b[i]++});return b}
+
+/* ---------- flow canvas ---------- */
+function flow(){
+  const A=S.audit, ag=S.agents, busy=new Set(A.filter(pend).map(a=>a.agent)), anyBusy=busy.size>0;
+  const recent=A.some(a=>now()-a.t<20), blk=A.some(a=>isBlk(a)&&now()-a.t<60);
+  const noteFresh=S.notes.some(n=>now()-n.t<60);
+  const W=150,H=58,n=ag.length||1, top=40, bot=360;
+  const N={trigger:{x:30,y:196,c:'#3b82f6',g:'▶',t:'Trigger',s:'คำสั่งจากผู้ใช้',on:recent||anyBusy},
+    claude:{x:225,y:190,c:COL.claude,g:'C',t:'Claude (Head)',s:'วางแผน · แตกงาน',on:anyBusy,b:S.notes.length},
+    policy:{x:430,y:196,c:'#f59e0b',g:'⛨',t:'Policy Check',s:'Boundary · กรอง brief',on:anyBusy},
+    blocked:{x:430,y:372,c:'#ef4444',g:'!',t:'Blocked',s:'ถูกบล็อก / ผิดพลาด',on:blk,b:A.filter(a=>a.blocked!=null).length},
+    review:{x:810,y:120,c:'#f59e0b',g:'✓',t:'Review',s:'Claude ตรวจผล',on:noteFresh,b:S.notes.length},
+    response:{x:810,y:272,c:'#22c55e',g:'↩',t:'Response',s:'รายงานผู้ใช้',on:noteFresh}};
+  ag.forEach((a,i)=>{const y=n===1?196:top+i*((bot-top-H)/(n-1))+ (i? 0:0);
+    N['a:'+a.name]={x:620,y,c:col(a.name),g:a.name[0].toUpperCase(),t:a.title,s:a.model.split('/').pop().slice(0,24),on:busy.has(a.name),b:A.filter(z=>z.agent===a.name&&z.blocked==null).length}});
+  const E=[['trigger','claude',N.trigger.on],['claude','policy',anyBusy]];
+  ag.forEach(a=>{E.push(['policy','a:'+a.name,busy.has(a.name)]);E.push(['a:'+a.name,'review',busy.has(a.name)||noteFresh])});
+  E.push(['review','response',noteFresh],['policy','blocked',blk,'down']);
+  let g=`<defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#5b6a8f"/></marker></defs>`;
+  let ids=0;
+  E.forEach(([f,t,on,dir])=>{const a=N[f],b=N[t];let x1,y1,x2,y2,d;
+    if(dir==='down'){x1=a.x+W/2;y1=a.y+H;x2=b.x+W/2;y2=b.y;d=`M${x1} ${y1} C${x1} ${y1+40} ${x2} ${y2-40} ${x2} ${y2}`}
+    else{x1=a.x+W;y1=a.y+H/2;x2=b.x;y2=b.y+H/2;const dx=(x2-x1)/2;d=`M${x1} ${y1} C${x1+dx} ${y1} ${x2-dx} ${y2} ${x2} ${y2}`}
+    const id='e'+(ids++), c=dir==='down'?'#ef4444':(b.c||'#3b82f6');
+    g+=`<path id="${id}" d="${d}" fill="none" stroke="${on?c:'#33415f'}" stroke-width="${on?2.2:1.6}" ${on?'stroke-dasharray="6 6" style="animation:fl .7s linear infinite"':''} marker-end="url(#ar)"/>`;
+    if(on)for(let k=0;k<2;k++)g+=`<circle r="4" fill="${c}" style="filter:drop-shadow(0 0 5px ${c})"><animateMotion dur="1.5s" begin="${k*.75}s" repeatCount="indefinite"><mpath href="#${id}"/></animateMotion></circle>`});
+  Object.entries(N).forEach(([id,o])=>{const sel=selNode===id;
+    g+=`<g data-n="${esc(id)}" style="cursor:pointer"><rect x="${o.x}" y="${o.y}" width="${W}" height="${H}" rx="10" fill="#0c1426" stroke="${o.on||sel?o.c:'#27355a'}" stroke-width="${sel?2:1.4}" style="${o.on?`filter:drop-shadow(0 0 10px ${o.c}88)`:''}"/>
+    <circle cx="${o.x+24}" cy="${o.y+H/2}" r="13" fill="${o.c}"/><text x="${o.x+24}" y="${o.y+H/2+4.5}" text-anchor="middle" font-size="12" font-weight="800" fill="#0a0f1c">${esc(o.g)}</text>
+    <text x="${o.x+46}" y="${o.y+24}" fill="#e6ebf7" font-size="12.5" font-weight="700">${esc(o.t)}</text>
+    <text x="${o.x+46}" y="${o.y+40}" fill="#8693b3" font-size="10">${esc(o.s)}</text>
+    ${o.b?`<g><rect x="${o.x+W-30}" y="${o.y-8}" width="26" height="16" rx="8" fill="${o.c}"/><text x="${o.x+W-17}" y="${o.y+3.5}" text-anchor="middle" font-size="10" font-weight="800" fill="#0a0f1c">${o.b}</text></g>`:''}</g>`});
+  return `<div class="canvas"><svg viewBox="0 0 990 450">${g}</svg><div class="zoom">คลิกโหนดเพื่อดูรายละเอียดใน Inspector · ${anyBusy?'● กำลังทำงาน':'○ ว่าง'}</div></div>`;
 }
-function buckets(rows){const b=Array(30).fill(0);rows.forEach(a=>{const i=29-Math.floor((now()-a.t)/60);if(i>=0&&i<30)b[i]++});return b}
+
+/* ---------- bottom cards ---------- */
+function bottom(){
+  const A=S.audit, ok=A.filter(a=>st(a)==='done'), er=A.filter(a=>st(a)==='err');
+  const ms=ok.filter(a=>a.ms).map(a=>a.ms).sort((x,y)=>x-y), p95=ms.length?ms[Math.min(ms.length-1,Math.floor(ms.length*.95))]/1000:0;
+  const team=S.agents.map(a=>{const w=A.some(z=>z.agent===a.name&&pend(z));return `<div class="src"><i style="background:${col(a.name)}">${esc(a.name[0].toUpperCase())}</i><div class="n">${esc(a.title)}<div class="m">${esc(a.model.split('/').pop())}</div></div><span class="badge ${w?'wk':'ok'}">${w?'Working':'Ready'}</span></div>`}).join('');
+  const hosts={};S.agents.forEach(a=>{(hosts[a.host]??={n:0,w:false}).n+=A.filter(z=>z.agent===a.name&&z.blocked==null).length;});
+  const gw=Object.entries(hosts).map(([h,o])=>`<div class="src"><i style="background:#3b82f6">⌁</i><div class="n">${esc(h)}</div><span class="m">${o.n} calls</span><span class="badge ok">Active</span></div>`).join('');
+  return `<div class="row3" id="mon"><div class="card"><h3>Team Members</h3>${team||'<div class="empty">ยังไม่มีลูกทีม</div>'}</div>
+  <div class="card"><h3>Monitoring</h3><div class="mon"><div><small>Total Calls</small><b>${ok.length}</b>${spark(buckets(A),'#3b82f6')}</div>
+  <div><small>Errors</small><b style="color:var(--rd)">${A.length?(er.length/A.length*100).toFixed(1):0}%</b>${spark(buckets(A.filter(a=>a.blocked!=null)),'#ef4444')}</div>
+  <div><small>Latency P95</small><b>${p95.toFixed(1)}s</b>${spark(A.filter(a=>a.ms).slice(0,20).reverse().map(a=>a.ms),'#22d3ee')}</div></div></div>
+  <div class="card"><h3>Gateways</h3>${gw||'<div class="empty">—</div>'}</div></div>`;
+}
+
+/* ---------- views ---------- */
+function jobsView(){
+  const J={};S.audit.forEach(a=>{const k=a.job||NOJOB;(J[k]??={a:[],n:[],last:0}).a.push(a);J[k].last=Math.max(J[k].last,a.t)});
+  S.notes.forEach(n=>{const k=n.job||NOJOB;(J[k]??={a:[],n:[],last:0}).n.push(n);J[k].last=Math.max(J[k].last,n.t)});
+  const ks=Object.keys(J).sort((x,y)=>J[y].last-J[x].last); if(!ks.includes(selJob))selJob=ks[0]||null;
+  if(!selJob)return '<div class="card empty">ยังไม่มีงาน — สั่ง Claude ในแชทได้เลย</div>';
+  const jb=J[selJob],by={work:[],done:[],err:[]};jb.a.slice().sort((x,y)=>y.t-x.t).forEach(a=>by[st(a)].push(a));
+  const card=a=>{const o=open.has(a.id);return `<div class="cd" data-id="${a.id}" style="--c:${col(a.agent)}"><div class="t">Claude → ${esc(a.agent)}<span>${a.ms?(a.ms/1000).toFixed(1)+'s · ':''}${hm(a.t)}</span></div><p>${esc(o?a.brief:a.brief.slice(0,110)+(a.brief.length>110?'…':''))}</p>${o?`<p class="r">${esc(a.blocked||a.reply||'⏳ กำลังทำงาน…')}</p>`:''}</div>`};
+  const col3=(t,k)=>`<div class="kc"><h4>${t}<b>${by[k].length}</b></h4>${by[k].map(card).join('')||'<div class="empty">—</div>'}</div>`;
+  return `<div class="jtabs">${ks.map(k=>`<button class="jt ${k===selJob?'on':''}" data-k="${esc(k)}">${esc(k)}</button>`).join('')}</div>`+
+    jb.n.slice().sort((x,y)=>x.t-y.t).map(n=>`<div class="note"><small>Claude ตรวจผล · ${hm(n.t)}</small>${esc(n.text)}</div>`).join('')+
+    `<div class="kan">${col3('กำลังทำ','work')}${col3('เสร็จ','done')}${col3('ปัญหา / บล็อก','err')}</div>`;
+}
+function auditView(){
+  return `<div class="card"><table><tr><th>เวลา</th><th>Agent</th><th>โมเดล</th><th>งาน</th><th>สถานะ</th><th>ms</th><th>Brief</th></tr>`+
+  S.audit.map(a=>{const s=st(a);return `<tr><td>${hm(a.t)}</td><td style="color:${col(a.agent)}">${esc(a.agent)}</td><td>${esc((a.model||'').split('/').pop())}</td><td>${esc(a.job||'—')}</td>
+  <td><span class="badge ${s==='done'?'ok':s==='work'?'wk':'er'}">${s==='done'?'ok':s==='work'?'working':isBlk(a)?'blocked':'error'}</span></td><td>${a.ms??'—'}</td><td>${esc(a.brief.slice(0,90))}</td></tr>`}).join('')+`</table></div>`;
+}
+
+/* ---------- right panel ---------- */
+function inspector(){
+  const A=S.audit,id=selNode, ag=id.startsWith('a:')?S.agents.find(a=>a.name===id.slice(2)):null;
+  if(ag){const rows=A.filter(a=>a.agent===ag.name),ok=rows.filter(a=>st(a)==='done'&&a.ms);
+    return `<div class="sec"><h4>${esc(ag.title)} <span class="badge ${rows.some(pend)?'wk':'ok'}">${rows.some(pend)?'Working':'Ready'}</span></h4><dl class="kv"><dt>ชื่อ</dt><dd>${esc(ag.name)}</dd><dt>โมเดล</dt><dd>${esc(ag.model)}</dd><dt>Gateway</dt><dd>${esc(ag.host)}</dd><dt>บทบาท</dt><dd>${esc(ag.role)}</dd><dt>รับงาน</dt><dd>${rows.filter(a=>a.blocked==null).length} ครั้ง</dd><dt>ตอบเฉลี่ย</dt><dd>${ok.length?(ok.reduce((s,a)=>s+a.ms,0)/ok.length/1000).toFixed(1)+'s':'—'}</dd></dl></div>
+    <div class="sec"><h4>งานล่าสุด</h4>${rows.slice(0,3).map(a=>`<div class="txt">${esc(a.brief.slice(0,200))}</div><div class="txt r">${esc(a.blocked||a.reply||'⏳ กำลังทำงาน…')}</div>`).join('')||'<div class="empty">ยังไม่มีงาน</div>'}</div>`}
+  const info={trigger:['Trigger','คำสั่งที่ผู้ใช้ส่งมาในแชท จุดเริ่มของทุกงาน'],claude:['Claude (Head)','หัวหน้า: แตกงาน เขียน brief ส่งลูกทีม ตรวจผลและบันทึกผลตรวจ'],
+   policy:['Policy Check','ด่าน boundary ก่อนส่งถึงลูกทีม: กรองข้อมูลลับ จำกัดความยาวและงบจำนวนครั้ง'],review:['Review','Claude ตรวจผลลัพธ์ทุกชิ้นก่อนรายงานผู้ใช้'],response:['Response','สรุปผลที่ตรวจแล้วส่งกลับผู้ใช้'],blocked:['Blocked','brief ที่ถูกบล็อกหรือการเรียกที่ผิดพลาด']}[id]||['',''];
+  const extra=id==='claude'?S.notes.slice(0,3).map(n=>`<div class="txt r">${esc(n.text)}</div>`).join(''):id==='blocked'?A.filter(a=>a.blocked!=null).slice(0,4).map(a=>`<div class="txt">${esc(a.agent)}: ${esc(a.blocked)}</div>`).join(''):'';
+  return `<div class="sec"><h4>${esc(info[0])}</h4><div class="empty" style="font-size:12.5px;color:var(--tx)">${esc(info[1])}</div>${extra}</div>`;
+}
+function evaluations(){
+  const A=S.audit, ok=A.filter(a=>st(a)==='done'), er=A.filter(a=>st(a)==='err'), wk=A.filter(pend);
+  const bl=A.filter(isBlk), forb=bl.filter(a=>a.blocked.includes('ต้องห้าม')).length, long=bl.filter(a=>a.blocked.includes('ยาว')).length;
+  const hr=A.filter(a=>now()-a.t<3600&&a.blocked==null).length;
+  const jobs=[...new Set(A.filter(a=>a.job).map(a=>a.job))], rev=jobs.filter(j=>S.notes.some(n=>n.job===j)).length;
+  const gate=(t,good,note)=>`<div class="gate"><div class="ic ${good?'':'w'}">${good?'✓':'!'}</div><span>${t}</span><em>${esc(note)}</em></div>`;
+  const ms=A.filter(a=>a.ms).slice(0,20).reverse().map(a=>a.ms);
+  const tot=ok.length+er.length+wk.length||1, C=2*Math.PI*30, seg=(n,o)=>`${n/tot*C} ${C}`, offs=[0,ok.length/tot*C,(ok.length+wk.length)/tot*C];
+  const ring=[[ok.length,'#3b82f6',offs[0]],[wk.length,'#f59e0b',offs[1]],[er.length,'#ef4444',offs[2]]].map(([n,c,o])=>n?`<circle cx="40" cy="40" r="30" fill="none" stroke="${c}" stroke-width="10" stroke-dasharray="${n/tot*C} ${C}" stroke-dashoffset="${-o}" transform="rotate(-90 40 40)"/>`:'').join('');
+  return `<div class="sec"><h4>Release Gate <a>Boundary</a></h4>
+    ${gate('ไม่มีข้อมูลลับใน brief',true,forb?`บล็อกแล้ว ${forb}`:'ไม่พบ')}
+    ${gate('ความยาว brief ≤ 8,000',true,long?`บล็อกแล้ว ${long}`:'ปกติ')}
+    ${gate('งบเรียก/ชั่วโมง',hr<25,`${hr}/30`)}
+    ${gate('Claude ตรวจผลทุกงาน',jobs.length===rev,`${rev}/${jobs.length} งาน`)}
+    ${gate('สายบังคับบัญชา Head→ลูกทีม',true,'บังคับใช้')}</div>
+  <div class="sec"><h4>Evaluation Results <a>เวลาตอบ (ms)</a></h4>${spark(ms,'#3b82f6',290,70)}</div>
+  <div class="sec"><h4>Task Status</h4><div class="tc"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30" fill="none" stroke="#ffffff10" stroke-width="10"/>${ring}</svg>
+    <div class="leg"><span><i style="background:#3b82f6"></i>Passed ${ok.length}</span><span><i style="background:#f59e0b"></i>Working ${wk.length}</span><span><i style="background:#ef4444"></i>Failed ${er.length}</span></div></div></div>
+  <div class="sec"><h4>Latest Traces <a data-r="hist" style="cursor:pointer">View all</a></h4>${traces(5)}</div>`;
+}
+function traces(n){const r=S.audit.slice(0,n);return r.map(a=>{const s=st(a);return `<div class="tr" data-t="${esc(a.agent)}"><span class="t">${esc(a.brief.slice(0,46))}</span><span class="badge ${s==='done'?'ok':s==='work'?'wk':'er'}">${s==='done'?'completed':s==='work'?'working':isBlk(a)?'blocked':'error'}</span><small>${ago(a.t)}</small></div>`}).join('')||'<div class="empty">ยังไม่มี trace</div>'}
 
 function render(){
-  const A=S.audit, names=S.agents.map(a=>a.name);
-  const busy=new Set(A.filter(pend).map(a=>a.agent));
-  const ok=A.filter(a=>st(a)==='done'), er=A.filter(a=>st(a)==='err');
-  const timed=ok.filter(a=>a.ms), avg=timed.length?Math.round(timed.reduce((s,a)=>s+a.ms,0)/timed.length/100)/10:0;
-  $('kpis').innerHTML=[['o','สำเร็จ',ok.length,''],['w','กำลังทำ',A.filter(pend).length,''],['e','ปัญหา/บล็อก',er.length,''],['m','ตอบเฉลี่ย',avg+' s','']]
-    .map(k=>`<div class="pn kpi ${k[0]}"><b>${k[2]}</b><span>${k[1]}</span></div>`).join('');
-  // top spark + chart
-  const tot=buckets(A); lineChart($('spark'),[{v:tot,c:'#5de0ff'}],Math.max(1,...tot),400,34);
-  const ser=names.map(n=>({n,c:col(n),v:buckets(A.filter(a=>a.agent===n))}));
-  lineChart($('ch1'),ser,Math.max(1,...ser.flatMap(s=>s.v)));
-  $('leg1').innerHTML=ser.map(s=>`<span><i style="background:${s.c}"></i>${esc(s.n)}</span>`).join('');
-  // donut
-  const tt=ok.length+er.length||1, r=34, C=2*Math.PI*r, f=ok.length/tt*C;
-  $('don').innerHTML=`<div style="display:flex;align-items:center;gap:16px"><svg width="90" height="90" viewBox="0 0 90 90"><circle cx="45" cy="45" r="${r}" fill="none" stroke="#ff6b81" stroke-width="10" opacity="${er.length?1:.15}"/><circle cx="45" cy="45" r="${r}" fill="none" stroke="#46e6a0" stroke-width="10" stroke-dasharray="${f} ${C}" transform="rotate(-90 45 45)" style="filter:drop-shadow(0 0 4px #46e6a0)"/><text x="45" y="50" text-anchor="middle" fill="#e8e9ff" font-size="16" font-weight="700">${Math.round(ok.length/tt*100)}%</text></svg>
-    <div class="leg" style="flex-direction:column;gap:6px"><span><i style="background:#46e6a0"></i>สำเร็จ ${ok.length}</span><span><i style="background:#ff6b81"></i>ปัญหา ${er.length}</span></div></div>`;
-  // ms bars
-  const mx=Math.max(1,...names.map(n=>Math.max(0,...ok.filter(a=>a.agent===n&&a.ms).map(a=>a.ms))));
-  $('ms').innerHTML=names.map(n=>{const x=ok.filter(a=>a.agent===n&&a.ms),v=x.length?x.reduce((s,a)=>s+a.ms,0)/x.length:0;
-    return `<div class="bar"><span>${esc(n)}</span><div><i style="width:${v/mx*100}%;background:${col(n)}"></i></div><em>${v?(v/1000).toFixed(1)+'s':'—'}</em></div>`}).join('')||'<div class="empty">—</div>';
-  // map
-  const pos={claude:[400,62]}; names.forEach((n,i)=>pos[n]=[800*(i+1)/(names.length+1),262]);
-  let g=`<defs><pattern id="gr" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#ffffff0d"/></pattern>
-   <radialGradient id="rg"><stop offset="0" stop-color="#8b7cff" stop-opacity=".25"/><stop offset="1" stop-color="#8b7cff" stop-opacity="0"/></radialGradient></defs>
-   <rect width="800" height="330" fill="url(#gr)"/><circle cx="400" cy="62" r="150" fill="url(#rg)"/>`;
-  [60,110,160].forEach(r=>g+=`<circle cx="400" cy="62" r="${r}" fill="none" stroke="#8b7cff" stroke-opacity=".18" stroke-dasharray="3 6"/>`);
-  names.forEach(n=>{const[x,y]=pos[n],on=busy.has(n),c=col(n),d=`M400 82 C400 170 ${x} 170 ${x} ${y-26}`;
-    g+=`<path id="p_${n}" d="${d}" fill="none" stroke="${c}" stroke-opacity="${on?.9:.3}" stroke-width="${on?2.5:1.5}" ${on?'':'stroke-dasharray="4 6"'}/>`;
-    if(on)for(let k=0;k<3;k++)g+=`<circle r="5" fill="${c}" style="filter:drop-shadow(0 0 6px ${c})"><animateMotion dur="1.6s" begin="${k*.53}s" repeatCount="indefinite"><mpath href="#p_${n}"/></animateMotion></circle>`;});
-  const node=(n,x,y,t,sub,on)=>{const c=col(n);return `<g><circle cx="${x}" cy="${y}" r="${n==='claude'?28:24}" fill="#0b0b20" stroke="${c}" stroke-width="2" style="filter:drop-shadow(0 0 ${on?14:6}px ${c})"/>
-    ${on?`<circle cx="${x}" cy="${y}" r="${n==='claude'?28:24}" fill="none" stroke="${c}"><animate attributeName="r" from="26" to="46" dur="1.4s" repeatCount="indefinite"/><animate attributeName="opacity" from=".8" to="0" dur="1.4s" repeatCount="indefinite"/></circle>`:''}
-    <text x="${x}" y="${y+5}" text-anchor="middle" fill="${c}" font-weight="800" font-size="14">${esc(n[0].toUpperCase())}</text>
-    <text x="${x}" y="${y+(n==='claude'?50:46)}" text-anchor="middle" fill="#e8e9ff" font-size="13" font-weight="600">${esc(t)}</text>
-    <text x="${x}" y="${y+(n==='claude'?65:61)}" text-anchor="middle" fill="#8486b5" font-size="10">${esc(sub)}</text></g>`};
-  g+=node('claude',400,62,'Claude (Head)','ผู้สั่งการ',busy.size>0);
-  S.agents.forEach(a=>{const[x,y]=pos[a.name];g+=node(a.name,x,y,a.title,a.model.split('/').pop().slice(0,26),busy.has(a.name))});
-  // task tags (recent jobs per agent)
-  S.agents.forEach(a=>{const[x,y]=pos[a.name];const js=[...new Set(A.filter(z=>z.agent===a.name).map(z=>z.job||NOJOB))].slice(0,2);
-    js.forEach((j,i)=>{const t=j.length>16?j.slice(0,15)+'…':j,w=t.length*7+16,ty=y-80+i*0;
-      g+=`<g transform="translate(${x+(i?-w-8:34)},${y-52+i*22})"><rect width="${w}" height="18" rx="4" fill="#ffa94d" opacity=".92"/><text x="8" y="13" font-size="10.5" font-weight="700" fill="#2a1600">${esc(t)}</text></g>`})});
-  $('map').innerHTML=g;
-  $('chip').innerHTML=busy.size?`● ${busy.size} ตัวกำลังทำงาน`:'● พร้อมสั่งงาน';
-  // jobs
-  const J={};A.forEach(a=>{const k=a.job||NOJOB;(J[k]??={a:[],n:[],last:0}).a.push(a);J[k].last=Math.max(J[k].last,a.t)});
-  S.notes.forEach(n=>{const k=n.job||NOJOB;(J[k]??={a:[],n:[],last:0}).n.push(n);J[k].last=Math.max(J[k].last,n.t)});
-  let ks=Object.keys(J).sort((x,y)=>J[y].last-J[x].last).filter(k=>!q||k.toLowerCase().includes(q)||J[k].a.some(a=>a.brief.toLowerCase().includes(q)));
-  if(!ks.includes(sel))sel=ks[0]||null;
-  $('tabs').innerHTML=ks.map(k=>`<button class="tab ${k===sel?'on':''} ${J[k].a.some(pend)?'busy':''}" data-k="${esc(k)}">${esc(k)}</button>`).join('')||'<span class="empty">ยังไม่มีงาน — สั่ง Claude ในแชทได้เลย</span>';
-  if(!sel){$('job').innerHTML='';return}
-  const jb=J[sel], by={work:[],done:[],err:[]}; jb.a.slice().sort((x,y)=>y.t-x.t).forEach(a=>by[st(a)].push(a));
-  const status=by.work.length?['work','กำลังทำ']:by.err.length?['err','มีปัญหา']:['done','เสร็จ'];
-  const card=a=>{const id=a.id,o=open.has(id);return `<div class="cd ${pend(a)?'run':''}" data-id="${id}" style="--c:${col(a.agent)}"><div class="t">Claude → ${esc(a.agent)}<span>${a.ms?(a.ms/1000).toFixed(1)+'s · ':''}${hm(a.t)}</span></div>
-    <p>${esc(o?a.brief:a.brief.slice(0,110)+(a.brief.length>110?'…':''))}</p>${o?`<p class="r">${esc(a.blocked||a.reply||'⏳ กำลังทำงาน…')}</p>`:''}</div>`};
-  const colm=(t,k,c)=>`<div class="kc" style="--c:${c}"><h4>${t}<b>${by[k].length}</b></h4>${by[k].map(card).join('')||'<div class="empty">—</div>'}</div>`;
-  $('job').innerHTML=`<div class="jh"><strong>${esc(sel)}</strong><span class="pill ${status[0]}">${status[1]}</span><span class="empty">${jb.a.length} งานย่อย · ${hm(jb.last)}</span></div>`+
-   jb.n.slice().sort((x,y)=>x.t-y.t).map(n=>`<div class="note"><small>Claude ตรวจผล · ${hm(n.t)}</small>${esc(n.text)}</div>`).join('')+
-   `<div class="kan">${colm('กำลังทำ','work','#ffa94d')}${colm('เสร็จ','done','#46e6a0')}${colm('ปัญหา / บล็อก','err','#ff6b81')}</div>`;
+  document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
+  document.querySelectorAll('#rt [data-r]').forEach(b=>b.classList.toggle('on',b.dataset.r===rtab));
+  const busy=S.audit.some(pend); $('live').textContent=busy?'Working':'Live'; $('live').classList.toggle('idle',!busy);
+  $('cen').innerHTML=(view==='design'?flow()+bottom():view==='jobs'?jobsView():auditView());
+  $('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;
 }
 document.addEventListener('click',e=>{
-  const t=e.target.closest('.tab'); if(t){sel=t.dataset.k;render();return}
-  const c=e.target.closest('.cd'); if(c){const id=+c.dataset.id;open.has(id)?open.delete(id):open.add(id);render()}
+  const v=e.target.closest('[data-v]'); if(v){view=v.dataset.v;render();return}
+  const r=e.target.closest('[data-r]'); if(r){rtab=r.dataset.r;render();return}
+  if(e.target.closest('[data-s]')){view='design';render();$('mon')?.scrollIntoView({behavior:'smooth'});return}
+  const nd=e.target.closest('[data-n]'); if(nd){selNode=nd.dataset.n;rtab='insp';render();return}
+  const jt=e.target.closest('.jt'); if(jt){selJob=jt.dataset.k;render();return}
+  const c=e.target.closest('.cd'); if(c){const id=+c.dataset.id;open.has(id)?open.delete(id):open.add(id);render();return}
+  const t=e.target.closest('[data-t]'); if(t){selNode='a:'+t.dataset.t;rtab='insp';view='design';render()}
 });
+$('exp').onclick=()=>{const b=new Blob([JSON.stringify({audit:S.audit,notes:S.notes},null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ai-team-log.json';a.click()};
 async function tick(){try{S=await (await fetch('/api/state')).json();render()}catch(e){}}
 tick(); setInterval(tick,2000);
 </script>
