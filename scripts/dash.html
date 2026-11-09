@@ -3,100 +3,172 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
 <title>AI Command Center</title>
 <style>
-:root{--bg:#0e1116;--panel:#161b22;--line:#2a3240;--text:#e6e9ef;--mute:#8b94a3;--bad:#f87171;--ok:#4ade80;--warn:#fbbf24;
---head:#e8a87c;--worker:#4ade80;--intern:#fbbf24;--other:#7c9cff}
-@media (prefers-color-scheme:light){:root{--bg:#f4f5f8;--panel:#fff;--line:#dfe3ea;--text:#161a22;--mute:#667085;--bad:#dc2626;--ok:#16a34a;--warn:#b45309;
---head:#c2410c;--worker:#16a34a;--intern:#b45309;--other:#4263eb}}
+:root{--bg:#090919;--p1:#12122b;--p2:#191937;--ln:#2b2b58;--tx:#e8e9ff;--mu:#8486b5;
+--cy:#5de0ff;--vi:#8b7cff;--or:#ffa94d;--pk:#c78bff;--gr:#46e6a0;--rd:#ff6b81}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 system-ui,"Noto Sans Thai",sans-serif}
-header{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid var(--line)}
-header h1{font-size:17px;margin:0;font-weight:650}
-.live{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mute)}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:p 2s infinite}
-@keyframes p{50%{opacity:.35}}
-main{max-width:1100px;margin:auto;padding:20px 24px;display:grid;gap:20px}
-section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
-h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 14px;font-weight:600}
-/* org */
-.org{display:flex;flex-direction:column;align-items:center}
-.lvl{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;width:100%}
-.card{width:min(100%,290px);border:1px solid var(--line);border-top:3px solid var(--c);border-radius:12px;padding:12px 14px;background:var(--bg);position:relative}
-.card.busy{box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 45%,transparent);animation:g 1.4s infinite}
-@keyframes g{50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--c) 15%,transparent)}}
-.card b{color:var(--c);font-size:15px}
-.card small{color:var(--mute);display:block;font-size:12px;word-break:break-all}
-.st{margin-top:8px;font-size:12px;display:flex;justify-content:space-between;color:var(--mute)}
-.st .on{color:var(--c);font-weight:600}
-.arrows{display:flex;justify-content:center;gap:16px;width:100%;height:34px}
-.arrow{width:min(100%,290px);display:flex;justify-content:center}
-.arrow i{display:block;width:0;height:100%;border-left:2px dashed var(--line)}
-.arrow.busy i{border-color:var(--c);animation:f .7s linear infinite}
-@keyframes f{to{background-position:0 8px}}
-.arrow.busy i{border-left-style:dashed}
-/* jobs */
-.job{border:1px solid var(--line);border-radius:12px;margin-bottom:14px;overflow:hidden}
-.jh{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);font-weight:600}
-.jh small{color:var(--mute);font-weight:400}
-.tag{font-size:11px;padding:1px 9px;border-radius:99px;font-weight:600;white-space:nowrap}
-.tag.work{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
-.tag.done{background:color-mix(in srgb,var(--ok) 20%,transparent);color:var(--ok)}
-.tag.err{background:color-mix(in srgb,var(--bad) 20%,transparent);color:var(--bad)}
-.ev{display:grid;grid-template-columns:150px 1fr;gap:12px;padding:10px 14px;border-top:1px solid var(--line)}
-.ev:first-of-type{border-top:0}
-.who{font-size:13px;font-weight:600;color:var(--c)}
-.who small{display:block;color:var(--mute);font-weight:400;font-size:11px}
-.msg{white-space:pre-wrap;word-break:break-word;font-size:13px;color:var(--mute)}
-.msg.reply{color:var(--text)}
-.msg.bad{color:var(--bad)}
-.lab{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
-.empty{color:var(--mute)}
-@media(max-width:640px){.ev{grid-template-columns:1fr;gap:4px}}
+body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#1b1b4a55,transparent),var(--bg);color:var(--tx);
+font:14px/1.5 system-ui,"Noto Sans Thai",sans-serif;min-height:100vh}
+.top{display:grid;grid-template-columns:auto 220px 1fr auto;gap:16px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--ln);background:#0c0c24cc;backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.02em}
+.logo i{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--vi),var(--cy));display:grid;place-items:center;font-style:normal;color:#0b0b20;font-weight:800}
+.search{background:var(--p1);border:1px solid var(--ln);border-radius:9px;color:var(--tx);padding:8px 12px;font:inherit;width:100%}
+.search:focus{outline:2px solid var(--vi);outline-offset:-1px}
+.spark{height:34px;width:100%}
+.live{font-size:12px;color:var(--mu);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.live b{width:8px;height:8px;border-radius:50%;background:var(--gr);box-shadow:0 0 8px var(--gr);animation:bl 2s infinite}
+@keyframes bl{50%{opacity:.3}}
+.wrap{display:grid;grid-template-columns:310px 1fr;gap:14px;padding:14px 16px}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.pn{background:linear-gradient(180deg,var(--p2),var(--p1));border:1px solid var(--ln);border-radius:12px;padding:12px 14px;min-width:0}
+.pn h3{margin:0 0 8px;font-size:12px;font-weight:600;color:var(--mu);letter-spacing:.06em;text-transform:uppercase;display:flex;justify-content:space-between}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.kpi b{display:block;font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi span{font-size:12px;color:var(--mu)}
+.kpi.w b{color:var(--or)} .kpi.e b{color:var(--rd)} .kpi.o b{color:var(--gr)} .kpi.m b{color:var(--cy)}
+.leg{display:flex;gap:12px;font-size:11px;color:var(--mu);margin-top:4px;flex-wrap:wrap}
+.leg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.bar{display:grid;grid-template-columns:70px 1fr 56px;gap:8px;align-items:center;font-size:12px;margin:7px 0;color:var(--mu)}
+.bar div{height:8px;border-radius:9px;background:#ffffff10;overflow:hidden}
+.bar div i{display:block;height:100%;border-radius:9px}
+.bar em{font-style:normal;text-align:right;color:var(--tx);font-variant-numeric:tabular-nums}
+.map{position:relative;overflow:hidden}
+.map svg{width:100%;height:auto;display:block}
+.chip{position:absolute;top:12px;left:14px;display:flex;gap:8px;align-items:center;background:#0c0c24cc;border:1px solid var(--ln);border-radius:99px;padding:4px 12px;font-size:12px;color:var(--or)}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px}
+.tab{flex:none;background:var(--p1);border:1px solid var(--ln);color:var(--mu);border-radius:9px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab.on{color:var(--tx);border-color:var(--vi);box-shadow:0 0 0 1px var(--vi) inset,0 0 14px #8b7cff40}
+.tab.busy::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--or);margin-right:7px;animation:bl 1s infinite}
+.jh{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:8px 2px 12px}
+.jh strong{font-size:16px}
+.pill{font-size:11px;padding:2px 10px;border-radius:99px;border:1px solid;font-weight:600}
+.pill.work{color:var(--or);border-color:var(--or)} .pill.done{color:var(--gr);border-color:var(--gr)} .pill.err{color:var(--rd);border-color:var(--rd)}
+.note{border-left:3px solid var(--or);background:#ffa94d12;padding:8px 12px;border-radius:0 8px 8px 0;margin:0 0 12px;font-size:13px}
+.note small{color:var(--or);display:block;font-weight:600}
+.kan{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.kc{background:#0a0a1f;border:1px solid var(--ln);border-radius:10px;padding:10px;min-height:120px}
+.kc h4{margin:0 0 8px;font-size:12px;display:flex;justify-content:space-between;color:var(--mu)}
+.kc h4 b{color:var(--c)}
+.cd{border:1px solid var(--ln);border-left:3px solid var(--c);border-radius:8px;padding:8px 10px;margin-bottom:8px;background:var(--p1);cursor:pointer}
+.cd:hover{border-color:var(--c)}
+.cd .t{display:flex;justify-content:space-between;font-size:12px;color:var(--c);font-weight:600}
+.cd .t span{color:var(--mu);font-weight:400}
+.cd p{margin:4px 0 0;font-size:12px;color:var(--mu);white-space:pre-wrap;word-break:break-word}
+.cd p.r{color:var(--tx);margin-top:8px;border-top:1px dashed var(--ln);padding-top:6px}
+.cd.run{animation:gl 1.4s infinite}
+@keyframes gl{50%{box-shadow:0 0 14px color-mix(in srgb,var(--c) 45%,transparent)}}
+.empty{color:var(--mu);font-size:13px;padding:6px 0}
+@media(max-width:900px){.top{grid-template-columns:auto 1fr;}.spark,.live{display:none}.wrap{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.kan{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 </head>
 <body>
-<header><h1>AI Command Center</h1><span class="live"><span class="dot"></span>อัปเดตสด</span></header>
-<main>
-<section><h2>ผังการสั่งงาน</h2><div class="org" id="org"></div></section>
-<section><h2>งานที่ Claude แจกจ่าย (ล่าสุดก่อน)</h2><div id="jobs" class="empty">กำลังโหลด…</div></section>
-</main>
+<div class="top">
+  <div class="logo"><i>A</i>AI Command Center</div>
+  <input class="search" id="q" placeholder="ค้นหางาน / brief…" aria-label="ค้นหางาน">
+  <svg class="spark" id="spark" viewBox="0 0 400 34" preserveAspectRatio="none"></svg>
+  <div class="live"><b></b>อัปเดตสด</div>
+</div>
+<div class="wrap">
+  <div class="col">
+    <div class="pn"><h3>การเรียกต่อนาที <span>30 นาที</span></h3><svg id="ch1" viewBox="0 0 280 120" style="width:100%"></svg><div class="leg" id="leg1"></div></div>
+    <div class="pn"><h3>สำเร็จ / ปัญหา</h3><div id="don"></div></div>
+    <div class="pn"><h3>เวลาตอบเฉลี่ย</h3><div id="ms"></div></div>
+  </div>
+  <div class="col">
+    <div class="kpis" id="kpis"></div>
+    <div class="pn map"><div class="chip" id="chip">● พร้อมสั่งงาน</div><svg id="map" viewBox="0 0 800 330"></svg></div>
+    <div class="pn"><h3>งานที่ Claude แจกจ่าย</h3><div class="tabs" id="tabs"></div><div id="job"></div></div>
+  </div>
+</div>
 <script>
 const $=id=>document.getElementById(id);
-const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const col=n=>n==='worker'?'var(--worker)':n==='intern'?'var(--intern)':n==='claude'?'var(--head)':'var(--other)';
-const hm=t=>new Date(t*1000).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-const pending=a=>a.reply==null&&a.blocked==null&&Date.now()/1000-a.t<300;
-const isErr=a=>a.blocked!=null;
-function render(S){
-  const busy={}, cnt={};
-  S.audit.forEach(a=>{cnt[a.agent]=(cnt[a.agent]||0)+(a.blocked==null?1:0); if(pending(a))busy[a.agent]=true});
-  const anyBusy=Object.keys(busy).length>0;
-  const head=`<div class="card ${anyBusy?'busy':''}" style="--c:var(--head)"><b>Claude (Head)</b><small>ผู้สั่งการ · คิด แตกงาน ตรวจผล</small>
-    <div class="st"><span>${S.notes.length} บันทึกตรวจงาน</span><span class="${anyBusy?'on':''}">${anyBusy?'กำลังรอทีม…':'พร้อมสั่งงาน'}</span></div></div>`;
-  const ag=S.agents.map(a=>`<div class="card ${busy[a.name]?'busy':''}" style="--c:${col(a.name)}"><b>${esc(a.title)} <span style="font-weight:400;color:var(--mute);font-size:12px">${esc(a.name)}</span></b>
-    <small>${esc(a.model)}</small><div class="st"><span>รับงานแล้ว ${cnt[a.name]||0} ครั้ง</span><span class="${busy[a.name]?'on':''}">${busy[a.name]?'กำลังทำงาน…':'ว่าง'}</span></div></div>`).join('');
-  const ar=S.agents.map(a=>`<div class="arrow ${busy[a.name]?'busy':''}" style="--c:${col(a.name)}"><i></i></div>`).join('');
-  $('org').innerHTML=`<div class="lvl">${head}</div><div class="arrows">${ar}</div><div class="lvl">${ag}</div>`;
-  // jobs
-  const jobs={};
-  S.audit.forEach(a=>{const k=a.job||'(ไม่ระบุชื่องาน)';(jobs[k]??={ev:[],last:0}).ev.push({k:'a',t:a.t,a});jobs[k].last=Math.max(jobs[k].last,a.t)});
-  S.notes.forEach(n=>{const k=n.job||'(ไม่ระบุชื่องาน)';(jobs[k]??={ev:[],last:0}).ev.push({k:'n',t:n.t,n});jobs[k].last=Math.max(jobs[k].last,n.t)});
-  const names=Object.keys(jobs).sort((x,y)=>jobs[y].last-jobs[x].last);
-  if(!names.length){$('jobs').innerHTML='<span class="empty">ยังไม่มีงาน — สั่ง Claude ในแชทได้เลย งานจะปรากฏที่นี่</span>';return}
-  $('jobs').innerHTML=names.map(k=>{
-    const ev=jobs[k].ev.sort((x,y)=>x.t-y.t), as=ev.filter(e=>e.k==='a').map(e=>e.a);
-    const tag=as.some(pending)?['work','กำลังทำ']:as.some(isErr)?['err','มีปัญหา']:['done','เสร็จ'];
-    return `<div class="job"><div class="jh"><span>${esc(k)} <small>${as.length} งานย่อย · ${hm(jobs[k].last)}</small></span><span class="tag ${tag[0]}">${tag[1]}</span></div>`+
-    ev.map(e=>{
-      if(e.k==='n')return `<div class="ev"><div class="who" style="--c:var(--head)">Claude<small>ตรวจผล · ${hm(e.t)}</small></div><div class="msg reply">${esc(e.n.text)}</div></div>`;
-      const a=e.a;
-      return `<div class="ev"><div class="who" style="--c:${col(a.agent)}">Claude → ${esc(a.agent)}<small>${esc(a.model)} · ${hm(a.t)}</small></div>
-      <div><div class="lab">brief</div><div class="msg">${esc(a.brief.slice(0,600))}</div>
-      <div class="lab" style="margin-top:8px">${isErr(a)?'ผลลัพธ์':'คำตอบ'}</div>
-      <div class="msg ${isErr(a)?'bad':'reply'}">${isErr(a)?esc(a.blocked):pending(a)?'⏳ กำลังทำงาน…':esc((a.reply||'').slice(0,1200))}</div></div></div>`}).join('')+`</div>`}).join('');
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const COL={claude:'#ffa94d',worker:'#5de0ff',intern:'#c78bff'}; const col=n=>COL[n]||'#8b7cff';
+const now=()=>Date.now()/1000, hm=t=>new Date(t*1000).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+const pend=a=>a.reply==null&&a.blocked==null&&now()-a.t<300;
+const st=a=>a.blocked!=null?'err':pend(a)?'work':'done';
+const NOJOB='(ไม่ระบุชื่องาน)';
+let S={agents:[],audit:[],notes:[]}, sel=null, q='', open=new Set();
+$('q').oninput=e=>{q=e.target.value.toLowerCase();render()};
+
+function lineChart(el,series,max,w=280,h=120){
+  const pad=4,B=30; let g='';
+  for(let i=0;i<=3;i++)g+=`<line x1="0" x2="${w}" y1="${pad+i*(h-2*pad)/3}" y2="${pad+i*(h-2*pad)/3}" stroke="#ffffff10"/>`;
+  series.forEach(s=>{
+    const pts=s.v.map((v,i)=>[i*(w/(B-1)),h-pad-(v/max)*(h-2*pad)]);
+    const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+    g+=`<path d="${d} L${w} ${h} L0 ${h}Z" fill="${s.c}" opacity=".12"/><path d="${d}" fill="none" stroke="${s.c}" stroke-width="2" style="filter:drop-shadow(0 0 4px ${s.c})"/>`;
+  });
+  el.innerHTML=g;
 }
-async function tick(){try{render(await (await fetch('/api/state')).json())}catch(e){}}
+function buckets(rows){const b=Array(30).fill(0);rows.forEach(a=>{const i=29-Math.floor((now()-a.t)/60);if(i>=0&&i<30)b[i]++});return b}
+
+function render(){
+  const A=S.audit, names=S.agents.map(a=>a.name);
+  const busy=new Set(A.filter(pend).map(a=>a.agent));
+  const ok=A.filter(a=>st(a)==='done'), er=A.filter(a=>st(a)==='err');
+  const timed=ok.filter(a=>a.ms), avg=timed.length?Math.round(timed.reduce((s,a)=>s+a.ms,0)/timed.length/100)/10:0;
+  $('kpis').innerHTML=[['o','สำเร็จ',ok.length,''],['w','กำลังทำ',A.filter(pend).length,''],['e','ปัญหา/บล็อก',er.length,''],['m','ตอบเฉลี่ย',avg+' s','']]
+    .map(k=>`<div class="pn kpi ${k[0]}"><b>${k[2]}</b><span>${k[1]}</span></div>`).join('');
+  // top spark + chart
+  const tot=buckets(A); lineChart($('spark'),[{v:tot,c:'#5de0ff'}],Math.max(1,...tot),400,34);
+  const ser=names.map(n=>({n,c:col(n),v:buckets(A.filter(a=>a.agent===n))}));
+  lineChart($('ch1'),ser,Math.max(1,...ser.flatMap(s=>s.v)));
+  $('leg1').innerHTML=ser.map(s=>`<span><i style="background:${s.c}"></i>${esc(s.n)}</span>`).join('');
+  // donut
+  const tt=ok.length+er.length||1, r=34, C=2*Math.PI*r, f=ok.length/tt*C;
+  $('don').innerHTML=`<div style="display:flex;align-items:center;gap:16px"><svg width="90" height="90" viewBox="0 0 90 90"><circle cx="45" cy="45" r="${r}" fill="none" stroke="#ff6b81" stroke-width="10" opacity="${er.length?1:.15}"/><circle cx="45" cy="45" r="${r}" fill="none" stroke="#46e6a0" stroke-width="10" stroke-dasharray="${f} ${C}" transform="rotate(-90 45 45)" style="filter:drop-shadow(0 0 4px #46e6a0)"/><text x="45" y="50" text-anchor="middle" fill="#e8e9ff" font-size="16" font-weight="700">${Math.round(ok.length/tt*100)}%</text></svg>
+    <div class="leg" style="flex-direction:column;gap:6px"><span><i style="background:#46e6a0"></i>สำเร็จ ${ok.length}</span><span><i style="background:#ff6b81"></i>ปัญหา ${er.length}</span></div></div>`;
+  // ms bars
+  const mx=Math.max(1,...names.map(n=>Math.max(0,...ok.filter(a=>a.agent===n&&a.ms).map(a=>a.ms))));
+  $('ms').innerHTML=names.map(n=>{const x=ok.filter(a=>a.agent===n&&a.ms),v=x.length?x.reduce((s,a)=>s+a.ms,0)/x.length:0;
+    return `<div class="bar"><span>${esc(n)}</span><div><i style="width:${v/mx*100}%;background:${col(n)}"></i></div><em>${v?(v/1000).toFixed(1)+'s':'—'}</em></div>`}).join('')||'<div class="empty">—</div>';
+  // map
+  const pos={claude:[400,62]}; names.forEach((n,i)=>pos[n]=[800*(i+1)/(names.length+1),262]);
+  let g=`<defs><pattern id="gr" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#ffffff0d"/></pattern>
+   <radialGradient id="rg"><stop offset="0" stop-color="#8b7cff" stop-opacity=".25"/><stop offset="1" stop-color="#8b7cff" stop-opacity="0"/></radialGradient></defs>
+   <rect width="800" height="330" fill="url(#gr)"/><circle cx="400" cy="62" r="150" fill="url(#rg)"/>`;
+  [60,110,160].forEach(r=>g+=`<circle cx="400" cy="62" r="${r}" fill="none" stroke="#8b7cff" stroke-opacity=".18" stroke-dasharray="3 6"/>`);
+  names.forEach(n=>{const[x,y]=pos[n],on=busy.has(n),c=col(n),d=`M400 82 C400 170 ${x} 170 ${x} ${y-26}`;
+    g+=`<path id="p_${n}" d="${d}" fill="none" stroke="${c}" stroke-opacity="${on?.9:.3}" stroke-width="${on?2.5:1.5}" ${on?'':'stroke-dasharray="4 6"'}/>`;
+    if(on)for(let k=0;k<3;k++)g+=`<circle r="5" fill="${c}" style="filter:drop-shadow(0 0 6px ${c})"><animateMotion dur="1.6s" begin="${k*.53}s" repeatCount="indefinite"><mpath href="#p_${n}"/></animateMotion></circle>`;});
+  const node=(n,x,y,t,sub,on)=>{const c=col(n);return `<g><circle cx="${x}" cy="${y}" r="${n==='claude'?28:24}" fill="#0b0b20" stroke="${c}" stroke-width="2" style="filter:drop-shadow(0 0 ${on?14:6}px ${c})"/>
+    ${on?`<circle cx="${x}" cy="${y}" r="${n==='claude'?28:24}" fill="none" stroke="${c}"><animate attributeName="r" from="26" to="46" dur="1.4s" repeatCount="indefinite"/><animate attributeName="opacity" from=".8" to="0" dur="1.4s" repeatCount="indefinite"/></circle>`:''}
+    <text x="${x}" y="${y+5}" text-anchor="middle" fill="${c}" font-weight="800" font-size="14">${esc(n[0].toUpperCase())}</text>
+    <text x="${x}" y="${y+(n==='claude'?50:46)}" text-anchor="middle" fill="#e8e9ff" font-size="13" font-weight="600">${esc(t)}</text>
+    <text x="${x}" y="${y+(n==='claude'?65:61)}" text-anchor="middle" fill="#8486b5" font-size="10">${esc(sub)}</text></g>`};
+  g+=node('claude',400,62,'Claude (Head)','ผู้สั่งการ',busy.size>0);
+  S.agents.forEach(a=>{const[x,y]=pos[a.name];g+=node(a.name,x,y,a.title,a.model.split('/').pop().slice(0,26),busy.has(a.name))});
+  // task tags (recent jobs per agent)
+  S.agents.forEach(a=>{const[x,y]=pos[a.name];const js=[...new Set(A.filter(z=>z.agent===a.name).map(z=>z.job||NOJOB))].slice(0,2);
+    js.forEach((j,i)=>{const t=j.length>16?j.slice(0,15)+'…':j,w=t.length*7+16,ty=y-80+i*0;
+      g+=`<g transform="translate(${x+(i?-w-8:34)},${y-52+i*22})"><rect width="${w}" height="18" rx="4" fill="#ffa94d" opacity=".92"/><text x="8" y="13" font-size="10.5" font-weight="700" fill="#2a1600">${esc(t)}</text></g>`})});
+  $('map').innerHTML=g;
+  $('chip').innerHTML=busy.size?`● ${busy.size} ตัวกำลังทำงาน`:'● พร้อมสั่งงาน';
+  // jobs
+  const J={};A.forEach(a=>{const k=a.job||NOJOB;(J[k]??={a:[],n:[],last:0}).a.push(a);J[k].last=Math.max(J[k].last,a.t)});
+  S.notes.forEach(n=>{const k=n.job||NOJOB;(J[k]??={a:[],n:[],last:0}).n.push(n);J[k].last=Math.max(J[k].last,n.t)});
+  let ks=Object.keys(J).sort((x,y)=>J[y].last-J[x].last).filter(k=>!q||k.toLowerCase().includes(q)||J[k].a.some(a=>a.brief.toLowerCase().includes(q)));
+  if(!ks.includes(sel))sel=ks[0]||null;
+  $('tabs').innerHTML=ks.map(k=>`<button class="tab ${k===sel?'on':''} ${J[k].a.some(pend)?'busy':''}" data-k="${esc(k)}">${esc(k)}</button>`).join('')||'<span class="empty">ยังไม่มีงาน — สั่ง Claude ในแชทได้เลย</span>';
+  if(!sel){$('job').innerHTML='';return}
+  const jb=J[sel], by={work:[],done:[],err:[]}; jb.a.slice().sort((x,y)=>y.t-x.t).forEach(a=>by[st(a)].push(a));
+  const status=by.work.length?['work','กำลังทำ']:by.err.length?['err','มีปัญหา']:['done','เสร็จ'];
+  const card=a=>{const id=a.id,o=open.has(id);return `<div class="cd ${pend(a)?'run':''}" data-id="${id}" style="--c:${col(a.agent)}"><div class="t">Claude → ${esc(a.agent)}<span>${a.ms?(a.ms/1000).toFixed(1)+'s · ':''}${hm(a.t)}</span></div>
+    <p>${esc(o?a.brief:a.brief.slice(0,110)+(a.brief.length>110?'…':''))}</p>${o?`<p class="r">${esc(a.blocked||a.reply||'⏳ กำลังทำงาน…')}</p>`:''}</div>`};
+  const colm=(t,k,c)=>`<div class="kc" style="--c:${c}"><h4>${t}<b>${by[k].length}</b></h4>${by[k].map(card).join('')||'<div class="empty">—</div>'}</div>`;
+  $('job').innerHTML=`<div class="jh"><strong>${esc(sel)}</strong><span class="pill ${status[0]}">${status[1]}</span><span class="empty">${jb.a.length} งานย่อย · ${hm(jb.last)}</span></div>`+
+   jb.n.slice().sort((x,y)=>x.t-y.t).map(n=>`<div class="note"><small>Claude ตรวจผล · ${hm(n.t)}</small>${esc(n.text)}</div>`).join('')+
+   `<div class="kan">${colm('กำลังทำ','work','#ffa94d')}${colm('เสร็จ','done','#46e6a0')}${colm('ปัญหา / บล็อก','err','#ff6b81')}</div>`;
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('.tab'); if(t){sel=t.dataset.k;render();return}
+  const c=e.target.closest('.cd'); if(c){const id=+c.dataset.id;open.has(id)?open.delete(id):open.add(id);render()}
+});
+async function tick(){try{S=await (await fetch('/api/state')).json();render()}catch(e){}}
 tick(); setInterval(tick,2000);
 </script>
 </body>

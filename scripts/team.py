@@ -23,6 +23,8 @@ def db():
         create table if not exists notes(t real,job text,text text);""")
     if "job" not in [r[1] for r in c.execute("pragma table_info(audit)")]:
         c.execute("alter table audit add column job text")
+    if "ms" not in [r[1] for r in c.execute("pragma table_info(audit)")]:
+        c.execute("alter table audit add column ms integer")
     os.chmod(DB, 0o600)
     return c
 
@@ -55,6 +57,7 @@ def ask(c, name, brief, job=None):
         {"role": "system", "content": role or ""}, {"role": "user", "content": brief}]}).encode()
     req = urllib.request.Request(url.rstrip("/") + "/chat/completions", body,
                                  {"Authorization": f"Bearer {key}", "Content-Type": "application/json", **UA})
+    t0 = time.time()
     try:
         with urllib.request.urlopen(req, timeout=180) as r:
             reply = json.load(r)["choices"][0]["message"]["content"]
@@ -62,7 +65,7 @@ def ask(c, name, brief, job=None):
         fail(f"HTTP {e.code} {e.read()[:200].decode(errors='replace')}")
     except Exception as e:
         fail(type(e).__name__)
-    c.execute("update audit set reply=? where rowid=?", (reply, rid)); c.commit()
+    c.execute("update audit set reply=?, ms=? where rowid=?", (reply, int((time.time() - t0) * 1000), rid)); c.commit()
     return reply
 
 

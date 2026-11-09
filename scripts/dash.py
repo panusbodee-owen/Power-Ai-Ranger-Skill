@@ -12,8 +12,8 @@ def state():
     c = db()
     agents = [dict(name=n, title=t, model=m, role=r) for n, t, m, r in
               c.execute("select name,title,model,role from agents")]
-    audit = [dict(id=i, t=t, agent=a, model=m, brief=b, reply=r, blocked=bl, job=j) for i, t, a, m, b, r, bl, j in
-             c.execute("select rowid,t,agent,model,brief,reply,blocked,job from audit order by rowid desc limit 150")]
+    audit = [dict(id=i, t=t, agent=a, model=m, brief=b, reply=r, blocked=bl, job=j, ms=ms) for i, t, a, m, b, r, bl, j, ms in
+             c.execute("select rowid,t,agent,model,brief,reply,blocked,job,ms from audit order by rowid desc limit 150")]
     notes = [dict(t=t, job=j, text=x) for t, j, x in c.execute("select t,job,text from notes order by t desc limit 100")]
     return dict(agents=agents, audit=audit, notes=notes)
 
