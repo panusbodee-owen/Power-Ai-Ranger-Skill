@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from team import db, setting, seat_set, seat_undo, seat_add, catalog_test, MODES
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PORT = 8790
+PORT = int(os.environ.get("AI_TEAM_PORT", 8790))
 OK_HOSTS = {f"localhost:{PORT}", f"127.0.0.1:{PORT}"}
 
 

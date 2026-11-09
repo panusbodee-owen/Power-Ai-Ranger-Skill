@@ -2,6 +2,22 @@
 
 Skill สำหรับ Claude Code: ให้ Claude เป็นหัวหน้าที่สั่งงาน AI ตัวอื่น (DeepSeek, Nemotron หรืออะไรก็ได้ที่เป็น API แบบ OpenAI-compatible) พร้อม boundary และแดชบอร์ดดูการแจกงานสด
 
+![demo](docs/demo.gif)
+
+> ภาพและ GIF สร้างจากข้อมูลเดโมที่สมมติขึ้น (`scripts/demo_seed.py`) ไม่มี key หรือเกตเวย์จริง สร้างใหม่ได้ด้วย `scripts/capture_demo.sh docs`
+
+## ฟีเจอร์
+- **Claude เป็น Head**: คุณสั่งในแชท Claude แตกงาน เขียน brief ส่งลูกทีม ตรวจผล และรายงาน
+- **Team Builder**: ลากโมเดลจากแคตตาล็อกไปวางในช่องทีม เลือกจำนวน AI ต่องานและโหมด (`best-of-n`, `vote`, `split`) พร้อมประเมินค่าใช้จ่าย
+- **Boundary**: กรอง key/รหัสผ่าน, จำกัดความยาว/จำนวนครั้ง, กันส่ง key ไป URL ตัวอย่าง, บันทึกทุกครั้ง
+- **แดชบอร์ดสด**: ผังโหนด, สถานะกำลังทำงาน, กระดานงาน, Release Gate, Audit log
+
+| Design (ทีมกำลังทำงาน) | Studio (ลากโมเดลใส่ช่อง) |
+|---|---|
+| ![design](docs/ui-design-working.png) | ![studio](docs/ui-studio.png) |
+| **Jobs (ผลตรวจของ Claude)** | **Design (เสร็จแล้ว)** |
+| ![jobs](docs/ui-jobs.png) | ![done](docs/ui-design.png) |
+
 ## ติดตั้ง
 ```bash
 git clone <repo-url> ~/.claude/skills/ai-team

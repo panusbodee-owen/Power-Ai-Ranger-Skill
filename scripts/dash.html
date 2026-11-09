@@ -339,6 +339,7 @@ document.addEventListener('click',e=>{
 });
 $('exp').onclick=()=>{const b=new Blob([JSON.stringify({audit:S.audit,notes:S.notes},null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ai-team-log.json';a.click()};
 async function tick(force){if(dragging)return;try{const n=await (await fetch('/api/state')).json(),j=JSON.stringify(n);if(force===true||j!==lastJ||view==='design'){lastJ=j;S=n;render()}}catch(e){}}
+(()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.get('view'))view=h.get('view');if(h.get('rtab'))rtab=h.get('rtab');if(h.get('job'))selJob=h.get('job')})();
 tick(); setInterval(tick,2000);
 </script>
 </body>
