@@ -12,7 +12,7 @@ Claude คือหัวหน้า คิด แตกงาน เขีย�
 ```bash
 python3 ~/.claude/skills/ai-team/scripts/team.py add worker --base-url https://GATEWAY/v1 --model MODEL --role "..."
 ```
-ตัว add จะถาม API key แบบซ่อน (หรือ env `AI_TEAM_KEY`) base-url คือส่วนก่อน `/chat/completions` ดูโมเดลที่ใช้ได้: `team.py models NAME [คำค้น]` เปลี่ยนโมเดล: `team.py set NAME --model X`
+ตัว add จะถาม API key แบบซ่อน (หรือ env `AI_TEAM_KEY`) base-url คือส่วนก่อน `/chat/completions` `add` สร้าง gateway + catalog + ช่องให้ในคำสั่งเดียว ดูโมเดลที่เกตเวย์มี: `team.py models SEAT [คำค้น]` เปลี่ยนโมเดลของช่อง: `team.py seat set SEAT CATALOG`
 
 ## วิธีสั่งงาน (Claude ทำตามนี้ทุกครั้ง)
 1. `team.py list` ดูลูกทีม **ตรวจ URL ก่อนส่งงาน** ถ้าเป็นค่าตัวอย่าง (xxx.com, YOUR-GATEWAY, URL-จริง) ห้ามเรียก เพราะจะส่ง key ไปปลายทางผิด ให้บอกผู้ใช้แก้ก่อน
@@ -21,6 +21,17 @@ python3 ~/.claude/skills/ai-team/scripts/team.py add worker --base-url https://G
 3. **ตรวจผลทุกชิ้น** รันโค้ดจริง เช็คข้อเท็จจริง อย่าเชื่อลูกทีมตรง ๆ แล้วบันทึกผลตรวจ:
    `team.py note "ชื่องาน" "ผลตรวจ"` (ขึ้นบนแดชบอร์ด)
 4. ถ้าไม่ผ่าน ส่งกลับให้แก้พร้อม feedback แล้วค่อยสรุปให้ผู้ใช้
+
+## ช่องทีมและหลาย AI ต่องาน (Team Builder)
+โครงสร้าง: `gateways` (URL + key) → `catalog` (โมเดล + ราคา) → `seats` (ช่องทีม ชี้ catalog) ผู้ใช้ลากโมเดลใส่ช่อง เลือกจำนวน AI และโหมดในแดชบอร์ด (แท็บ Studio) แล้วบอก Claude ให้ทำงาน
+1. อ่านค่าที่ผู้ใช้เลือก: `team.py plan` → `mode=… n=… active=seatA,seatB` ใช้เฉพาะช่อง active นี้ ห้ามเพิ่มเองโดยไม่ถาม (N ตัว = จ่าย N เท่า)
+2. รันงาน:
+   - `best-of-n`: `team.py run "brief" --seats a,b,c --job "ชื่อ" [--budget USD]` ทุกช่องทำเรื่องเดียวกัน Claude อ่านทุกคำตอบแล้วเลือกที่ดีที่สุด (งานสร้างสรรค์/โค้ด)
+   - `vote`: เหมือนกันแต่คำถามต้องตอบ yes/no หรือเลือกข้อ บรรทัดแรกคือคำตอบ สคริปต์นับเสียงให้ ถ้าเสมอ Claude ตัดสิน และต้องตรวจเหตุผลเสมอ (โมเดลเล็กตอบผิดได้)
+   - `split`: Claude แตกงานเอง `team.py run --mode split --seats a,b --assign "a=งานย่อย1" --assign "b=งานย่อย2"` แล้วรวมผล
+3. สคริปต์พิมพ์ประเมินค่าใช้จ่ายก่อนรัน ถ้าตั้ง `--budget` และเกิน จะบล็อก ราคาตั้งด้วย `team.py catalog price NAME --in-cost X --out-cost Y` (USD ต่อ 1M token) ถ้ายังไม่ตั้งจะประเมินไม่ได้ ให้บอกผู้ใช้
+4. จัดการ: `catalog import GATEWAY คำค้น`, `catalog test NAME` (ตรวจว่าเรียกได้จริง บางโมเดลมีในรายการแต่ใช้ไม่ได้กับบัญชี), `seat set SEAT CATALOG`, `seat clear`, `seat undo`
+5. ตรวจผลทุกช่อง แล้ว `team.py note` สรุปผลตรวจ (เช่น ช่องไหนตอบผิดและทำไม)
 
 ## การแบ่งบทบาท
 - **worker** (DeepSeek): งานที่ต้องถูกต้อง เขียนโค้ด แปลง สรุป

@@ -99,6 +99,34 @@ body{margin:0;background:var(--bg);color:var(--tx);font:13px/1.45 system-ui,"Not
 table{width:100%;border-collapse:collapse;font-size:12px}
 th{text-align:left;color:var(--mu);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--ln)}
 td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
+.stu{display:grid;grid-template-columns:260px 1fr;gap:14px}
+.cat{display:flex;flex-direction:column;gap:8px;max-height:62vh;overflow:auto}
+.chip{border:1px solid var(--ln);border-radius:9px;padding:8px 10px;background:var(--p2);cursor:grab;user-select:none}
+.chip:hover,.chip.pick{border-color:var(--bl)}
+.chip.pick{box-shadow:0 0 0 1px var(--bl) inset}
+.chip b{display:block;font-size:12.5px;word-break:break-all}
+.chip small{color:var(--mu);font-size:11px;display:flex;justify-content:space-between;gap:6px;margin-top:2px}
+.chip .tst{color:var(--bl);cursor:pointer;background:none;border:0;font:inherit;font-size:11px;padding:0}
+.okc{color:var(--gr)} .failc{color:var(--rd)}
+.seats{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.seat{border:2px dashed var(--ln);border-radius:12px;padding:12px;min-height:108px;background:var(--p);position:relative;transition:.15s}
+.seat.act{border:2px solid var(--bl);background:#3b82f610}
+.seat.stby{opacity:.55}
+.seat.over{border-color:var(--or);background:#f59e0b14}
+.seat h5{margin:0 0 6px;font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.06em;display:flex;justify-content:space-between}
+.seat .m{font-weight:700;font-size:13px;word-break:break-all}
+.seat .g{color:var(--mu);font-size:11px}
+.seat .x{position:absolute;top:22px;right:10px;color:var(--mu);cursor:pointer;background:none;border:0;font-size:14px}
+.seat .emp{color:var(--mu);font-size:12px;margin-top:10px}
+.ctl{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--ln)}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--ln);border-radius:9px;overflow:hidden}
+.stepper button{width:32px;height:32px;border:0;background:var(--p2);color:var(--tx);font-size:16px;cursor:pointer}
+.stepper b{min-width:38px;text-align:center}
+.seg{display:inline-flex;border:1px solid var(--ln);border-radius:9px;overflow:hidden}
+.seg button{padding:7px 12px;border:0;background:var(--p2);color:var(--mu);font:inherit;cursor:pointer}
+.seg button.on{background:var(--bl);color:#fff}
+.hint{color:var(--mu);font-size:12px;margin-top:8px}
+@media(max-width:900px){.stu{grid-template-columns:1fr}}
 @keyframes fl{to{stroke-dashoffset:-24}}
 @keyframes gl{50%{opacity:.45}}
 .sec>svg{width:100%;height:70px;display:block}
@@ -114,6 +142,7 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
   <div class="ws">● Claude Workspace</div>
   <h6>BUILD</h6>
   <button class="nv" data-v="design"><b>◇</b>ผังงาน</button>
+  <button class="nv" data-v="studio"><b>▦</b>Team Builder</button>
   <button class="nv" data-v="jobs"><b>▤</b>งานที่แจก</button>
   <h6>GOVERN</h6>
   <button class="nv" data-r="eval"><b>✓</b>Boundary</button>
@@ -129,7 +158,7 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
     <div class="sp"></div>
     <button class="btn" id="exp">Export log</button>
     <div class="tabsx" id="vt">
-      <button class="tabx" data-v="design">Design</button><button class="tabx" data-v="jobs">Jobs</button><button class="tabx" data-v="audit">Audit</button>
+      <button class="tabx" data-v="design">Design</button><button class="tabx" data-v="studio">Studio</button><button class="tabx" data-v="jobs">Jobs</button><button class="tabx" data-v="audit">Audit</button>
     </div>
   </div>
   <div class="cen" id="cen"></div>
@@ -151,7 +180,7 @@ const isErr=a=>a.blocked!=null&&a.blocked.startsWith('error:');
 const isBlk=a=>a.blocked!=null&&!isErr(a);
 const st=a=>a.blocked!=null?'err':pend(a)?'work':'done';
 const NOJOB='(ไม่ระบุชื่องาน)';
-let S={agents:[],audit:[],notes:[]}, view='design', rtab='eval', selNode='claude', selJob=null, open=new Set();
+let S={agents:[],seats:[],catalog:[],plan:{n:2,mode:'best-of-n'},audit:[],notes:[]}, view='design', rtab='eval', selNode='claude', selJob=null, open=new Set(), pick=null, dragging=false, lastJ='';
 
 function spark(vals,c,w=100,h=26){const m=Math.max(1,...vals),n=vals.length||1;
   const p=vals.map((v,i)=>[i*(w/Math.max(1,n-1)),h-2-(v/m)*(h-4)]);
@@ -226,6 +255,27 @@ function auditView(){
   <td><span class="badge ${s==='done'?'ok':s==='work'?'wk':'er'}">${s==='done'?'ok':s==='work'?'working':isBlk(a)?'blocked':'error'}</span></td><td>${a.ms??'—'}</td><td>${esc(a.brief.slice(0,90))}</td></tr>`}).join('')+`</table></div>`;
 }
 
+/* ---------- studio (เลือกโมเดลใส่ช่อง) ---------- */
+function studioView(){
+  const P=S.plan, filled=S.seats.filter(x=>x.model), act=new Set(filled.slice(0,P.n).map(x=>x.name));
+  const ic=k=>k.status==='ok'?'<span class="okc">● ใช้ได้</span>':k.status==='fail'?'<span class="failc">● เรียกไม่ได้</span>':'<span>○ ยังไม่ทดสอบ</span>';
+  const pr=k=>k.cin!=null&&k.cout!=null?`$${k.cin}/${k.cout} ต่อ 1M`:'ยังไม่ตั้งราคา';
+  const chips=S.catalog.map(k=>`<div class="chip ${pick===k.name?'pick':''}" draggable="true" data-cat="${esc(k.name)}"><b>${esc(k.name)}</b><small><span>${esc(k.host)}</span>${ic(k)}</small><small><span>${pr(k)}</span><button class="tst" data-test="${esc(k.name)}">ทดสอบ</button></small></div>`).join('')||'<div class="empty">แคตตาล็อกว่าง — ใช้ team.py catalog import</div>';
+  const seats=S.seats.map(x=>`<div class="seat ${act.has(x.name)?'act':x.model?'stby':''}" data-seat="${esc(x.name)}"><h5><span>${esc(x.name)}</span><span>${act.has(x.name)?'ทำงาน':x.model?'สำรอง':''}</span></h5>
+    ${x.model?`<button class="x" data-clear="${esc(x.name)}" title="ล้างช่อง">✕</button><div class="m">${esc(x.catalog)}</div><div class="g">${esc(x.host||'')}</div>`:`<div class="emp">ว่าง — ลากโมเดลมาวาง${pick?' หรือคลิกที่นี่':''}</div>`}</div>`).join('');
+  const use=filled.filter(x=>act.has(x.name)); let est=0,unk=false; use.forEach(x=>{if(x.cin==null||x.cout==null)unk=true;else est+=(x.cin+x.cout)*1000/1e6});
+  const modes={'best-of-n':'ทุกช่องทำงานเดียวกัน Claude เลือกผลที่ดีที่สุด','vote':'ทุกช่องตอบคำถามเดียวกัน ใช้เสียงข้างมาก','split':'Claude แตกงานย่อยให้แต่ละช่องตามจุดแข็ง'};
+  return `<div class="stu"><div class="card"><h3>Model Catalog <span style="color:var(--mu);font-weight:400">${S.catalog.length}</span></h3><div class="cat">${chips}</div></div>
+   <div class="card"><h3>Team Seats <button class="btn" data-addseat="1">+ เพิ่มช่อง</button></h3><div class="seats">${seats}</div>
+   <div class="ctl"><div><div class="hint" style="margin:0 0 4px">จำนวน AI ที่ใช้ในงาน</div><div class="stepper"><button data-n="-1">−</button><b>${P.n}</b><button data-n="1">+</button></div></div>
+    <div><div class="hint" style="margin:0 0 4px">โหมด</div><div class="seg">${Object.keys(modes).map(m=>`<button data-mode="${m}" class="${P.mode===m?'on':''}">${m}</button>`).join('')}</div></div>
+    <div><div class="hint" style="margin:0 0 4px">ค่าใช้จ่ายโดยประมาณ</div><b>${use.length} AI · ${est?'≈ $'+est.toFixed(4):'—'}</b><div class="hint" style="margin:0">${unk?'บางโมเดลยังไม่ตั้งราคา · ':''}สมมติ 1k token เข้า+ออก ต่อ AI</div></div>
+    <button class="btn" data-undo="1" ${S.can_undo?'':'disabled style="opacity:.4"'}>↶ Undo</button></div>
+   <div class="hint">${modes[P.mode]}. เลือกที่นี่แล้วบอก Claude ว่า "ทำงานนี้" — Claude จะอ่านค่าจาก <code>team.py plan</code> และใช้ ${P.n} ช่องแรกที่มีโมเดล</div>
+   ${filled.length<P.n?`<div class="hint" style="color:var(--or)">⚠ เลือก ${P.n} AI แต่มีโมเดลในช่องแค่ ${filled.length}</div>`:''}</div></div>`;
+}
+async function post(path,body){const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-Dash':'1'},body:JSON.stringify(body)});const d=await r.json();if(d.error)alert(d.error);await tick(true);return d}
+
 /* ---------- right panel ---------- */
 function inspector(){
   const A=S.audit,id=selNode, ag=id.startsWith('a:')?S.agents.find(a=>a.name===id.slice(2)):null;
@@ -263,10 +313,22 @@ function render(){
   document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
   document.querySelectorAll('#rt [data-r]').forEach(b=>b.classList.toggle('on',b.dataset.r===rtab));
   const busy=S.audit.some(pend); $('live').textContent=busy?'Working':'Live'; $('live').classList.toggle('idle',!busy);
-  $('cen').innerHTML=(view==='design'?flow()+bottom():view==='jobs'?jobsView():auditView());
+  $('cen').innerHTML=(view==='design'?flow()+bottom():view==='studio'?studioView():view==='jobs'?jobsView():auditView());
   $('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;
 }
+document.addEventListener('dragstart',e=>{const c=e.target.closest('[data-cat]');if(c){dragging=true;e.dataTransfer.setData('text/plain',c.dataset.cat)}});
+document.addEventListener('dragend',()=>{dragging=false;document.querySelectorAll('.seat.over').forEach(x=>x.classList.remove('over'))});
+document.addEventListener('dragover',e=>{const t=e.target.closest('[data-seat]');if(t){e.preventDefault();document.querySelectorAll('.seat.over').forEach(x=>x!==t&&x.classList.remove('over'));t.classList.add('over')}});
+document.addEventListener('drop',e=>{const t=e.target.closest('[data-seat]');if(t){e.preventDefault();dragging=false;post('/api/seat',{seat:t.dataset.seat,catalog:e.dataTransfer.getData('text/plain')})}});
 document.addEventListener('click',e=>{
+  const tst=e.target.closest('[data-test]'); if(tst){tst.textContent='…';post('/api/test',{catalog:tst.dataset.test});return}
+  const clr=e.target.closest('[data-clear]'); if(clr){post('/api/seat',{seat:clr.dataset.clear,catalog:null});return}
+  if(e.target.closest('[data-undo]')){post('/api/undo',{});return}
+  if(e.target.closest('[data-addseat]')){post('/api/seat_add',{});return}
+  const nn=e.target.closest('[data-n]'); if(nn&&view==='studio'){post('/api/plan',{n:Math.max(1,S.plan.n+ +nn.dataset.n),mode:S.plan.mode});return}
+  const md=e.target.closest('[data-mode]'); if(md){post('/api/plan',{n:S.plan.n,mode:md.dataset.mode});return}
+  const ch=e.target.closest('[data-cat]'); if(ch){pick=pick===ch.dataset.cat?null:ch.dataset.cat;render();return}
+  const sd=e.target.closest('[data-seat]'); if(sd&&pick){const p=pick;pick=null;post('/api/seat',{seat:sd.dataset.seat,catalog:p});return}
   const v=e.target.closest('[data-v]'); if(v){view=v.dataset.v;render();return}
   const r=e.target.closest('[data-r]'); if(r){rtab=r.dataset.r;render();return}
   if(e.target.closest('[data-s]')){view='design';render();$('mon')?.scrollIntoView({behavior:'smooth'});return}
@@ -276,7 +338,7 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('[data-t]'); if(t){selNode='a:'+t.dataset.t;rtab='insp';view='design';render()}
 });
 $('exp').onclick=()=>{const b=new Blob([JSON.stringify({audit:S.audit,notes:S.notes},null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ai-team-log.json';a.click()};
-async function tick(){try{S=await (await fetch('/api/state')).json();render()}catch(e){}}
+async function tick(force){if(dragging)return;try{const n=await (await fetch('/api/state')).json(),j=JSON.stringify(n);if(force===true||j!==lastJ||view==='design'){lastJ=j;S=n;render()}}catch(e){}}
 tick(); setInterval(tick,2000);
 </script>
 </body>
