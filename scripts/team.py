@@ -418,6 +418,12 @@ def run_flow(c, t, sems, busy, lock):
             c.execute("update tasks set status='error',result=?,error=?,trace=?,used_seat=?,finished=? where id=?", (out, "ผู้ตรวจล้ม: " + rtext[:200], json.dumps(trace, ensure_ascii=False), mseat, time.time(), tid)); c.commit()
             return
         passed, d = parse_verdict(rtext)
+        if d.get("verdict") == "unparsable":  # ผู้ตรวจตอบว่าง/ไม่ใช่ JSON (โมเดล reasoning ชน token) -> ให้ผู้ตรวจอีกช่องตรวจแทน ไม่นับเป็น fail
+            ok3, rtext2, rseat2, _ = try_pool(c, rv["pool"], rprompt, job, role_prompt(c, rv["role"]), sems, busy, lock, exclude={mseat, rseat}, avoid_gw=mgw)
+            if ok3 and rseat2 != rseat:
+                trace.append({"stage": rv["role"], "round": rnd, "seat": rseat, "verdict": "unparsable"})
+                passed, d = parse_verdict(rtext2)
+                rseat = rseat2
         trace.append({"stage": rv["role"], "round": rnd, "seat": rseat, "verdict": "pass" if passed else "fail", "score": d.get("score"), "issues": d.get("issues")})
         if passed:
             break
