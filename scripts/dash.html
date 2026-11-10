@@ -126,6 +126,9 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .seg button{padding:7px 12px;border:0;background:var(--p2);color:var(--mu);font:inherit;cursor:pointer}
 .seg button.on{background:var(--bl);color:#fff}
 .hint{color:var(--mu);font-size:12px;margin-top:8px}
+.cen>*{flex:none}
+.canvas{touch-action:none}
+.canvas .zc{top:auto;bottom:10px;right:12px}
 .xbtn{position:absolute;top:10px;right:12px;z-index:2;background:#0c1426cc;color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:5px 11px;font:inherit;font-size:12px;cursor:pointer}
 .xbtn:hover{border-color:var(--bl);color:#7db0ff}
 #modal{position:fixed;inset:0;background:#05080fee;backdrop-filter:blur(4px);z-index:50;display:flex}
@@ -145,6 +148,8 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .mmain .canvas{max-width:none}
 .mwrap{position:relative;min-width:0;min-height:0;display:flex}
 .mwrap .mmain{flex:1}
+.canvas{cursor:grab}
+.canvas.pan{cursor:grabbing;user-select:none}
 .mmain.net{padding:0;overflow:hidden}
 .mmain.net .canvas{height:100%;border:0;border-radius:0;background-color:var(--bg)}
 .mmain.net .canvas svg{width:100%;height:100%}
@@ -234,6 +239,7 @@ function spark(vals,c,w=100,h=26){const m=Math.max(1,...vals),n=vals.length||1;
 function buckets(rows,n=20,step=60){const b=Array(n).fill(0);rows.forEach(a=>{const i=n-1-Math.floor((now()-a.t)/step);if(i>=0&&i<n)b[i]++});return b}
 
 /* ---------- flow canvas ---------- */
+const ZCI=`<div class="zc"><button data-zoom="-1" aria-label="ซูมออก">−</button><span class="zli">100%</span><button data-zoom="1" aria-label="ซูมเข้า">+</button><button data-zoom="reset" title="รีเซ็ต 100%" aria-label="รีเซ็ต">⟲</button><button data-zoom="fit" title="พอดีหน้าจอ" aria-label="พอดีหน้าจอ">⛶</button><button data-expand="1" title="ขยายเต็มจอ ดูการไหลของงาน" aria-label="ขยายเต็มจอ">⤢</button></div>`;
 function flow(inModal){
   const A=S.audit, ag=S.agents, busy=new Set(A.filter(pend).map(a=>a.agent)), anyBusy=busy.size>0;
   const recent=A.some(a=>now()-a.t<20), blk=A.some(a=>isBlk(a)&&now()-a.t<60);
@@ -265,7 +271,7 @@ function flow(inModal){
     <text x="${o.x+46}" y="${o.y+24}" fill="#e6ebf7" font-size="12.5" font-weight="700">${esc(o.t)}</text>
     <text x="${o.x+46}" y="${o.y+40}" fill="#8693b3" font-size="10">${esc(o.s)}</text>
     ${o.b?`<g><rect x="${o.x+W-30}" y="${o.y-8}" width="26" height="16" rx="8" fill="${o.c}"/><text x="${o.x+W-17}" y="${o.y+3.5}" text-anchor="middle" font-size="10" font-weight="800" fill="#0a0f1c">${o.b}</text></g>`:''}</g>`});
-  return `<div class="canvas">${inModal?'':'<button class="xbtn" data-expand="1" title="ขยายเต็มจอ ดูการไหลของงาน">⤢ ขยาย</button>'}<svg viewBox="0 0 990 450">${inModal?`<g id="zg">${g}</g>`:g}</svg><div class="zoom">คลิกโหนดเพื่อดูรายละเอียดใน Inspector · ${anyBusy?'● กำลังทำงาน':'○ ว่าง'}</div></div>`;
+  return `<div class="canvas">${inModal?'':ZCI}<svg viewBox="0 0 990 450"><g class="zg">${g}</g></svg><div class="zoom">คลิกโหนดเพื่อดูรายละเอียดใน Inspector · ${anyBusy?'● กำลังทำงาน':'○ ว่าง'}</div></div>`;
 }
 
 /* ---------- bottom cards ---------- */
@@ -373,31 +379,49 @@ function renderModal(){
   applyNet();
   $('mmain').scrollTop=keepY; $('mmain').scrollLeft=keepX;
 }
-/* ซูม/แพน: ผังเครือข่ายใช้ transform ใน SVG (แคนวาสคงที่ เนื้อหาย่อ/ขยาย) ลำดับการไหลใช้ความกว้าง + เลื่อน */
+/* ซูม/แพน: ผังเครือข่าย (ทั้งในหน้า Design และใน Flow Inspector) ใช้ transform ใน SVG — กรอบคงที่ เนื้อหาย่อ/ขยาย
+   ลำดับการไหล (ในหน้าต่างขยาย) ใช้ความกว้าง + เลื่อน */
 const ZMIN=.3, ZMAX=4, clampZ=z=>Math.min(ZMAX,Math.max(ZMIN,z));
-function applyNet(){
-  if(mtab==='net'){const g=$('zg'); if(g)g.setAttribute('transform',`translate(${495+mpx},${225+mpy}) scale(${mz}) translate(-495,-225)`)}
-  $('zl').textContent=Math.round(mz*100)+'%';
+const CTX={
+  m:{get z(){return mz},set z(v){mz=v},get x(){return mpx},set x(v){mpx=v},get y(){return mpy},set y(v){mpy=v},root:()=>$('mmain'),label:()=>$('zl')},
+  i:{z:1,x:0,y:0,root:()=>document.querySelector('#cen .canvas'),label:()=>document.querySelector('#cen .zli')}
+};
+const isNet=c=>c!==CTX.m||mtab==='net';
+function applyCtx(c){
+  const r=c.root(), l=c.label(); if(l)l.textContent=Math.round(c.z*100)+'%';
+  const g=r&&r.querySelector('.zg'); if(g&&isNet(c))g.setAttribute('transform',`translate(${495+c.x},${225+c.y}) scale(${c.z}) translate(-495,-225)`);
 }
-function netView(cx,cy){const svg=$('mmain').querySelector('svg'); if(!svg)return null;const b=svg.getBoundingClientRect(),s=Math.min(b.width/990,b.height/450)||1;
+const applyNet=()=>applyCtx(CTX.m);
+function netView(c,cx,cy){const svg=c.root()&&c.root().querySelector('svg'); if(!svg)return null;const b=svg.getBoundingClientRect(),s=Math.min(b.width/990,b.height/450)||1;
   return {s,pt:cx==null?[495,225]:[(cx-b.left-(b.width-990*s)/2)/s,(cy-b.top-(b.height-450*s)/2)/s]}}
-function setZoom(z,cx,cy){
-  z=clampZ(z); const k=z/mz; if(k===1)return;
-  if(mtab==='net'){const v=netView(cx,cy); if(!v)return; mpx=(v.pt[0]-495)-k*(v.pt[0]-495-mpx); mpy=(v.pt[1]-225)-k*(v.pt[1]-225-mpy); mz=z; applyNet(); return}
-  const m=$('mmain'), ax=cx==null?m.clientWidth/2:cx-m.getBoundingClientRect().left, ay=cy==null?m.clientHeight/2:cy-m.getBoundingClientRect().top;
+function setZoom(z,cx,cy,c){
+  c=c||CTX.m; z=clampZ(z); const k=z/c.z; if(k===1)return;
+  if(isNet(c)){const v=netView(c,cx,cy); if(!v)return; c.x=(v.pt[0]-495)-k*(v.pt[0]-495-c.x); c.y=(v.pt[1]-225)-k*(v.pt[1]-225-c.y); c.z=z; applyCtx(c); return}
+  const m=$('mmain'), bb=m.getBoundingClientRect(), ax=cx==null?m.clientWidth/2:cx-bb.left, ay=cy==null?m.clientHeight/2:cy-bb.top;
   const nx=(m.scrollLeft+ax)*k-ax, ny=(m.scrollTop+ay)*k-ay; mz=z; renderModal(); m.scrollLeft=nx; m.scrollTop=ny;
 }
-function zoomReset(){mz=1;mpx=0;mpy=0;if(modal)renderModal()}
-function zoomFit(){
-  if(mtab==='net'){const [x0,y0,x1,y1]=NBOX,bw=x1-x0,bh=y1-y0; mz=clampZ(Math.min(990*.92/bw,450*.92/bh)); mpx=-mz*((x0+x1)/2-495); mpy=-mz*((y0+y1)/2-225); applyNet()}
-  else{zoomReset(); $('mmain').scrollTop=0; $('mmain').scrollLeft=0}
+function zoomReset(c){c=c||CTX.m;c.z=1;c.x=0;c.y=0;if(c===CTX.m&&modal)renderModal();else applyCtx(c)}
+function zoomFit(c){
+  c=c||CTX.m;
+  if(isNet(c)){const [x0,y0,x1,y1]=NBOX,bw=x1-x0,bh=y1-y0; c.z=clampZ(Math.min(990*.92/bw,450*.92/bh)); c.x=-c.z*((x0+x1)/2-495); c.y=-c.z*((y0+y1)/2-225); applyCtx(c)}
+  else{zoomReset(c); $('mmain').scrollTop=0; $('mmain').scrollLeft=0}
 }
-$('mmain').addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();setZoom(mz*Math.exp(-e.deltaY*.0025),e.clientX,e.clientY)},{passive:false});
+document.addEventListener('wheel',e=>{
+  if(!(e.ctrlKey||e.metaKey))return;
+  if(modal){if(e.target.closest('#mmain')){e.preventDefault();setZoom(mz*Math.exp(-e.deltaY*.0025),e.clientX,e.clientY,CTX.m)}return}
+  if(e.target.closest('#cen .canvas')){e.preventDefault();setZoom(CTX.i.z*Math.exp(-e.deltaY*.0025),e.clientX,e.clientY,CTX.i)}
+},{passive:false});
 let pan=null;
-$('mmain').addEventListener('mousedown',e=>{if(e.button!==0||e.target.closest('.evg,[data-n]'))return;pan={x:e.clientX,y:e.clientY,l:$('mmain').scrollLeft,t:$('mmain').scrollTop,px:mpx,py:mpy,s:(netView()||{s:1}).s};$('mmain').classList.add('pan')});
+document.addEventListener('mousedown',e=>{
+  if(e.button!==0||e.target.closest('.evg,[data-n],button,.zc'))return;
+  let c=null,el=null;
+  if(modal){if(e.target.closest('#mmain')){c=CTX.m;el=$('mmain')}}
+  else if(e.target.closest('#cen .canvas')){c=CTX.i;el=document.querySelector('#cen .canvas')}
+  if(!c)return;
+  pan={c,el,x:e.clientX,y:e.clientY,l:el.scrollLeft,t:el.scrollTop,px:c.x,py:c.y,s:(isNet(c)&&netView(c)||{s:1}).s};el.classList.add('pan')});
 window.addEventListener('mousemove',e=>{if(!pan)return;const dx=e.clientX-pan.x,dy=e.clientY-pan.y;
-  if(mtab==='net'){mpx=pan.px+dx/pan.s;mpy=pan.py+dy/pan.s;applyNet()}else{$('mmain').scrollLeft=pan.l-dx;$('mmain').scrollTop=pan.t-dy}});
-window.addEventListener('mouseup',()=>{pan=null;$('mmain').classList.remove('pan')});
+  if(isNet(pan.c)){pan.c.x=pan.px+dx/pan.s;pan.c.y=pan.py+dy/pan.s;applyCtx(pan.c)}else{pan.el.scrollLeft=pan.l-dx;pan.el.scrollTop=pan.t-dy}});
+window.addEventListener('mouseup',()=>{if(pan)pan.el.classList.remove('pan');pan=null});
 /* ---------- right panel ---------- */
 function inspector(){
   const A=S.audit,id=selNode, ag=id.startsWith('a:')?S.agents.find(a=>a.name===id.slice(2)):null;
@@ -436,6 +460,7 @@ function render(){
   document.querySelectorAll('#rt [data-r]').forEach(b=>b.classList.toggle('on',b.dataset.r===rtab));
   const busy=S.audit.some(pend); $('live').textContent=busy?'Working':'Live'; $('live').classList.toggle('idle',!busy);
   $('cen').innerHTML=(view==='design'?flow()+bottom():view==='studio'?studioView():view==='jobs'?jobsView():auditView());
+  if(view==='design')applyCtx(CTX.i);
   $('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;
 }
 document.addEventListener('dragstart',e=>{const c=e.target.closest('[data-cat]');if(c){dragging=true;e.dataTransfer.setData('text/plain',c.dataset.cat)}});
@@ -451,6 +476,7 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='f'||e.key==='F'){zoomFit()}
 });
 document.addEventListener('click',e=>{
+  const zi=e.target.closest('#cen [data-zoom]'); if(zi){const d=zi.dataset.zoom;d==='fit'?zoomFit(CTX.i):d==='reset'?zoomReset(CTX.i):setZoom(CTX.i.z*(d==='1'?1.25:1/1.25),null,null,CTX.i);return}
   if(e.target.closest('[data-expand]')){modal=true;mev=null;mz=1;mpx=0;mpy=0;renderModal();return}
   if(e.target.closest('#modal')){
     if(e.target.closest('[data-close]')||e.target.id==='modal'){modal=false;renderModal();return}
