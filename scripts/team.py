@@ -17,7 +17,7 @@ MAX_CHARS, MAX_CALLS_PER_HOUR = 8000, 60
 UA = {"User-Agent": "ai-team/1.0"}
 PLACEHOLDER = re.compile(r"(?i)xxx\.|your-|url-|example\.|<.*>")
 MODES = ("best-of-n", "vote", "split")
-SKIP = ("embed", "safety", "guard", "parse", "reward", "rerank", "vl", "content")
+SKIP = ("embed", "safety", "guard", "parse", "reward", "rerank", "vl", "content", "whisper", "tts", "orpheus", "playai", "transcribe", "moderation")
 SCHEMA = """
 create table if not exists agents(name text primary key,title text,base_url text,model text,api_key text,role text);
 create table if not exists audit(t real,agent text,model text,brief text,reply text,blocked text);
