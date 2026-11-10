@@ -139,7 +139,14 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .mjobs{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:180px}
 .mx{background:none;border:1px solid var(--ln);color:var(--tx);border-radius:8px;width:32px;height:32px;font-size:15px;cursor:pointer}
 .mbody{flex:1;display:grid;grid-template-columns:1fr 340px;min-height:0}
-.mmain{overflow:auto;padding:14px;min-width:0}
+.mmain{overflow:auto;padding:14px;min-width:0;cursor:grab;overscroll-behavior:contain}
+.mmain.pan{cursor:grabbing;user-select:none}
+.mmain .evg,.mmain [data-n]{cursor:pointer}
+.mmain .canvas{max-width:none}
+.zc{display:inline-flex;border:1px solid var(--ln);border-radius:9px;overflow:hidden}
+.zc button{min-width:34px;height:30px;border:0;background:var(--p2);color:var(--tx);font:inherit;cursor:pointer;padding:0 8px}
+.zc button:hover{background:var(--bl)}
+.zc #zl{min-width:58px;font-size:12px;color:var(--mu)}
 .mdet{border-left:1px solid var(--ln);overflow:auto;padding:14px;background:var(--bg)}
 .mmain svg{width:100%;height:auto;display:block}
 .evg{cursor:pointer}
@@ -195,6 +202,7 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
     <div class="mh"><b>Flow Inspector</b>
       <div class="mtabs"><button data-mtab="seq">ลำดับการไหล</button><button data-mtab="net">ผังเครือข่าย</button></div>
       <div class="mjobs" id="mjobs"></div>
+      <div class="zc" title="ซูม: ปุ่ม +/− หรือ Ctrl/⌘ + ล้อเมาส์ · ลากเพื่อเลื่อน"><button data-zoom="-1" aria-label="ซูมออก">−</button><button data-zoom="fit" id="zl" title="รีเซ็ต 100%">100%</button><button data-zoom="1" aria-label="ซูมเข้า">+</button></div>
       <button class="mx" data-close="1" title="ปิด (Esc)">✕</button></div>
     <div class="mbody"><div class="mmain" id="mmain"></div><aside class="mdet" id="mdet"></aside></div>
   </div>
@@ -211,7 +219,7 @@ const isErr=a=>a.blocked!=null&&a.blocked.startsWith('error:');
 const isBlk=a=>a.blocked!=null&&!isErr(a);
 const st=a=>a.blocked!=null?'err':pend(a)?'work':'done';
 const NOJOB='(ไม่ระบุชื่องาน)';
-let S={agents:[],seats:[],catalog:[],plan:{n:2,mode:'best-of-n'},audit:[],notes:[]}, view='design', rtab='eval', selNode='claude', selJob=null, open=new Set(), pick=null, dragging=false, lastJ='', modal=false, mtab='seq', mjob=null, mev=null, EV=[];
+let S={agents:[],seats:[],catalog:[],plan:{n:2,mode:'best-of-n'},audit:[],notes:[]}, view='design', rtab='eval', selNode='claude', selJob=null, open=new Set(), pick=null, dragging=false, lastJ='', modal=false, mtab='seq', mjob=null, mev=null, EV=[], mz=1;
 
 function spark(vals,c,w=100,h=26){const m=Math.max(1,...vals),n=vals.length||1;
   const p=vals.map((v,i)=>[i*(w/Math.max(1,n-1)),h-2-(v/m)*(h-4)]);
@@ -347,14 +355,26 @@ function renderModal(){
   const jobs=jobNames(); if(!mjob||!jobs.includes(mjob))mjob=jobs[0]||null;
   document.querySelectorAll('[data-mtab]').forEach(b=>b.classList.toggle('on',b.dataset.mtab===mtab));
   $('mjobs').innerHTML=jobs.map(k=>`<button class="jt ${k===mjob?'on':''}" data-mjob="${esc(k)}">${esc(k)}</button>`).join('')||'<span class="empty">ยังไม่มีงาน</span>';
-  const keep=$('mmain').scrollTop;
+  const keepY=$('mmain').scrollTop, keepX=$('mmain').scrollLeft;
   if(mtab==='seq'){
     $('mmain').innerHTML=mjob?seqSVG(mjob):'<div class="empty">ยังไม่มีงาน — สั่ง Claude ในแชทได้เลย</div>';
     const e=mev!=null?EV[mev]:null;
     $('mdet').innerHTML=e?`<div class="sec"><h4>${esc(e.det.title)}</h4><div class="txt r" style="max-height:none">${esc(e.det.text)}</div></div>`:'<div class="empty">คลิกลูกศรในแผนภาพเพื่อดูข้อความเต็มของ brief / คำตอบ / ผลตรวจ<br><br>อ่านจากบนลงล่างตามเวลา: ผู้ใช้ → Claude → ลูกทีม → กลับมาที่ Claude → ผู้ใช้</div>';
   }else{$('mmain').innerHTML=flow(true);$('mdet').innerHTML=inspector()}
-  $('mmain').scrollTop=keep;
+  $('mmain').querySelectorAll('.canvas,#mmain>svg').forEach(el=>el.style.width=(mz*100)+'%');
+  $('zl').textContent=Math.round(mz*100)+'%';
+  $('mmain').scrollTop=keepY; $('mmain').scrollLeft=keepX;
 }
+function setZoom(z,cx,cy){
+  z=Math.min(4,Math.max(.4,z)); const m=$('mmain'), r=z/mz; if(r===1)return;
+  const ax=cx??m.clientWidth/2, ay=cy??m.clientHeight/2, nx=(m.scrollLeft+ax)*r-ax, ny=(m.scrollTop+ay)*r-ay;
+  mz=z; renderModal(); m.scrollLeft=nx; m.scrollTop=ny;
+}
+$('mmain').addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();const b=$('mmain').getBoundingClientRect();setZoom(mz*Math.exp(-e.deltaY*.0025),e.clientX-b.left,e.clientY-b.top)},{passive:false});
+let pan=null;
+$('mmain').addEventListener('mousedown',e=>{if(e.button!==0||e.target.closest('.evg,[data-n]'))return;pan={x:e.clientX,y:e.clientY,l:$('mmain').scrollLeft,t:$('mmain').scrollTop};$('mmain').classList.add('pan')});
+window.addEventListener('mousemove',e=>{if(!pan)return;$('mmain').scrollLeft=pan.l-(e.clientX-pan.x);$('mmain').scrollTop=pan.t-(e.clientY-pan.y)});
+window.addEventListener('mouseup',()=>{pan=null;$('mmain').classList.remove('pan')});
 /* ---------- right panel ---------- */
 function inspector(){
   const A=S.audit,id=selNode, ag=id.startsWith('a:')?S.agents.find(a=>a.name===id.slice(2)):null;
@@ -399,11 +419,18 @@ document.addEventListener('dragstart',e=>{const c=e.target.closest('[data-cat]')
 document.addEventListener('dragend',()=>{dragging=false;document.querySelectorAll('.seat.over').forEach(x=>x.classList.remove('over'))});
 document.addEventListener('dragover',e=>{const t=e.target.closest('[data-seat]');if(t){e.preventDefault();document.querySelectorAll('.seat.over').forEach(x=>x!==t&&x.classList.remove('over'));t.classList.add('over')}});
 document.addEventListener('drop',e=>{const t=e.target.closest('[data-seat]');if(t){e.preventDefault();dragging=false;post('/api/seat',{seat:t.dataset.seat,catalog:e.dataTransfer.getData('text/plain')})}});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal){modal=false;renderModal()}});
+document.addEventListener('keydown',e=>{
+  if(!modal)return;
+  if(e.key==='Escape'){modal=false;renderModal()}
+  else if(e.key==='+'||e.key==='='){setZoom(mz*1.25)}
+  else if(e.key==='-'||e.key==='_'){setZoom(mz/1.25)}
+  else if(e.key==='0'){setZoom(1)}
+});
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-expand]')){modal=true;mev=null;renderModal();return}
   if(e.target.closest('#modal')){
     if(e.target.closest('[data-close]')||e.target.id==='modal'){modal=false;renderModal();return}
+    const zm=e.target.closest('[data-zoom]'); if(zm){const d=zm.dataset.zoom;setZoom(d==='fit'?1:d==='1'?mz*1.25:mz/1.25);return}
     const mt=e.target.closest('[data-mtab]'); if(mt){mtab=mt.dataset.mtab;mev=null;renderModal();return}
     const mj=e.target.closest('[data-mjob]'); if(mj){mjob=mj.dataset.mjob;mev=null;renderModal();return}
     const eg=e.target.closest('[data-ev]'); if(eg){mev=+eg.dataset.ev;renderModal();return}
@@ -428,7 +455,7 @@ document.addEventListener('click',e=>{
 });
 $('exp').onclick=()=>{const b=new Blob([JSON.stringify({audit:S.audit,notes:S.notes},null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ai-team-log.json';a.click()};
 async function tick(force){if(dragging)return;try{const n=await (await fetch('/api/state')).json(),j=JSON.stringify(n);const ch=j!==lastJ;if(force===true||ch||view==='design'){lastJ=j;S=n;render();if(modal&&(ch||force===true))renderModal()}}catch(e){}}
-(()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.get('view'))view=h.get('view');if(h.get('rtab'))rtab=h.get('rtab');if(h.get('job'))selJob=h.get('job');if(h.get('modal')){modal=true;mtab=h.get('modal')==='net'?'net':'seq';if(h.get('job'))mjob=h.get('job')}})();
+(()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.get('view'))view=h.get('view');if(h.get('rtab'))rtab=h.get('rtab');if(h.get('job'))selJob=h.get('job');if(h.get('modal')){modal=true;mtab=h.get('modal')==='net'?'net':'seq';if(h.get('job'))mjob=h.get('job')}if(h.get('zoom'))mz=Math.min(4,Math.max(.4,+h.get('zoom')||1))})();
 tick(); setInterval(tick,2000);
 </script>
 </body>
