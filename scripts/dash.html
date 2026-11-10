@@ -171,6 +171,28 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .legd i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
 @media(max-width:900px){.mbody{grid-template-columns:1fr}.mdet{border-left:0;border-top:1px solid var(--ln);max-height:38vh}}
 @media(max-width:900px){.stu{grid-template-columns:1fr}}
+
+.prov{display:flex;gap:10px;flex-wrap:wrap}
+.pc{flex:1;min-width:170px;border:1px solid var(--ln);border-radius:10px;padding:10px 12px;background:var(--p2);cursor:pointer;text-align:left;color:var(--tx);font:inherit}
+.pc:hover{border-color:var(--bl)}
+.pc b{display:block}
+.pc small{color:var(--mu);font-size:11px}
+.pc.on{border-color:#22c55e66}
+.pc .dot{color:var(--gr)}
+.pc.add{border-style:dashed;color:var(--bl);text-align:center}
+#pdlg{border:1px solid var(--ln);border-radius:14px;background:var(--p);color:var(--tx);padding:0;width:min(480px,92vw)}
+#pdlg::backdrop{background:#05080fcc}
+#pdlg form{padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+#pdlg h3{margin:0 0 4px;font-size:16px}
+#pdlg label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu)}
+#pdlg input{background:var(--bg);color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:9px 10px;font:inherit;font-size:13px}
+#pdlg input:focus{outline:2px solid var(--bl);outline-offset:-1px}
+#pdlg input[readonly]{opacity:.65}
+#pmsg{font-size:12.5px;min-height:18px}
+#pmsg.ok{color:var(--gr)} #pmsg.er{color:var(--rd)} #pmsg.wk{color:var(--or)}
+#pdlg .row{display:flex;gap:8px;flex-wrap:wrap}
+#pdlg .btn.pr{flex:1}
+#pimp{border-top:1px solid var(--ln);padding-top:10px;display:flex;flex-direction:column;gap:8px}
 @keyframes fl{to{stroke-dashoffset:-24}}
 @keyframes gl{50%{opacity:.45}}
 .sec>svg{width:100%;height:70px;display:block}
@@ -212,6 +234,21 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
   </aside>
 </div>
 </div>
+<dialog id="pdlg">
+  <form method="dialog" id="pform" autocomplete="off" onsubmit="return false">
+    <h3 id="ptitle">เพิ่มผู้ให้บริการ API</h3>
+    <label>ชื่อในระบบ (a-z 0-9 . _ -)<input id="pname" maxlength="40"></label>
+    <label>Base URL<input id="purl" placeholder="https://…/v1"></label>
+    <label>API Key<input id="pkey" type="password" autocomplete="new-password" spellcheck="false" placeholder="วาง API key ที่นี่"></label>
+    <div class="hint" style="margin:0">key ถูกส่งไปเก็บในฐานข้อมูลบนเครื่องคุณเท่านั้น (ไม่ส่งไปที่อื่นนอกจากเกตเวย์นี้) และจะไม่แสดงกลับมาอีก</div>
+    <div id="pmsg"></div>
+    <div class="row"><button type="button" class="btn pr" id="psave">บันทึกและทดสอบ</button><button type="button" class="btn" id="pdel" hidden>ลบผู้ให้บริการ</button><button type="button" class="btn" id="pclose">ปิด</button></div>
+    <div id="pimp" hidden>
+      <label>นำเข้าเฉพาะโมเดลที่ชื่อมีคำว่า (เว้นว่าง = ทั้งหมด)<input id="pfilter"></label>
+      <button type="button" class="btn pr" id="pimport">นำเข้าโมเดลเข้าแคตตาล็อก</button>
+    </div>
+  </form>
+</dialog>
 <div id="modal" hidden>
   <div class="mbox">
     <div class="mh"><b>Flow Inspector</b>
@@ -235,7 +272,7 @@ const isErr=a=>a.blocked!=null&&a.blocked.startsWith('error:');
 const isBlk=a=>a.blocked!=null&&!isErr(a);
 const st=a=>a.blocked!=null?'err':pend(a)?'work':'done';
 const NOJOB='(ไม่ระบุชื่องาน)';
-let S={agents:[],seats:[],catalog:[],roles:[],tasks:[],plan:{n:2,mode:'best-of-n'},audit:[],notes:[]}, view='design', rtab='eval', selNode='claude', selJob=null, open=new Set(), pick=null, dragging=false, lastJ='', modal=false, mtab='seq', mjob=null, mev=null, EV=[], mz=1, mpx=0, mpy=0, NBOX=[0,0,990,450];
+let S={agents:[],seats:[],catalog:[],roles:[],tasks:[],gateways:[],presets:[],plan:{n:2,mode:'best-of-n'},audit:[],notes:[]}, view='design', rtab='eval', selNode='claude', selJob=null, open=new Set(), pick=null, dragging=false, lastJ='', modal=false, mtab='seq', mjob=null, mev=null, EV=[], mz=1, mpx=0, mpy=0, NBOX=[0,0,990,450];
 
 function spark(vals,c,w=100,h=26){const m=Math.max(1,...vals),n=vals.length||1;
   const p=vals.map((v,i)=>[i*(w/Math.max(1,n-1)),h-2-(v/m)*(h-4)]);
@@ -331,7 +368,7 @@ function studioView(){
     <select class="pos" data-pos="${esc(x.name)}" title="ตำแหน่ง (บทบาท) ของช่องนี้"><option value="">— ไม่กำหนดตำแหน่ง —</option>${S.roles.map(r=>`<option value="${esc(r.name)}" ${x.position===r.name?'selected':''}>${esc(r.title)}</option>`).join('')}</select></div>`).join('');
   const use=filled.filter(x=>act.has(x.name)); let est=0,unk=false; use.forEach(x=>{if(x.cin==null||x.cout==null)unk=true;else est+=(x.cin+x.cout)*1000/1e6});
   const modes={'best-of-n':'ทุกช่องทำงานเดียวกัน Claude เลือกผลที่ดีที่สุด','vote':'ทุกช่องตอบคำถามเดียวกัน ใช้เสียงข้างมาก','split':'Claude แตกงานย่อยให้แต่ละช่องตามจุดแข็ง'};
-  return `<div class="stu"><div class="card"><h3>Model Catalog <span style="color:var(--mu);font-weight:400">${S.catalog.length}</span></h3><div class="cat">${chips}</div></div>
+  return provHtml()+`<div class="stu"><div class="card"><h3>Model Catalog <span style="color:var(--mu);font-weight:400">${S.catalog.length}</span></h3><div class="cat">${chips}</div></div>
    <div class="card"><h3>Team Seats <button class="btn" data-addseat="1">+ เพิ่มช่อง</button></h3><div class="seats">${seats}</div>
    <div class="ctl"><div><div class="hint" style="margin:0 0 4px">จำนวน AI ที่ใช้ในงาน</div><div class="stepper"><button data-n="-1">−</button><b>${P.n}</b><button data-n="1">+</button></div></div>
     <div><div class="hint" style="margin:0 0 4px">โหมด</div><div class="seg">${Object.keys(modes).map(m=>`<button data-mode="${m}" class="${P.mode===m?'on':''}">${m}</button>`).join('')}</div></div>
@@ -436,6 +473,57 @@ document.addEventListener('mousedown',e=>{
 window.addEventListener('mousemove',e=>{if(!pan)return;const dx=e.clientX-pan.x,dy=e.clientY-pan.y;
   if(isNet(pan.c)){pan.c.x=pan.px+dx/pan.s;pan.c.y=pan.py+dy/pan.s;applyCtx(pan.c)}else{pan.el.scrollLeft=pan.l-dx;pan.el.scrollTop=pan.t-dy}});
 window.addEventListener('mouseup',()=>{if(pan)pan.el.classList.remove('pan');pan=null});
+
+/* ---------- ผู้ให้บริการ API (เพิ่มเกตเวย์จากหน้าจอ) ---------- */
+function provHtml(){
+  const gws=S.gateways||[], byUrl=Object.fromEntries(gws.map(g=>[g.base_url.replace(/\/+$/,''),g]));
+  const cards=(S.presets||[]).map(p=>{const g=byUrl[p.base_url];
+    return `<button class="pc ${g?'on':''}" data-prov="${esc(p.id)}"><b>${g?'<span class="dot">●</span> ':''}${esc(p.title)}</b><small>${g?(g.has_key?'เชื่อมแล้ว · ':'ยังไม่มี key · ')+g.models+' โมเดลในแคตตาล็อก':'ยังไม่ได้เชื่อม · คลิกเพื่อเพิ่ม key'}</small></button>`}).join('');
+  const known=new Set((S.presets||[]).map(p=>p.base_url));
+  const others=gws.filter(g=>!known.has(g.base_url.replace(/\/+$/,''))).map(g=>`<button class="pc on" data-provgw="${esc(g.name)}"><b><span class="dot">●</span> ${esc(g.name)}</b><small>${esc(g.host)} · ${g.models} โมเดล</small></button>`).join('');
+  return `<div class="card" style="margin-bottom:14px"><h3>Providers (ผู้ให้บริการ API)</h3><div class="prov">${cards}${others}<button class="pc add" data-prov="custom"><b>+ กำหนดเอง</b><small>URL แบบ OpenAI-compatible</small></button></div></div>`;
+}
+let PD={gw:null};
+const $p=id=>document.getElementById(id);
+function pmsg(t,k=''){const m=$p('pmsg');m.textContent=t;m.className=k}
+function openProv(presetId,gwName){
+  const gws=S.gateways||[]; let g=null,pr=null;
+  if(gwName) g=gws.find(x=>x.name===gwName);
+  else if(presetId&&presetId!=='custom'){pr=(S.presets||[]).find(x=>x.id===presetId); g=gws.find(x=>x.base_url.replace(/\/+$/,'')===pr.base_url)}
+  PD={gw:g?g.name:null,preset:pr};
+  $p('ptitle').textContent=g?`แก้ไข: ${g.name}`:(pr?`เชื่อม ${pr.title}`:'เพิ่มผู้ให้บริการกำหนดเอง');
+  $p('pname').value=g?g.name:(pr?pr.name:''); $p('pname').readOnly=!!g;
+  $p('purl').value=g?g.base_url:(pr?pr.base_url:''); $p('pkey').value='';
+  $p('pkey').placeholder=g&&g.has_key?'เว้นว่าง = ใช้ key เดิม (หรือวาง key ใหม่เพื่อเปลี่ยน)':'วาง API key ที่นี่';
+  $p('pfilter').value=pr?pr.filter:''; $p('pimp').hidden=true; $p('pdel').hidden=!g; pmsg('');
+  $p('pdlg').showModal(); setTimeout(()=>$p('pkey').focus(),50);
+}
+async function apiRaw(path,body){const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-Dash':'1'},body:JSON.stringify(body)});return r.json()}
+async function provSave(){
+  const name=$p('pname').value.trim(), btn=$p('psave'); btn.disabled=true; pmsg('กำลังบันทึกและทดสอบ…','wk');
+  try{
+    let d=await apiRaw('/api/gateway',{name,base_url:$p('purl').value,api_key:$p('pkey').value}); if(d.error)throw new Error(d.error);
+    $p('pkey').value=''; PD.gw=name; $p('pdel').hidden=false;
+    d=await apiRaw('/api/gateway_test',{name}); if(d.error)throw new Error('บันทึกแล้ว แต่ทดสอบไม่ผ่าน: '+d.error);
+    pmsg(`เชื่อมต่อสำเร็จ พบ ${d.models} โมเดลบนเกตเวย์นี้`,'ok'); $p('pimp').hidden=false; await tick(true);
+  }catch(e){pmsg(e.message,'er')}finally{btn.disabled=false}
+}
+async function provImport(){
+  const btn=$p('pimport'); btn.disabled=true; pmsg('กำลังนำเข้า…','wk');
+  try{ const d=await apiRaw('/api/import',{name:PD.gw,grep:$p('pfilter').value}); if(d.error)throw new Error(d.error);
+    pmsg(`นำเข้า ${d.added} โมเดลใหม่ (ตรงเงื่อนไข ${d.matched} จากทั้งหมด ${d.total}; ข้ามโมเดลเสียง/embedding/safety) — ไปกด "ทดสอบ" ที่โมเดลเพื่อตรวจว่าเรียกได้จริง`,'ok'); await tick(true);
+  }catch(e){pmsg(e.message,'er')}finally{btn.disabled=false}
+}
+async function provDelete(){
+  if(!PD.gw||!confirm(`ลบผู้ให้บริการ "${PD.gw}" และโมเดลของมันออกจากแคตตาล็อก?`))return;
+  const d=await apiRaw('/api/gateway_delete',{name:PD.gw}); if(d.error)return pmsg(d.error,'er');
+  $p('pdlg').close(); await tick(true);
+}
+document.addEventListener('click',e=>{
+  const a=e.target.closest('[data-prov]'); if(a){openProv(a.dataset.prov);return}
+  const b=e.target.closest('[data-provgw]'); if(b){openProv(null,b.dataset.provgw);return}
+  if(e.target.id==='psave')provSave(); else if(e.target.id==='pimport')provImport(); else if(e.target.id==='pdel')provDelete(); else if(e.target.id==='pclose')$p('pdlg').close();
+});
 /* ---------- right panel ---------- */
 function inspector(){
   const A=S.audit,id=selNode, ag=id.startsWith('a:')?S.agents.find(a=>a.name===id.slice(2)):null;

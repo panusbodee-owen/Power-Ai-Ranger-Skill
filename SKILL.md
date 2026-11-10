@@ -55,6 +55,13 @@ python3 ~/.claude/skills/ai-team/scripts/team.py add worker --base-url https://G
 กลุ่มช่อง: `@makers`=seat2,intern,seat1 · `@testers`=seat2,intern · `@reviewers`=seat5,worker · `@reliable`=ทุกช่องหลัก
 สายงานมาตรฐาน: `--flow "senior_tester@@testers>reviewer@@reviewers" --rounds 1 --check json` (ออกแบบเคส) และ `--flow "trainee@@makers" --rounds 2 --check "py:ไฟล์เทส"` (โค้ด) — ผู้ตรวจ AI ผ่านแล้วต้องผ่าน Claude อีกชั้นเสมอ เลือกช่องใน pool ตามเกตเวย์ว่างสุด (ไม่ใช่ตามความอาวุโส) ถ้าต้องการช่องเฉพาะให้ระบุชื่อช่องตรงๆ
 
+## เพิ่มผู้ให้บริการ API จากหน้าจอ (Studio → Providers)
+ผู้ใช้เพิ่ม/เปลี่ยน API key เองในหน้า Studio: คลิกการ์ดผู้ให้บริการ (Tokenme, OpenRouter, NVIDIA NIM, Groq หรือ "กำหนดเอง") → วาง key ในช่องรหัสผ่าน → "บันทึกและทดสอบ" → "นำเข้าโมเดล" (มีตัวกรองชื่อ ค่าเริ่มต้น OpenRouter=`:free`, NVIDIA=`nemotron`) แล้วกด "ทดสอบ" ที่โมเดลเพื่อเช็คว่าเรียกได้จริง
+- Claude **ไม่พิมพ์/ไม่ขอ key ในแชท** ให้ผู้ใช้วางในหน้านี้หรือเทอร์มินัลเอง
+- key เก็บใน SQLite เครื่องนี้เท่านั้น และ `/api/state` ไม่คืน key (ทดสอบแล้ว) ช่องใส่ key ถูกล้างหลังบันทึก เว้นว่างตอนแก้ = ใช้ key เดิม
+- ป้องกัน: Base URL ต้องเป็น https:// (หรือ http://localhost สำหรับทดสอบ), ปฏิเสธ URL ตัวอย่าง (`xxx`, `YOUR-`, `example.`), ชื่อใช้ได้เฉพาะ `a-z 0-9 . _ -`, การเขียนต้องมี header `X-Dash` + Host เป็น localhost (กัน CSRF)
+- ลบผู้ให้บริการได้เมื่อไม่มีช่องในทีมใช้โมเดลของมัน (ลบโมเดลของมันออกจากแคตตาล็อกด้วย)
+
 ## ช่องทีมและหลาย AI ต่องาน (Team Builder)
 โครงสร้าง: `gateways` (URL + key) → `catalog` (โมเดล + ราคา) → `seats` (ช่องทีม ชี้ catalog) ผู้ใช้ลากโมเดลใส่ช่อง เลือกจำนวน AI และโหมดในแดชบอร์ด (แท็บ Studio) แล้วบอก Claude ให้ทำงาน
 1. อ่านค่าที่ผู้ใช้เลือก: `team.py plan` → `mode=… n=… active=seatA,seatB` ใช้เฉพาะช่อง active นี้ ห้ามเพิ่มเองโดยไม่ถาม (N ตัว = จ่าย N เท่า)

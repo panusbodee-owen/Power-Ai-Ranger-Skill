@@ -182,6 +182,43 @@ def seat_add(c):
     return f"seat{n}"
 
 
+def valid_base_url(u):
+    u = (u or "").strip().rstrip("/")
+    if PLACEHOLDER.search(u):
+        raise ValueError("base_url ยังเป็นค่าตัวอย่าง")
+    p = urlparse(u)
+    if p.scheme == "https" and p.netloc:
+        return u
+    if p.scheme == "http" and p.hostname in ("localhost", "127.0.0.1"):
+        return u
+    raise ValueError("base_url ต้องขึ้นต้นด้วย https:// (หรือ http://localhost สำหรับทดสอบในเครื่อง)")
+
+
+def remote_models(c, gw):
+    """ดึงรายชื่อโมเดลจากเกตเวย์ (ใช้ key ในฐานข้อมูล ไม่คืน key)"""
+    r = c.execute("select base_url,api_key from gateways where name=?", (gw,)).fetchone()
+    if not r:
+        raise ValueError(f"ไม่พบ gateway '{gw}'")
+    rq = urllib.request.Request(r[0].rstrip("/") + "/models", headers={"Authorization": f"Bearer {r[1]}", **UA})
+    try:
+        data = json.load(urllib.request.urlopen(rq, timeout=40))["data"]
+    except urllib.error.HTTPError as e:
+        raise ValueError({401: "API key ไม่ถูกต้อง", 403: "key ไม่มีสิทธิ์หรือถูกปฏิเสธ", 404: "ไม่พบ /models ที่ URL นี้ (ตรวจ Base URL)"}.get(e.code, f"HTTP {e.code}"))
+    except Exception as e:
+        raise ValueError("เชื่อมต่อไม่ได้: " + type(e).__name__)
+    return sorted(m["id"] for m in data)
+
+
+def import_models(c, gw, grep=""):
+    ids = remote_models(c, gw)
+    add = [i for i in ids if grep.lower() in i.lower() and not any(w in i.lower() for w in SKIP)]
+    before = c.total_changes
+    for i in add:
+        c.execute("insert or ignore into catalog(name,gateway,model) values(?,?,?)", (i.split("/")[-1], gw, i))
+    c.commit()
+    return c.total_changes - before, len(add), len(ids)
+
+
 def catalog_test(c, name):
     r = c.execute("select k.model,g.base_url,g.api_key from catalog k join gateways g on g.name=k.gateway where k.name=?", (name,)).fetchone()
     if not r or PLACEHOLDER.search(r[1]):
