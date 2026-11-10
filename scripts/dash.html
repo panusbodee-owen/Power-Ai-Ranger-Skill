@@ -6,51 +6,69 @@
 <meta name="color-scheme" content="dark">
 <title>AI Team Studio</title>
 <style>
-:root{--bg:#070b16;--sb:#0a1020;--p:#0e1527;--p2:#121b30;--ln:#1f2a44;--tx:#e6ebf7;--mu:#8693b3;
---bl:#3b82f6;--vi:#8b5cf6;--or:#f59e0b;--gr:#22c55e;--rd:#ef4444;--cy:#22d3ee;--pk:#c084fc}
+:root{color-scheme:light;
+--bg:#f5f4f0;--sb:#fbfaf7;--p:#ffffff;--p2:#f1efe9;--ln:#e2dfd6;--ln2:#c9c5b8;--tx:#1f2430;--mu:#646a78;
+--bl:#3d5a99;--ac:#3d5a99;--act:#2f4a82;--acs:color-mix(in srgb,#3d5a99 10%,transparent);
+--gr:#2d7a4f;--or:#a8650f;--rd:#bf3a30;--cy:#2a7f8c;--pk:#7a5fb0;--vi:#7a5fb0;
+--on:#ffffff;--hair:rgba(31,36,48,.06);--shadow:0 1px 2px rgba(31,36,48,.06);--scrim:rgba(245,244,240,.82)}
+:root[data-theme=dark]{color-scheme:dark;
+--bg:#14161b;--sb:#181b21;--p:#1d2027;--p2:#242831;--ln:#2e333d;--ln2:#434a57;--tx:#e8eaee;--mu:#9aa1b0;
+--bl:#8fa8e0;--ac:#8fa8e0;--act:#a9bdee;--acs:color-mix(in srgb,#8fa8e0 14%,transparent);
+--gr:#5cc38b;--or:#e0a73f;--rd:#f07a6e;--cy:#57b6c4;--pk:#b39ae0;--vi:#b39ae0;
+--on:#14161b;--hair:rgba(255,255,255,.06);--shadow:none;--scrim:rgba(20,22,27,.82)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;
+--bg:#14161b;--sb:#181b21;--p:#1d2027;--p2:#242831;--ln:#2e333d;--ln2:#434a57;--tx:#e8eaee;--mu:#9aa1b0;
+--bl:#8fa8e0;--ac:#8fa8e0;--act:#a9bdee;--acs:color-mix(in srgb,#8fa8e0 14%,transparent);
+--gr:#5cc38b;--or:#e0a73f;--rd:#f07a6e;--cy:#57b6c4;--pk:#b39ae0;--vi:#b39ae0;
+--on:#14161b;--hair:rgba(255,255,255,.06);--shadow:none;--scrim:rgba(20,22,27,.82)}}
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--tx);font:13px/1.45 system-ui,"Noto Sans Thai",sans-serif}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.6 -apple-system,"Sukhumvit Set",Thonburi,"Noto Sans Thai",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+::selection{background:var(--acs)}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+html{scrollbar-color:var(--ln2) transparent}
+button,select,input{font-family:inherit}
 .app{display:grid;grid-template-columns:200px 1fr;height:100vh}
 /* sidebar */
 .sb{background:var(--sb);border-right:1px solid var(--ln);padding:14px 12px;display:flex;flex-direction:column;gap:6px;overflow:auto}
 .brand{display:flex;gap:9px;align-items:center;font-weight:700;font-size:15px;margin-bottom:8px}
-.brand i{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--bl),var(--vi));display:grid;place-items:center;font-style:normal;font-size:14px}
+.brand i{width:26px;height:26px;border-radius:7px;background:var(--tx);color:var(--bg);display:grid;place-items:center;font-style:normal;font-size:13px}
 .ws{border:1px solid var(--ln);border-radius:9px;padding:7px 10px;color:var(--gr);font-size:12px;margin-bottom:10px;background:var(--p)}
-.sb h6{margin:12px 8px 4px;font-size:10px;letter-spacing:.1em;color:var(--mu);font-weight:600}
+.sb h6{margin:14px 8px 4px;font-size:11px;letter-spacing:.04em;color:var(--mu);font-weight:600}
 .nv{display:flex;gap:9px;align-items:center;padding:7px 10px;border-radius:8px;color:var(--mu);cursor:pointer;border:0;background:none;font:inherit;text-align:left;width:100%}
 .nv:hover{background:var(--p2);color:var(--tx)}
-.nv.on{background:#3b82f622;color:#7db0ff;box-shadow:inset 2px 0 0 var(--bl)}
+.nv.on{background:var(--acs);color:var(--act);font-weight:600}
 .nv b{width:16px;text-align:center;font-weight:400}
 /* main */
 .main{display:grid;grid-template-columns:1fr 330px;grid-template-rows:auto 1fr;min-width:0;min-height:0}
 .hd{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:12px 18px 0;border-bottom:1px solid var(--ln);flex-wrap:wrap}
 .crumb{color:var(--mu);font-size:12px;width:100%}
 .hd h1{margin:0;font-size:20px;display:flex;align-items:center;gap:10px}
-.draft{font-size:11px;padding:2px 9px;border-radius:99px;background:#22c55e22;color:var(--gr);border:1px solid #22c55e55;font-weight:600}
-.draft.idle{background:#ffffff0d;color:var(--mu);border-color:var(--ln)}
+.draft{font-size:11px;padding:2px 9px;border-radius:99px;background:color-mix(in srgb,var(--gr) 14%,transparent);color:var(--gr);border:1px solid color-mix(in srgb,var(--gr) 33%,transparent);font-weight:600}
+.draft.idle{background:var(--hair);color:var(--mu);border-color:var(--ln)}
 .tabsx{display:flex;gap:2px;width:100%}
 .tabx{padding:8px 14px;border:0;background:none;color:var(--mu);font:inherit;cursor:pointer;border-bottom:2px solid transparent}
-.tabx.on{color:#7db0ff;border-color:var(--bl)}
+.tabx.on{color:var(--act);border-color:var(--bl)}
 .sp{flex:1}
 .btn{padding:7px 14px;border-radius:8px;border:1px solid var(--ln);background:var(--p);color:var(--tx);font:inherit;cursor:pointer}
-.btn.pr{background:var(--bl);border-color:var(--bl);font-weight:600}
-.cen{padding:14px;display:flex;flex-direction:column;gap:14px;overflow:auto;min-width:0}
-.canvas{background:radial-gradient(circle,#ffffff10 1px,transparent 1px) 0 0/22px 22px,var(--p);border:1px solid var(--ln);border-radius:12px;position:relative;overflow:hidden}
+.btn.pr{background:var(--ac);border-color:var(--ac);color:var(--on);font-weight:600}
+.btn:hover{border-color:var(--ln2)}
+.cen{padding:20px 22px;display:flex;flex-direction:column;gap:16px;overflow:auto;min-width:0}
+.canvas{background:var(--p);border:1px solid var(--ln);border-radius:12px;position:relative;overflow:hidden}
 .canvas svg{width:100%;display:block}
 .zoom{position:absolute;left:12px;bottom:10px;font-size:11px;color:var(--mu)}
 .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.card{background:var(--p);border:1px solid var(--ln);border-radius:12px;padding:12px 14px;min-width:0}
+.card{background:var(--p);border:1px solid var(--ln);border-radius:10px;padding:16px 18px;min-width:0;box-shadow:var(--shadow)}
 .card h3{margin:0 0 10px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
 .card h3 a{color:var(--bl);font-weight:400;font-size:12px}
 .src{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:12px}
-.src i{width:20px;height:20px;border-radius:5px;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:11px;color:#0a0f1c}
+.src i{width:20px;height:20px;border-radius:5px;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:11px;color:var(--on)}
 .src .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .src .m{color:var(--mu);font-size:11px}
 .badge{font-size:11px;padding:1px 9px;border-radius:6px;border:1px solid}
-.badge.ok{color:var(--gr);border-color:#22c55e66;background:#22c55e14}
-.badge.wk{color:var(--or);border-color:#f59e0b66;background:#f59e0b14}
-.badge.er{color:var(--rd);border-color:#ef444466;background:#ef444414}
+.badge.ok{color:var(--gr);border-color:color-mix(in srgb,var(--gr) 40%,transparent);background:color-mix(in srgb,var(--gr) 8%,transparent)}
+.badge.wk{color:var(--or);border-color:color-mix(in srgb,var(--or) 40%,transparent);background:color-mix(in srgb,var(--or) 8%,transparent)}
+.badge.er{color:var(--rd);border-color:color-mix(in srgb,var(--rd) 40%,transparent);background:color-mix(in srgb,var(--rd) 8%,transparent)}
 .badge.id{color:var(--mu);border-color:var(--ln)}
 .mon{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .mon div{border:1px solid var(--ln);border-radius:8px;padding:6px 8px;background:var(--p2)}
@@ -61,12 +79,12 @@ body{margin:0;background:var(--bg);color:var(--tx);font:13px/1.45 system-ui,"Not
 .rt{border-left:1px solid var(--ln);background:var(--sb);display:flex;flex-direction:column;min-height:0}
 .rtabs{display:flex;border-bottom:1px solid var(--ln)}
 .rtabs button{flex:1;padding:11px 4px;border:0;background:none;color:var(--mu);font:inherit;cursor:pointer;border-bottom:2px solid transparent}
-.rtabs button.on{color:#7db0ff;border-color:var(--bl)}
+.rtabs button.on{color:var(--act);border-color:var(--bl)}
 .rbody{padding:14px;overflow:auto;display:flex;flex-direction:column;gap:18px}
 .sec h4{margin:0 0 8px;font-size:13px;display:flex;justify-content:space-between}
 .sec h4 a{color:var(--bl);font-weight:400;font-size:12px}
 .gate{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:12.5px}
-.gate .ic{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:10px;color:#04130a;background:var(--gr)}
+.gate .ic{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;font-size:10px;color:var(--on);background:var(--gr)}
 .gate .ic.w{background:var(--or)}
 .gate span{flex:1}
 .gate em{font-style:normal;color:var(--mu);font-size:11px}
@@ -86,7 +104,7 @@ body{margin:0;background:var(--bg);color:var(--tx);font:13px/1.45 system-ui,"Not
 .kan{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .kc{background:var(--p);border:1px solid var(--ln);border-radius:10px;padding:10px;min-height:120px}
 .kc h4{margin:0 0 8px;font-size:12px;display:flex;justify-content:space-between;color:var(--mu)}
-.cd{border:1px solid var(--ln);border-left:3px solid var(--c);border-radius:8px;padding:8px 10px;margin-bottom:8px;background:var(--p2);cursor:pointer}
+.cd{border:1px solid var(--ln);border-radius:8px;padding:8px 10px;margin-bottom:8px;background:var(--p2);cursor:pointer}
 .cd .t{display:flex;justify-content:space-between;font-size:12px;color:var(--c);font-weight:600}
 .cd .t span{color:var(--mu);font-weight:400}
 .cd p{margin:4px 0 0;font-size:12px;color:var(--mu);white-space:pre-wrap;word-break:break-word}
@@ -94,7 +112,7 @@ body{margin:0;background:var(--bg);color:var(--tx);font:13px/1.45 system-ui,"Not
 .jtabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px}
 .jt{flex:none;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--p);border:1px solid var(--ln);color:var(--mu);border-radius:8px;padding:5px 12px;font:inherit;cursor:pointer}
 .jt.on{color:var(--tx);border-color:var(--bl)}
-.note{border-left:3px solid var(--or);background:#f59e0b12;padding:7px 12px;border-radius:0 8px 8px 0;margin:0 0 10px}
+.note{border:1px solid color-mix(in srgb,var(--or) 35%,transparent);background:color-mix(in srgb,var(--or) 7%,transparent);padding:7px 12px;border-radius:8px;margin:0 0 10px}
 .note small{color:var(--or);display:block;font-weight:600}
 table{width:100%;border-collapse:collapse;font-size:12px}
 th{text-align:left;color:var(--mu);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--ln)}
@@ -110,9 +128,9 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .okc{color:var(--gr)} .failc{color:var(--rd)}
 .seats{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
 .seat{border:2px dashed var(--ln);border-radius:12px;padding:12px;min-height:108px;background:var(--p);position:relative;transition:.15s}
-.seat.act{border:2px solid var(--bl);background:#3b82f610}
+.seat.act{border:2px solid var(--bl);background:color-mix(in srgb,var(--bl) 6%,transparent)}
 .seat.stby{opacity:.55}
-.seat.over{border-color:var(--or);background:#f59e0b14}
+.seat.over{border-color:var(--or);background:color-mix(in srgb,var(--or) 8%,transparent)}
 .seat h5{margin:0 0 6px;font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.06em;display:flex;justify-content:space-between}
 .seat .m{font-weight:700;font-size:13px;word-break:break-all}
 .seat .g{color:var(--mu);font-size:11px}
@@ -124,26 +142,26 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .stepper b{min-width:38px;text-align:center}
 .seg{display:inline-flex;border:1px solid var(--ln);border-radius:9px;overflow:hidden}
 .seg button{padding:7px 12px;border:0;background:var(--p2);color:var(--mu);font:inherit;cursor:pointer}
-.seg button.on{background:var(--bl);color:#fff}
+.seg button.on{background:var(--bl);color:var(--on)}
 .hint{color:var(--mu);font-size:12px;margin-top:8px}
 .pos{margin-top:8px;width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--ln);border-radius:7px;padding:4px 6px;font:inherit;font-size:12px}
 .fl{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;border:1px solid var(--ln);border-radius:8px;padding:6px 10px;margin-bottom:6px;background:var(--p2)}
 .fl b{color:var(--mu);font-weight:600}
 .fl .st{padding:1px 8px;border-radius:6px;border:1px solid}
-.fl .ok{color:var(--gr);border-color:#22c55e66}.fl .no{color:var(--rd);border-color:#ef444466}
+.fl .ok{color:var(--gr);border-color:color-mix(in srgb,var(--gr) 40%,transparent)}.fl .no{color:var(--rd);border-color:color-mix(in srgb,var(--rd) 40%,transparent)}
 .cen>*{flex:none}
 .canvas{touch-action:none}
 .canvas .zc{top:auto;bottom:10px;right:12px}
-.xbtn{position:absolute;top:10px;right:12px;z-index:2;background:#0c1426cc;color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:5px 11px;font:inherit;font-size:12px;cursor:pointer}
-.xbtn:hover{border-color:var(--bl);color:#7db0ff}
-#modal{position:fixed;inset:0;background:#05080fee;backdrop-filter:blur(4px);z-index:50;display:flex}
+.xbtn{position:absolute;top:10px;right:12px;z-index:2;background:var(--p);color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:5px 11px;font:inherit;font-size:12px;cursor:pointer}
+.xbtn:hover{border-color:var(--bl);color:var(--act)}
+#modal{position:fixed;inset:0;background:var(--scrim);z-index:50;display:flex}
 #modal[hidden]{display:none}
 .mbox{margin:16px;flex:1;display:flex;flex-direction:column;background:var(--sb);border:1px solid var(--ln);border-radius:14px;min-width:0;overflow:hidden}
 .mh{display:flex;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--ln);flex-wrap:wrap}
 .mh b{font-size:15px}
 .mtabs{display:inline-flex;border:1px solid var(--ln);border-radius:9px;overflow:hidden}
 .mtabs button{padding:6px 12px;border:0;background:var(--p2);color:var(--mu);font:inherit;cursor:pointer}
-.mtabs button.on{background:var(--bl);color:#fff}
+.mtabs button.on{background:var(--ac);color:var(--on)}
 .mjobs{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:180px}
 .mx{background:none;border:1px solid var(--ln);color:var(--tx);border-radius:8px;width:32px;height:32px;font-size:15px;cursor:pointer}
 .mbody{flex:1;display:grid;grid-template-columns:1fr 340px;min-height:0}
@@ -158,15 +176,15 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .mmain.net{padding:0;overflow:hidden}
 .mmain.net .canvas{height:100%;border:0;border-radius:0;background-color:var(--bg)}
 .mmain.net .canvas svg{width:100%;height:100%}
-.zc{position:absolute;top:14px;right:18px;z-index:3;display:inline-flex;align-items:center;border:1px solid var(--ln);border-radius:10px;overflow:hidden;background:#0c1426ee;backdrop-filter:blur(4px)}
+.zc{position:absolute;top:14px;right:18px;z-index:3;display:inline-flex;align-items:center;border:1px solid var(--ln);border-radius:10px;overflow:hidden;background:var(--p);}
 .zc button{min-width:36px;height:34px;border:0;background:none;color:var(--tx);font:inherit;font-size:15px;cursor:pointer;padding:0 8px}
-.zc button:hover{background:var(--bl)}
+.zc button:hover{background:var(--p2)}
 .zc #zl{min-width:58px;text-align:center;font-size:13px;color:var(--mu)}
 .mdet{border-left:1px solid var(--ln);overflow:auto;padding:14px;background:var(--bg)}
 .mmain svg{width:100%;height:auto;display:block}
 .evg{cursor:pointer}
 .evg:hover .al{stroke-width:3.2}
-.evg.sel .hit{fill:#3b82f61a}
+.evg.sel .hit{fill:color-mix(in srgb,var(--bl) 10%,transparent)}
 .legd{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--mu);margin-bottom:10px}
 .legd i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
 @media(max-width:900px){.mbody{grid-template-columns:1fr}.mdet{border-left:0;border-top:1px solid var(--ln);max-height:38vh}}
@@ -177,13 +195,13 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .pc:hover{border-color:var(--bl)}
 .pc b{display:block}
 .pc small{color:var(--mu);font-size:11px}
-.pc.on{border-color:#22c55e66}
+.pc.on{border-color:color-mix(in srgb,var(--gr) 40%,transparent)}
 .pc .dot{color:var(--gr)}
 .pc.add{border-style:dashed;color:var(--bl);text-align:center}
 #pdlg{border:1px solid var(--ln);border-radius:14px;background:var(--p);color:var(--tx);padding:0;width:min(480px,92vw)}
-#pdlg::backdrop{background:#05080fcc}
+#pdlg::backdrop{background:var(--scrim)}
 #pdlg form{padding:18px 20px;display:flex;flex-direction:column;gap:10px}
-#pdlg h3{margin:0 0 4px;font-size:16px}
+#pdlg h2{margin:0 0 4px;font-size:16px}
 #pdlg label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu)}
 #pdlg input{background:var(--bg);color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:9px 10px;font:inherit;font-size:13px}
 #pdlg input:focus{outline:2px solid var(--bl);outline-offset:-1px}
@@ -193,6 +211,14 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 #pdlg .row{display:flex;gap:8px;flex-wrap:wrap}
 #pdlg .btn.pr{flex:1}
 #pimp{border-top:1px solid var(--ln);padding-top:10px;display:flex;flex-direction:column;gap:8px}
+
+.about{color:var(--mu);font-size:13.5px;max-width:78ch;padding:2px 2px 0}
+.about b{color:var(--tx);font-weight:600}
+.terms{color:var(--mu);font-size:12.5px;max-width:78ch}
+.terms summary{cursor:pointer}
+.terms dl{margin:8px 0 0;display:grid;grid-template-columns:110px 1fr;gap:6px 14px}
+.terms dt{color:var(--tx);font-weight:600}.terms dd{margin:0}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
 @keyframes fl{to{stroke-dashoffset:-24}}
 @keyframes gl{50%{opacity:.45}}
 .sec>svg{width:100%;height:70px;display:block}
@@ -223,6 +249,7 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
     <div class="crumb">AI Team › Command Center</div>
     <h1>Claude Command Center <span class="draft" id="live">Live</span></h1>
     <div class="sp"></div>
+    <button class="btn" id="theme" title="สลับโหมดสี: อัตโนมัติ → สว่าง → มืด" aria-label="สลับโหมดสี"></button>
     <button class="btn" id="exp">Export log</button>
     <div class="tabsx" id="vt">
       <button class="tabx" data-v="design">Design</button><button class="tabx" data-v="studio">Studio</button><button class="tabx" data-v="jobs">Jobs</button><button class="tabx" data-v="usage">Usage</button><button class="tabx" data-v="audit">Audit</button>
@@ -237,7 +264,7 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 </div>
 <dialog id="pdlg">
   <form method="dialog" id="pform" autocomplete="off" onsubmit="return false">
-    <h3 id="ptitle">เพิ่มผู้ให้บริการ API</h3>
+    <h2 id="ptitle">เพิ่มผู้ให้บริการ API</h2>
     <label>ชื่อในระบบ (a-z 0-9 . _ -)<input id="pname" maxlength="40"></label>
     <label>Base URL<input id="purl" placeholder="https://…/v1"></label>
     <label>API Key<input id="pkey" type="password" autocomplete="new-password" spellcheck="false" placeholder="วาง API key ที่นี่"></label>
@@ -264,8 +291,8 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const COL={claude:'#f59e0b',worker:'#22d3ee',intern:'#c084fc'}, PAL=['#22d3ee','#c084fc','#3b82f6','#22c55e'];
-const col=n=>COL[n]||PAL[Math.abs([...String(n)].reduce((a,c)=>a+c.charCodeAt(0),0))%4];
+const COL={claude:'#c9772b',worker:'#2a8f9d',intern:'#8a6fc4'}, PAL=['#2a8f9d','#8a6fc4','#4f8f5a','#c2566b','#5b7fc7','#9a8a3a','#7a8190'];
+const col=n=>COL[n]||PAL[Math.abs([...String(n)].reduce((a,c)=>a+c.charCodeAt(0),0))%PAL.length];
 const now=()=>Date.now()/1000, hm=t=>new Date(t*1000).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 const ago=t=>{const s=now()-t;return s<5?'เมื่อกี้':s<60?Math.floor(s)+'s ago':s<3600?Math.floor(s/60)+'m ago':Math.floor(s/3600)+'h ago'};
 const pend=a=>a.reply==null&&a.blocked==null&&now()-a.t<300;
@@ -289,35 +316,35 @@ function flow(inModal){
   const noteFresh=S.notes.some(n=>now()-n.t<60);
   const W=140,H=58,PITCH=H+16, rvs=ag.filter(a=>a.kind==='reviewer'), mks=ag.filter(a=>a.kind!=='reviewer'), n=Math.max(rvs.length,mks.length,1), HH=Math.max(430,n*PITCH+90), MID=HH/2-H/2;
   const colY=(k,i)=>HH/2-(k*PITCH-16)/2+i*PITCH;
-  const N={trigger:{x:8,y:MID,c:'#3b82f6',g:'▶',t:'Trigger',s:'คำสั่งจากผู้ใช้',on:recent||anyBusy},
+  const N={trigger:{x:8,y:MID,c:'var(--bl)',g:'▶',t:'Trigger',s:'คำสั่งจากผู้ใช้',on:recent||anyBusy},
     claude:{x:160,y:MID,c:COL.claude,g:'C',t:'Claude (Head)',s:'วางแผน · แตกงาน',on:anyBusy,b:S.notes.length},
-    policy:{x:312,y:MID,c:'#f59e0b',g:'⛨',t:'Policy Check',s:'Boundary · กรอง brief',on:anyBusy},
-    blocked:{x:312,y:MID+130,c:'#ef4444',g:'!',t:'Blocked',s:'ถูกบล็อก / ผิดพลาด',on:blk,b:A.filter(a=>a.blocked!=null).length},
-    review:{x:842,y:MID-50,c:'#f59e0b',g:'✓',t:'Review',s:'Claude ตรวจผล',on:noteFresh,b:S.notes.length},
-    response:{x:842,y:MID+50,c:'#22c55e',g:'↩',t:'Response',s:'รายงานผู้ใช้',on:noteFresh}};
+    policy:{x:312,y:MID,c:'var(--or)',g:'⛨',t:'Policy Check',s:'Boundary · กรอง brief',on:anyBusy},
+    blocked:{x:312,y:MID+130,c:'var(--rd)',g:'!',t:'Blocked',s:'ถูกบล็อก / ผิดพลาด',on:blk,b:A.filter(a=>a.blocked!=null).length},
+    review:{x:842,y:MID-50,c:'var(--or)',g:'✓',t:'Review',s:'Claude ตรวจผล',on:noteFresh,b:S.notes.length},
+    response:{x:842,y:MID+50,c:'var(--gr)',g:'↩',t:'Response',s:'รายงานผู้ใช้',on:noteFresh}};
   const place=(a,x,y)=>{N['a:'+a.name]={x,y,c:col(a.name),g:a.name[0].toUpperCase(),t:a.title.length>19?a.title.slice(0,18)+'…':a.title,full:a.title+' · '+a.model,s:a.model.split('/').pop().slice(0,24),on:busy.has(a.name),b:A.filter(z=>z.agent===a.name&&z.blocked==null).length}};
   mks.forEach((a,i)=>place(a,478,colY(mks.length,i))); rvs.forEach((a,i)=>place(a,660,colY(rvs.length,i)));
-  N.hub={x:628,y:MID+H/2-9,w:18,h:18,hub:1,c:'#64748b',g:'',t:'',s:'',on:anyBusy};
+  N.hub={x:628,y:MID+H/2-9,w:18,h:18,hub:1,c:'var(--mu)',g:'',t:'',s:'',on:anyBusy};
   const vs=Object.values(N); NBOX=[Math.min(...vs.map(o=>o.x)),Math.min(...vs.map(o=>o.y))-12,Math.max(...vs.map(o=>o.x))+W,Math.max(...vs.map(o=>o.y))+H];
   const E=[['trigger','claude',N.trigger.on],['claude','policy',anyBusy]];
   mks.forEach(a=>{E.push(['policy','a:'+a.name,busy.has(a.name)]);E.push(['a:'+a.name,'hub',busy.has(a.name)])}); rvs.forEach(a=>{E.push(['hub','a:'+a.name,busy.has(a.name)]);E.push(['a:'+a.name,'review',busy.has(a.name)||noteFresh])}); if(!rvs.length)E.push(['hub','review',noteFresh]);
   E.push(['review','response',noteFresh],['policy','blocked',blk,'down']);
-  let g=`<defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#5b6a8f"/></marker></defs>`;
+  let g=`<defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="var(--ln2)"/></marker></defs>`;
   let ids=0;
   E.forEach(([f,t,on,dir])=>{const a=N[f],b=N[t];let x1,y1,x2,y2,d;
     if(dir==='down'){x1=a.x+W/2;y1=a.y+H;x2=b.x+W/2;y2=b.y;d=`M${x1} ${y1} C${x1} ${y1+40} ${x2} ${y2-40} ${x2} ${y2}`}
     else{x1=a.x+(a.w||W);y1=a.y+(a.h||H)/2;x2=b.x;y2=b.y+(b.h||H)/2;const dx=(x2-x1)/2;d=`M${x1} ${y1} C${x1+dx} ${y1} ${x2-dx} ${y2} ${x2} ${y2}`}
-    const id='e'+(ids++), c=dir==='down'?'#ef4444':(b.c||'#3b82f6');
-    g+=`<path id="${id}" d="${d}" fill="none" stroke="${on?c:'#33415f'}" stroke-width="${on?2.2:1.6}" ${on?'stroke-dasharray="6 6" style="animation:fl .7s linear infinite"':''} marker-end="url(#ar)"/>`;
-    if(on)for(let k=0;k<2;k++)g+=`<circle r="4" fill="${c}" style="filter:drop-shadow(0 0 5px ${c})"><animateMotion dur="1.5s" begin="${k*.75}s" repeatCount="indefinite"><mpath href="#${id}"/></animateMotion></circle>`});
+    const id='e'+(ids++), c=dir==='down'?'var(--rd)':(b.c||'var(--bl)');
+    g+=`<path id="${id}" d="${d}" fill="none" stroke="${on?c:'var(--ln)'}" stroke-width="${on?2.2:1.6}" ${on?'stroke-dasharray="6 6" style="animation:fl .7s linear infinite"':''} marker-end="url(#ar)"/>`;
+    if(on)for(let k=0;k<2;k++)g+=`<circle r="4" fill="${c}"><animateMotion dur="1.5s" begin="${k*.75}s" repeatCount="indefinite"><mpath href="#${id}"/></animateMotion></circle>`});
   Object.entries(N).forEach(([id,o])=>{const sel=selNode===id;
-    if(o.hub){g+=`<g><circle cx="${o.x+9}" cy="${o.y+9}" r="9" fill="#0c1426" stroke="${o.on?'#f59e0b':'#475569'}" stroke-width="1.6"/><text x="${o.x+9}" y="${o.y+13}" text-anchor="middle" font-size="11" fill="#cbd5e1">⇢</text></g>`;return}
-    g+=`<g data-n="${esc(id)}" style="cursor:pointer"><title>${esc(o.full||o.t)}</title><rect x="${o.x}" y="${o.y}" width="${W}" height="${H}" rx="10" fill="#0c1426" stroke="${o.on||sel?o.c:'#27355a'}" stroke-width="${sel?2:1.4}" style="${o.on?`filter:drop-shadow(0 0 10px ${o.c}88)`:''}"/>
-    <circle cx="${o.x+24}" cy="${o.y+H/2}" r="13" fill="${o.c}"/><text x="${o.x+24}" y="${o.y+H/2+4.5}" text-anchor="middle" font-size="12" font-weight="800" fill="#0a0f1c">${esc(o.g)}</text>
-    <text x="${o.x+46}" y="${o.y+24}" fill="#e6ebf7" font-size="12.5" font-weight="700">${esc(o.t)}</text>
-    <text x="${o.x+46}" y="${o.y+40}" fill="#8693b3" font-size="10">${esc(o.s)}</text>
-    ${o.b?`<g><rect x="${o.x+W-30}" y="${o.y-8}" width="26" height="16" rx="8" fill="${o.c}"/><text x="${o.x+W-17}" y="${o.y+3.5}" text-anchor="middle" font-size="10" font-weight="800" fill="#0a0f1c">${o.b}</text></g>`:''}</g>`});
-  g+=`<g font-size="11" font-weight="700" fill="#64748b"><text x="478" y="${colY(mks.length,0)-14}">① ผู้ทำงาน (${mks.length})</text><text x="660" y="${colY(rvs.length||1,0)-14}">② ผู้ตรวจ (${rvs.length})</text><text x="842" y="${MID-64}">③ Claude ตรวจรอบสุดท้าย</text></g>`;
+    if(o.hub){g+=`<g><circle cx="${o.x+9}" cy="${o.y+9}" r="9" fill="var(--p)" stroke="${o.on?'var(--or)':'var(--ln2)'}" stroke-width="1.6"/><text x="${o.x+9}" y="${o.y+13}" text-anchor="middle" font-size="11" fill="var(--mu)">⇢</text></g>`;return}
+    g+=`<g data-n="${esc(id)}" style="cursor:pointer"><title>${esc(o.full||o.t)}</title><rect x="${o.x}" y="${o.y}" width="${W}" height="${H}" rx="10" fill="var(--p)" stroke="${o.on||sel?o.c:'var(--ln)'}" stroke-width="${sel?2:1.4}" style="${o.on?``:''}"/>
+    <circle cx="${o.x+24}" cy="${o.y+H/2}" r="13" fill="${o.c}"/><text x="${o.x+24}" y="${o.y+H/2+4.5}" text-anchor="middle" font-size="12" font-weight="800" fill="var(--on)">${esc(o.g)}</text>
+    <text x="${o.x+46}" y="${o.y+24}" fill="var(--tx)" font-size="12.5" font-weight="700">${esc(o.t)}</text>
+    <text x="${o.x+46}" y="${o.y+40}" fill="var(--mu)" font-size="10">${esc(o.s)}</text>
+    ${o.b?`<g><rect x="${o.x+W-30}" y="${o.y-8}" width="26" height="16" rx="8" fill="${o.c}"/><text x="${o.x+W-17}" y="${o.y+3.5}" text-anchor="middle" font-size="10" font-weight="800" fill="var(--on)">${o.b}</text></g>`:''}</g>`});
+  g+=`<g font-size="11" font-weight="700" fill="var(--mu)"><text x="478" y="${colY(mks.length,0)-14}">① ผู้ทำงาน (${mks.length})</text><text x="660" y="${colY(rvs.length||1,0)-14}">② ผู้ตรวจ (${rvs.length})</text><text x="842" y="${MID-64}">③ Claude ตรวจรอบสุดท้าย</text></g>`;
   return `<div class="canvas">${inModal?'':ZCI}<svg viewBox="0 0 990 ${HH}"><g class="zg">${g}</g></svg><div class="zoom">คลิกโหนดเพื่อดูรายละเอียดใน Inspector · ${anyBusy?'● กำลังทำงาน':'○ ว่าง'}</div></div>`;
 }
 
@@ -327,11 +354,11 @@ function bottom(){
   const ms=ok.filter(a=>a.ms).map(a=>a.ms).sort((x,y)=>x-y), p95=ms.length?ms[Math.min(ms.length-1,Math.floor(ms.length*.95))]/1000:0;
   const team=S.agents.map(a=>{const w=A.some(z=>z.agent===a.name&&pend(z));return `<div class="src"><i style="background:${col(a.name)}">${esc(a.name[0].toUpperCase())}</i><div class="n">${esc(a.title)}<div class="m">${esc(a.model.split('/').pop())}</div></div><span class="badge ${w?'wk':'ok'}">${w?'Working':'Ready'}</span></div>`}).join('');
   const hosts={};S.agents.forEach(a=>{(hosts[a.host]??={n:0,w:false}).n+=A.filter(z=>z.agent===a.name&&z.blocked==null).length;});
-  const gw=Object.entries(hosts).map(([h,o])=>`<div class="src"><i style="background:#3b82f6">⌁</i><div class="n">${esc(h)}</div><span class="m">${o.n} calls</span><span class="badge ok">Active</span></div>`).join('');
+  const gw=Object.entries(hosts).map(([h,o])=>`<div class="src"><i style="background:var(--bl)">⌁</i><div class="n">${esc(h)}</div><span class="m">${o.n} calls</span><span class="badge ok">Active</span></div>`).join('');
   return `<div class="row3" id="mon"><div class="card"><h3>Team Members</h3>${team||'<div class="empty">ยังไม่มีลูกทีม</div>'}</div>
-  <div class="card"><h3>Monitoring</h3><div class="mon"><div><small>Total Calls</small><b>${ok.length}</b>${spark(buckets(A),'#3b82f6')}</div>
-  <div><small>Errors</small><b style="color:var(--rd)">${A.length?(er.length/A.length*100).toFixed(1):0}%</b>${spark(buckets(A.filter(a=>a.blocked!=null)),'#ef4444')}</div>
-  <div><small>Latency P95</small><b>${p95.toFixed(1)}s</b>${spark(A.filter(a=>a.ms).slice(0,20).reverse().map(a=>a.ms),'#22d3ee')}</div></div></div>
+  <div class="card"><h3>Monitoring</h3><div class="mon"><div><small>Total Calls</small><b>${ok.length}</b>${spark(buckets(A),'var(--bl)')}</div>
+  <div><small>Errors</small><b style="color:var(--rd)">${A.length?(er.length/A.length*100).toFixed(1):0}%</b>${spark(buckets(A.filter(a=>a.blocked!=null)),'var(--rd)')}</div>
+  <div><small>Latency P95</small><b>${p95.toFixed(1)}s</b>${spark(A.filter(a=>a.ms).slice(0,20).reverse().map(a=>a.ms),'var(--cy)')}</div></div></div>
   <div class="card"><h3>Gateways</h3>${gw||'<div class="empty">—</div>'}</div></div>`;
 }
 
@@ -355,8 +382,8 @@ let U=null, uAt=0;
 async function loadUsage(){try{U=await (await fetch('/api/usage')).json();uAt=Date.now();if(view==='usage')render()}catch(e){}}
 setInterval(()=>{if(view==='usage'&&Date.now()-uAt>30000)loadUsage()},5000);
 const fmtN=n=>n>=1e9?(n/1e9).toFixed(2)+'B':n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?(n/1e3).toFixed(1)+'k':String(n);
-const CL_COL={'opus':'#f59e0b','sonnet':'#3b82f6','haiku':'#22c55e','fable':'#c084fc'};
-const clCol=m=>{const k=Object.keys(CL_COL).find(x=>m.includes(x));return CL_COL[k]||'#8693b3'};
+const CL_COL={'opus':'var(--or)','sonnet':'var(--bl)','haiku':'var(--gr)','fable':'var(--pk)'};
+const clCol=m=>{const k=Object.keys(CL_COL).find(x=>m.includes(x));return CL_COL[k]||'var(--mu)'};
 const clName=m=>m.replace('claude-','').replace(/-/g,' ');
 function dayBars(days,keys,colOf,title){
   if(!days.length)return '<div style="color:var(--mu)">ยังไม่มีข้อมูล</div>';
@@ -373,15 +400,15 @@ function usageView(){
   const mxc=Math.max(1,...T.seats.map(x=>x.calls)), mxo=Math.max(1,...C.models.map(x=>x.output));
   const kpi=(l,v,s,c)=>`<div class="card" style="flex:1;min-width:150px"><div style="color:var(--mu);font-size:11px">${l}</div><div style="font-size:24px;font-weight:800;color:${c||'var(--tx)'}">${v}</div><div style="color:var(--mu);font-size:11px">${s||''}</div></div>`;
   const plan=U.plan?`<div class="card"><h4 style="margin:0 0 8px">โควตาแผน Claude <span style="color:var(--mu);font-weight:400;font-size:11px">· ${esc(U.plan.plan)} · บันทึกเมื่อ ${hm(U.plan.at)} (ภาพ ณ ตอนนั้น ไม่อัปเดตเอง)</span></h4>
-    ${U.plan.windows.map(w=>`<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${esc(w.label)}</span><span style="color:var(--mu)">${w.pct}% · รีเซ็ตใน ${esc(w.resets)}</span></div><div style="height:7px;background:#ffffff12;border-radius:4px;overflow:hidden"><div style="width:${w.pct}%;height:100%;background:${w.pct>80?'#ef4444':w.pct>50?'#f59e0b':'#22c55e'}"></div></div></div>`).join('')}</div>`:'';
+    ${U.plan.windows.map(w=>`<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${esc(w.label)}</span><span style="color:var(--mu)">${w.pct}% · รีเซ็ตใน ${esc(w.resets)}</span></div><div style="height:7px;background:var(--hair);border-radius:4px;overflow:hidden"><div style="width:${w.pct}%;height:100%;background:${w.pct>80?'var(--rd)':w.pct>50?'var(--or)':'var(--gr)'}"></div></div></div>`).join('')}</div>`:'';
   const claudeRows=C.models.map(m=>`<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${clCol(m.model)};margin-right:7px"></span><b>${esc(clName(m.model))}</b></td>
-    <td style="min-width:150px"><div style="height:8px;background:#ffffff12;border-radius:4px"><div style="width:${m.output/mxo*100}%;height:100%;background:${clCol(m.model)};border-radius:4px"></div></div></td>
+    <td style="min-width:150px"><div style="height:8px;background:var(--hair);border-radius:4px"><div style="width:${m.output/mxo*100}%;height:100%;background:${clCol(m.model)};border-radius:4px"></div></div></td>
     <td style="text-align:right">${fmtN(m.output)}</td><td style="text-align:right">${fmtN(m.input+m.cache_create)}</td><td style="text-align:right;color:var(--mu)">${fmtN(m.cache_read)}</td><td style="text-align:right">${m.calls.toLocaleString()}</td></tr>`).join('');
   const teamRows=T.seats.map(x=>{const a=seatInfo[x.agent]||{};const c=col(x.agent);return `<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};margin-right:7px"></span><b>${esc(a.title||x.agent)}</b><div style="color:var(--mu);font-size:10.5px;margin-left:16px">${esc(x.agent)} · ${esc((x.model||'').split('/').pop())}</div></td>
     <td style="color:var(--mu)">${esc(x.gateway)}</td>
-    <td style="min-width:130px"><div style="height:8px;background:#ffffff12;border-radius:4px"><div style="width:${x.calls/mxc*100}%;height:100%;background:${c};border-radius:4px"></div></div></td>
-    <td style="text-align:right">${x.calls}</td><td style="text-align:right;color:${x.errors?'#ef4444':'var(--mu)'}">${x.errors}</td><td style="text-align:right;color:${x.blocked?'#f59e0b':'var(--mu)'}">${x.blocked}</td>
-    ${[[x.q_pass,x.q_fail],[x.c_pass,x.c_fail]].map(([a,b])=>{const n=a+b,p=n?Math.round(a*100/n):null;return `<td style="text-align:right;color:${p==null?'var(--mu)':p>=70?'#22c55e':p>=40?'#f59e0b':'#ef4444'}" title="${a} ผ่าน / ${b} ไม่ผ่าน">${p==null?'—':p+'% <span style="color:var(--mu);font-size:10px">('+n+')</span>'}</td>`}).join('')}<td style="text-align:right">${x.avg_s==null?'—':x.avg_s+'s'}</td><td style="text-align:right;color:var(--mu)">${fmtN(x.chars_out)}</td></tr>`}).join('');
+    <td style="min-width:130px"><div style="height:8px;background:var(--hair);border-radius:4px"><div style="width:${x.calls/mxc*100}%;height:100%;background:${c};border-radius:4px"></div></div></td>
+    <td style="text-align:right">${x.calls}</td><td style="text-align:right;color:${x.errors?'var(--rd)':'var(--mu)'}">${x.errors}</td><td style="text-align:right;color:${x.blocked?'var(--or)':'var(--mu)'}">${x.blocked}</td>
+    ${[[x.q_pass,x.q_fail],[x.c_pass,x.c_fail]].map(([a,b])=>{const n=a+b,p=n?Math.round(a*100/n):null;return `<td style="text-align:right;color:${p==null?'var(--mu)':p>=70?'var(--gr)':p>=40?'var(--or)':'var(--rd)'}" title="${a} ผ่าน / ${b} ไม่ผ่าน">${p==null?'—':p+'% <span style="color:var(--mu);font-size:10px">('+n+')</span>'}</td>`}).join('')}<td style="text-align:right">${x.avg_s==null?'—':x.avg_s+'s'}</td><td style="text-align:right;color:var(--mu)">${fmtN(x.chars_out)}</td></tr>`}).join('');
   const tdays=T.days, tkeys=T.seats.map(x=>x.agent);
   const ckeys=[...new Set(C.days.flatMap(d=>Object.keys(d.by)))];
   return `<div style="display:flex;flex-direction:column;gap:12px">
@@ -450,23 +477,23 @@ function seqSVG(job){
   });
   notes.forEach(n=>ev.push({t:n.t,f:'claude',to:'user',k:'note',label:'ตรวจผล: '+n.text.slice(0,34)+(n.text.length>34?'…':''),det:{title:'Claude ตรวจผล → ผู้ใช้',text:n.text}}));
   ev.sort((x,y)=>x.t-y.t); EV=ev;
-  const RH=58,TOP=104,H=TOP+ev.length*RH+24, C={start:'#3b82f6',brief:null,reply:'#22c55e',err:'#ef4444',note:'#f59e0b',pend:null};
-  let g=`<defs>${[['b','#3b82f6'],['g','#22c55e'],['r','#ef4444'],['o','#f59e0b'],['c','#22d3ee'],['p','#c084fc']].map(([i,c])=>`<marker id="mk${i}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="${c}"/></marker>`).join('')}</defs>`;
-  lanes.forEach(n=>{const x=lx(n),c=n==='user'?'#3b82f6':col(n),s=n==='user'?{title:'คุณ',catalog:'ผู้ใช้'}:n==='claude'?{title:'Claude',catalog:'Head'}:seatInfo(n);
-    g+=`<line x1="${x}" x2="${x}" y1="64" y2="${H}" stroke="#27355a" stroke-dasharray="4 6"/><rect x="${x-70}" y="10" width="140" height="48" rx="10" fill="#0c1426" stroke="${c}" stroke-width="1.6"/>
-    <text x="${x}" y="30" text-anchor="middle" fill="${c}" font-weight="700" font-size="13">${esc(s.title)}</text><text x="${x}" y="46" text-anchor="middle" fill="#8693b3" font-size="10">${esc(String(s.catalog||'').slice(0,22))}</text>`});
+  const RH=58,TOP=104,H=TOP+ev.length*RH+24, C={start:'var(--bl)',brief:null,reply:'var(--gr)',err:'var(--rd)',note:'var(--or)',pend:null};
+  let g=`<defs>${[['b','var(--bl)'],['g','var(--gr)'],['r','var(--rd)'],['o','var(--or)'],['c','var(--cy)'],['p','var(--pk)']].map(([i,c])=>`<marker id="mk${i}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="${c}"/></marker>`).join('')}</defs>`;
+  lanes.forEach(n=>{const x=lx(n),c=n==='user'?'var(--bl)':col(n),s=n==='user'?{title:'คุณ',catalog:'ผู้ใช้'}:n==='claude'?{title:'Claude',catalog:'Head'}:seatInfo(n);
+    g+=`<line x1="${x}" x2="${x}" y1="64" y2="${H}" stroke="var(--ln)" stroke-dasharray="4 6"/><rect x="${x-70}" y="10" width="140" height="48" rx="10" fill="var(--p)" stroke="${c}" stroke-width="1.6"/>
+    <text x="${x}" y="30" text-anchor="middle" fill="${c}" font-weight="700" font-size="13">${esc(s.title)}</text><text x="${x}" y="46" text-anchor="middle" fill="var(--mu)" font-size="10">${esc(String(s.catalog||'').slice(0,22))}</text>`});
   ev.forEach((e,i)=>{const y=TOP+i*RH,x1=lx(e.f),x2=lx(e.to),dir=x2>x1?1:-1,sel=mev===i;
     const seat=e.k==='brief'||e.k==='pend'?(e.k==='brief'?e.to:e.f):null;
-    const c=C[e.k]||col(seat), mk=c==='#3b82f6'?'b':c==='#22c55e'?'g':c==='#ef4444'?'r':c==='#f59e0b'?'o':c==='#22d3ee'?'c':'p';
+    const c=C[e.k]||col(seat), mk=c==='var(--bl)'?'b':c==='var(--gr)'?'g':c==='var(--rd)'?'r':c==='var(--or)'?'o':c==='var(--cy)'?'c':'p';
     const dash=e.k==='pend'?'stroke-dasharray="6 6" style="animation:fl .7s linear infinite"':'';
     const mid=(x1+x2)/2, w=Math.max(180,Math.abs(x2-x1)-16);
     g+=`<g class="evg ${sel?'sel':''}" data-ev="${i}"><rect class="hit" x="${Math.min(x1,x2)-4}" y="${y-30}" width="${Math.abs(x2-x1)+8}" height="${RH-6}" rx="8" fill="transparent"/>
       <line class="al" x1="${x1+dir*3}" x2="${x2-dir*5}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="2.2" ${dash} marker-end="url(#mk${mk})"/>
-      <text x="${mid}" y="${y-8}" text-anchor="middle" font-size="11" fill="${sel?'#e6ebf7':'#b6c1dd'}">${esc(e.label)}</text>
-      <text x="8" y="${y+4}" font-size="10" fill="#8693b3">${e.k==='pend'?'…':hm(e.t)}</text></g>`;
-    if(e.k==='pend')g+=`<circle r="4" fill="${c}" style="filter:drop-shadow(0 0 5px ${c})"><animateMotion dur="1.4s" repeatCount="indefinite" path="M${x1} ${y} L${x2} ${y}"/></circle>`;
+      <text x="${mid}" y="${y-8}" text-anchor="middle" font-size="11" fill="${sel?'var(--tx)':'var(--mu)'}">${esc(e.label)}</text>
+      <text x="8" y="${y+4}" font-size="10" fill="var(--mu)">${e.k==='pend'?'…':hm(e.t)}</text></g>`;
+    if(e.k==='pend')g+=`<circle r="4" fill="${c}"><animateMotion dur="1.4s" repeatCount="indefinite" path="M${x1} ${y} L${x2} ${y}"/></circle>`;
   });
-  return `<div class="legd"><span><i style="background:#3b82f6"></i>คำสั่ง</span><span><i style="background:#22d3ee"></i>brief ส่งลูกทีม</span><span><i style="background:#22c55e"></i>คำตอบกลับ</span><span><i style="background:#f59e0b"></i>ผลตรวจของ Claude</span><span><i style="background:#ef4444"></i>ผิดพลาด/บล็อก</span></div><svg viewBox="0 0 1000 ${H}">${g}</svg>`;
+  return `<div class="legd"><span><i style="background:var(--bl)"></i>คำสั่ง</span><span><i style="background:var(--cy)"></i>brief ส่งลูกทีม</span><span><i style="background:var(--gr)"></i>คำตอบกลับ</span><span><i style="background:var(--or)"></i>ผลตรวจของ Claude</span><span><i style="background:var(--rd)"></i>ผิดพลาด/บล็อก</span></div><svg viewBox="0 0 1000 ${H}">${g}</svg>`;
 }
 function renderModal(){
   const m=$('modal'); m.hidden=!modal; if(!modal)return;
@@ -597,25 +624,40 @@ function evaluations(){
   const gate=(t,good,note)=>`<div class="gate"><div class="ic ${good?'':'w'}">${good?'✓':'!'}</div><span>${t}</span><em>${esc(note)}</em></div>`;
   const ms=A.filter(a=>a.ms).slice(0,20).reverse().map(a=>a.ms);
   const tot=ok.length+er.length+wk.length||1, C=2*Math.PI*30, seg=(n,o)=>`${n/tot*C} ${C}`, offs=[0,ok.length/tot*C,(ok.length+wk.length)/tot*C];
-  const ring=[[ok.length,'#3b82f6',offs[0]],[wk.length,'#f59e0b',offs[1]],[er.length,'#ef4444',offs[2]]].map(([n,c,o])=>n?`<circle cx="40" cy="40" r="30" fill="none" stroke="${c}" stroke-width="10" stroke-dasharray="${n/tot*C} ${C}" stroke-dashoffset="${-o}" transform="rotate(-90 40 40)"/>`:'').join('');
+  const ring=[[ok.length,'var(--bl)',offs[0]],[wk.length,'var(--or)',offs[1]],[er.length,'var(--rd)',offs[2]]].map(([n,c,o])=>n?`<circle cx="40" cy="40" r="30" fill="none" stroke="${c}" stroke-width="10" stroke-dasharray="${n/tot*C} ${C}" stroke-dashoffset="${-o}" transform="rotate(-90 40 40)"/>`:'').join('');
   return `<div class="sec"><h4>Release Gate <a>Boundary</a></h4>
     ${gate('ไม่มีข้อมูลลับใน brief',true,forb?`บล็อกแล้ว ${forb}`:'ไม่พบ')}
     ${gate('ความยาว brief ≤ 8,000',true,long?`บล็อกแล้ว ${long}`:'ปกติ')}
     ${gate('งบเรียก/ชั่วโมง',hr<25,`${hr}/30`)}
     ${gate('Claude ตรวจผลทุกงาน',jobs.length===rev,`${rev}/${jobs.length} งาน`)}
     ${gate('สายบังคับบัญชา Head→ลูกทีม',true,'บังคับใช้')}</div>
-  <div class="sec"><h4>Evaluation Results <a>เวลาตอบ (ms)</a></h4>${spark(ms,'#3b82f6',290,70)}</div>
-  <div class="sec"><h4>Task Status</h4><div class="tc"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30" fill="none" stroke="#ffffff10" stroke-width="10"/>${ring}</svg>
-    <div class="leg"><span><i style="background:#3b82f6"></i>Passed ${ok.length}</span><span><i style="background:#f59e0b"></i>Working ${wk.length}</span><span><i style="background:#ef4444"></i>Failed ${er.length}</span></div></div></div>
+  <div class="sec"><h4>Evaluation Results <a>เวลาตอบ (ms)</a></h4>${spark(ms,'var(--bl)',290,70)}</div>
+  <div class="sec"><h4>Task Status</h4><div class="tc"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30" fill="none" stroke="var(--hair)" stroke-width="10"/>${ring}</svg>
+    <div class="leg"><span><i style="background:var(--bl)"></i>Passed ${ok.length}</span><span><i style="background:var(--or)"></i>Working ${wk.length}</span><span><i style="background:var(--rd)"></i>Failed ${er.length}</span></div></div></div>
   <div class="sec"><h4>Latest Traces <a data-r="hist" style="cursor:pointer">View all</a></h4>${traces(5)}</div>`;
 }
 function traces(n){const r=S.audit.slice(0,n);return r.map(a=>{const s=st(a);return `<div class="tr" data-t="${esc(a.agent)}"><span class="t">${esc(a.brief.slice(0,46))}</span><span class="badge ${s==='done'?'ok':s==='work'?'wk':'er'}">${s==='done'?'completed':s==='work'?'working':isBlk(a)?'blocked':'error'}</span><small>${ago(a.t)}</small></div>`}).join('')||'<div class="empty">ยังไม่มี trace</div>'}
+
+
+/* ---------- theme ---------- */
+const THEMES=['auto','light','dark'], THL={auto:'◐ อัตโนมัติ',light:'☀ สว่าง',dark:'☾ มืด'};
+function getTheme(){try{return localStorage.getItem('aiteam-theme')||'auto'}catch(e){return 'auto'}}
+function applyTheme(t){const r=document.documentElement;if(t==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',t);const b=document.getElementById('theme');if(b)b.textContent=THL[t]}
+applyTheme(getTheme());
+document.addEventListener('click',e=>{if(e.target.closest('#theme')){const n=THEMES[(THEMES.indexOf(getTheme())+1)%3];try{localStorage.setItem('aiteam-theme',n)}catch(_){}applyTheme(n);if(typeof render==='function')render()}});
+const ABOUT={design:['ผังงาน','ดูว่างานเดินผ่านใครบ้าง: คำสั่งของคุณ → Claude วางแผน → ผู้ทำงาน → ผู้ตรวจ → Claude ตรวจรอบสุดท้าย → รายงานกลับ จุดเรืองแสงที่วิ่งตามเส้นหมายถึงกำลังมีงานทำอยู่'],
+ studio:['จัดทีม','เลือกโมเดล AI ลงช่องทำงาน กำหนดตำแหน่ง (ผู้ทำ/ผู้ตรวจ) และเพิ่มผู้ให้บริการ API ช่อง (seat) คือที่นั่งของ AI หนึ่งตัว'],
+ jobs:['งานที่แจก','รายการงานที่สั่งทีมไว้ แยกตามสถานะ กดดูผลลัพธ์หรือเส้นทางของแต่ละงานได้'],
+ usage:['การใช้ AI','ใครถูกเรียกใช้เท่าไร รวม Claude ด้วย ตัวเลขโทเคนของ Claude นับจากเครื่องนี้ ทีมนับเป็นจำนวนครั้ง "ผ่านผู้ตรวจ" บอกคุณภาพจริง ส่วน "API พลาด" แค่เรียกไม่สำเร็จ'],
+ audit:['บันทึกการเรียก','ประวัติทุกครั้งที่ระบบส่งงานให้ AI ใช้ตรวจย้อนหลังว่าส่งอะไรไป ใครตอบ ใช้เวลาเท่าไร หรือถูกบล็อกเพราะอะไร']};
+const TERMS='<details class="terms"><summary>ศัพท์ที่เจอบ่อย</summary><dl><dt>Boundary</dt><dd>ด่านตรวจก่อนส่งงานให้ AI: กันข้อมูลลับ ความยาวเกิน และจำนวนครั้งต่อชั่วโมง</dd><dt>Gateway</dt><dd>ผู้ให้บริการ AI ที่เราเชื่อมผ่าน API (เช่น Tokenme, NVIDIA)</dd><dt>Seat (ช่อง)</dt><dd>ที่นั่งของ AI หนึ่งตัวในทีม ใส่โมเดลและตำแหน่งได้</dd><dt>Trace</dt><dd>เส้นทางของงานหนึ่งชิ้นว่าผ่านใครบ้าง</dd><dt>Head</dt><dd>Claude ผู้สั่งและตรวจงานทั้งหมด</dd></dl></details>';
+function aboutBox(){const a=ABOUT[view];return a?`<div class="about"><b>${a[0]}</b> — ${a[1]}</div>`:''}
 
 function render(){
   document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
   document.querySelectorAll('#rt [data-r]').forEach(b=>b.classList.toggle('on',b.dataset.r===rtab));
   const qn=S.queue||{}, qw=(qn.queued||0)+(qn.running||0), busy=S.audit.some(pend)||qw>0; $('live').textContent=qw?`Queue ${qn.running||0} กำลังทำ · ${qn.queued||0} รอ`:(busy?'Working':'Live'); $('live').classList.toggle('idle',!busy);
-  $('cen').innerHTML=(view==='design'?flow()+bottom():view==='studio'?studioView():view==='jobs'?jobsView():view==='usage'?usageView():auditView());
+  $('cen').innerHTML=aboutBox()+(view==='design'?flow()+bottom():view==='studio'?studioView():view==='jobs'?jobsView():view==='usage'?usageView():auditView())+TERMS;
   if(view==='design')applyCtx(CTX.i);
   $('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;
 }
