@@ -62,6 +62,14 @@ python3 ~/.claude/skills/ai-team/scripts/team.py add worker --base-url https://G
 - ป้องกัน: Base URL ต้องเป็น https:// (หรือ http://localhost สำหรับทดสอบ), ปฏิเสธ URL ตัวอย่าง (`xxx`, `YOUR-`, `example.`), ชื่อใช้ได้เฉพาะ `a-z 0-9 . _ -`, การเขียนต้องมี header `X-Dash` + Host เป็น localhost (กัน CSRF)
 - ลบผู้ให้บริการได้เมื่อไม่มีช่องในทีมใช้โมเดลของมัน (ลบโมเดลของมันออกจากแคตตาล็อกด้วย)
 
+## ทีมทดสอบ Odoo ของจริง (พนักงานเขียนเคส Claude รันให้)
+พนักงาน AI **ไม่ได้รับรหัส/เซสชัน Odoo** — เขียนเคสเป็น JSON ตาม DSL (`scripts/odoo-qa/odoo_spec.py` อธิบายกฎ) แล้ว
+1. ส่งงานด้วย `--flow "senior_tester@seat2" --rounds 2 --check spec` → ตัวตรวจ `spec` ปฏิเสธโมเดล/เมธอดนอก whitelist, id ตรงๆ, ฟิลด์ต้องห้าม, scenario ที่ไม่มี assert และส่งข้อผิดพลาดกลับให้พนักงานแก้ (ดูตัวอย่างบรีฟใน `scripts/odoo-qa/brief_gen_example.py`)
+2. ผู้ใช้ล็อกอิน Odoo เองในเบราว์เซอร์ Claude วาง `scripts/odoo-qa/odoo_runner.js` (ต้องมี `window.rpc`) แล้วเรียก `runScenarios(specs)` ผลคือ PASS/FAIL ต่อ scenario พร้อมขั้นที่ล้ม
+3. ตัวรันเขียน/สั่งงานได้เฉพาะเรคอร์ดที่สร้างหลังเริ่มรัน, ไม่มี unlink, ชื่อพาร์ทเนอร์/สินค้าใส่ `[TEST]` — ใช้กับฐานข้อมูลทดสอบที่ผู้ใช้ยืนยันเท่านั้น
+4. Claude ตีความผลล้มก่อนรายงาน: แยก "บั๊กจริง" ออกจาก "สมมติฐานผิดของเคส" (เช่น ส่วนลดจำนวนเงินระบบถือรวม VAT) และ "มลพิษจากรอบก่อน" (เลขเอกสารชน)
+- ความยาว brief เริ่มต้น 8,000 ตัวอักษร ปรับด้วย `team.py limit --chars N` (บรีฟ DSL ยาว ~6,000 และรอบแก้จะยาวขึ้น)
+
 ## ช่องทีมและหลาย AI ต่องาน (Team Builder)
 โครงสร้าง: `gateways` (URL + key) → `catalog` (โมเดล + ราคา) → `seats` (ช่องทีม ชี้ catalog) ผู้ใช้ลากโมเดลใส่ช่อง เลือกจำนวน AI และโหมดในแดชบอร์ด (แท็บ Studio) แล้วบอก Claude ให้ทำงาน
 1. อ่านค่าที่ผู้ใช้เลือก: `team.py plan` → `mode=… n=… active=seatA,seatB` ใช้เฉพาะช่อง active นี้ ห้ามเพิ่มเองโดยไม่ถาม (N ตัว = จ่าย N เท่า)

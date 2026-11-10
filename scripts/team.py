@@ -134,7 +134,7 @@ def call(c, seat, brief, job=None, role_ov=None):
     why = None
     if PLACEHOLDER.search(url):
         why = "base_url ยังเป็นค่าตัวอย่าง ห้ามส่ง key ไป"
-    elif len(brief) > MAX_CHARS:
+    elif len(brief) > int(setting(c, "max_chars", MAX_CHARS)):
         why = "brief ยาวเกินกำหนด"
     elif any(re.search(p, brief) for p in BLOCK):
         why = "brief มีข้อมูลต้องห้าม (key/รหัสผ่าน/เลข 13 หลัก)"
@@ -318,6 +318,9 @@ def run_check(chk, text):
         ok = bool(re.search(arg, text, re.S)); return ok, "" if ok else f"ไม่ตรง regex {arg}"
     if kind == "py":
         return run_py_check(arg, text)
+    if kind == "spec":
+        import odoo_spec
+        return odoo_spec.validate(text)
     if kind == "json":
         return (True, "") if first_json(text) is not None else (False, "ไม่ใช่ JSON")
     return True, ""
@@ -580,7 +583,7 @@ def main():
     p = sp.add_parser("wait"); p.add_argument("job", nargs="?"); p.add_argument("--timeout", type=int, default=900)
     p = sp.add_parser("results"); p.add_argument("--job"); p.add_argument("--status"); p.add_argument("--full", type=int)
     sp.add_parser("queue")
-    p = sp.add_parser("limit"); p.add_argument("n", nargs="?", type=int)
+    p = sp.add_parser("limit"); p.add_argument("n", nargs="?", type=int); p.add_argument("--chars", type=int)
     p = sp.add_parser("pool"); p.add_argument("action", choices=["set", "ls", "rm"]); p.add_argument("name", nargs="?"); p.add_argument("seats", nargs="*")
     x = ap.parse_args(); c = db()
     key = lambda who: os.environ.get("AI_TEAM_KEY") or getpass.getpass(f"API key ของ {who} (พิมพ์แล้วไม่แสดง): ")
@@ -675,7 +678,9 @@ def main():
         elif x.cmd == "limit":
             if x.n:
                 c.execute("insert or replace into settings values('max_calls_per_hour',?)", (str(x.n),)); c.commit()
-            print("เพดานเรียกโมเดล/ชั่วโมง =", setting(c, "max_calls_per_hour", MAX_CALLS_PER_HOUR))
+            if x.chars:
+                c.execute("insert or replace into settings values('max_chars',?)", (str(x.chars),)); c.commit()
+            print("เพดานเรียกโมเดล/ชั่วโมง =", setting(c, "max_calls_per_hour", MAX_CALLS_PER_HOUR), "| ความยาว brief สูงสุด (ตัวอักษร) =", setting(c, "max_chars", MAX_CHARS))
         elif x.cmd == "pool":
             if x.action == "set":
                 for sn in x.seats:
