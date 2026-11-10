@@ -101,7 +101,10 @@ class H(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        if self.path == "/api/state":
+        if self.path == "/api/usage":
+            import usage
+            self._send(200, json.dumps(usage.all_usage(db()), ensure_ascii=False).encode())
+        elif self.path == "/api/state":
             self._send(200, json.dumps(state(), ensure_ascii=False).encode())
         else:
             self._send(200, open(os.path.join(HERE, "dash.html"), "rb").read(), "text/html")
