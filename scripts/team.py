@@ -8,7 +8,7 @@
   note "งาน" "ผลตรวจ" | log [N] | models SEAT [คำค้น] | list
 DB: ~/.ai-team/team.db (env AI_TEAM_DB) — ไม่มีคำสั่งใดพิมพ์ key ออกมา
 """
-import argparse, collections, threading, concurrent.futures as cf, getpass, json, os, re, sqlite3, sys, time, urllib.error, urllib.request
+import argparse, collections, shutil, subprocess, tempfile, threading, concurrent.futures as cf, getpass, json, os, re, sqlite3, sys, time, urllib.error, urllib.request
 from urllib.parse import urlparse
 
 DB = os.environ.get("AI_TEAM_DB", os.path.expanduser("~/.ai-team/team.db"))
@@ -138,7 +138,7 @@ def call(c, seat, brief, job=None, role_ov=None):
         why = "brief ยาวเกินกำหนด"
     elif any(re.search(p, brief) for p in BLOCK):
         why = "brief มีข้อมูลต้องห้าม (key/รหัสผ่าน/เลข 13 หลัก)"
-    elif c.execute("select count(*) from audit where t>? and blocked is null", (time.time() - 3600,)).fetchone()[0] >= MAX_CALLS_PER_HOUR:
+    elif c.execute("select count(*) from audit where t>? and blocked is null", (time.time() - 3600,)).fetchone()[0] >= int(setting(c, "max_calls_per_hour", MAX_CALLS_PER_HOUR)):
         why = "เกินงบจำนวนครั้งต่อชั่วโมง"
     if why:
         c.execute("insert into audit(t,agent,model,brief,blocked,job) values(?,?,?,?,?,?)", (time.time(), seat, model, brief, why, job)); c.commit()
@@ -237,9 +237,25 @@ def run(c, a):
             print(f"\n[VOTE] {'เสมอ — Claude ตัดสิน' if tie else 'เสียงข้างมาก'}: " + ", ".join(f"'{k}'×{v}" for k, v in top))
 
 # ---------- คิวงานแบบ async: ส่งงานทีเดียวหลายชิ้น ให้ worker ทำขนานกัน (กันคอขวดที่ Claude) ----------
+def expand_pool(c, names):
+    """@ชื่อ -> รายชื่อช่องที่ตั้งไว้ด้วย team.py pool set"""
+    out = []
+    for n in names:
+        if n.startswith("@"):
+            v = setting(c, "pool:" + n[1:])
+            if v is None:
+                raise ValueError(f"ไม่พบกลุ่มช่อง '{n}' (ดู: team.py pool ls)")
+            out += [x for x in v.split(",") if x]
+        elif n:
+            out.append(n)
+    return out
+
+
 def submit(c, brief, pool, job=None, chk=None, flow=None, rounds=0, asrole=None):
-    pool = [x for x in (pool or "").split(",") if x]
+    pool = expand_pool(c, (pool or "").split(","))
     if flow:
+        for st in flow:
+            st["pool"] = expand_pool(c, st["pool"])
         pool = [x for st in flow for x in st["pool"]]
     if asrole:
         role_prompt(c, asrole)
@@ -263,6 +279,8 @@ def run_check(chk, text):
         ok = arg.lower() in text.lower(); return ok, "" if ok else f"ไม่พบ '{arg}'"
     if kind == "regex":
         ok = bool(re.search(arg, text, re.S)); return ok, "" if ok else f"ไม่ตรง regex {arg}"
+    if kind == "py":
+        return run_py_check(arg, text)
     if kind == "json":
         m = re.search(r"(\{.*\}|\[.*\])", text, re.S)
         try:
@@ -271,6 +289,25 @@ def run_check(chk, text):
         except Exception:
             return False, "ไม่ใช่ JSON"
     return True, ""
+
+
+def run_py_check(test_path, text):
+    """รันโค้ดที่โมเดลเขียน (code block แรก เป็น solution.py) กับสคริปต์เทสของเรา ในกล่องทราย macOS:
+    ห้ามเน็ตเวิร์ก ห้ามเขียนไฟล์นอกโฟลเดอร์ชั่วคราว จำกัดเวลา 15 วินาที"""
+    m = re.search(r"```(?:python)?\n(.*?)```", text, re.S)
+    code = m.group(1) if m else text
+    if not os.path.isfile(test_path):
+        return False, f"ไม่พบสคริปต์เทส {test_path}"
+    with tempfile.TemporaryDirectory() as d:
+        d = os.path.realpath(d)
+        open(os.path.join(d, "solution.py"), "w", encoding="utf-8").write(code)
+        shutil.copy(test_path, os.path.join(d, "test_solution.py"))
+        prof = f'(version 1)(allow default)(deny network*)(deny file-write* (subpath "/"))(allow file-write* (subpath "{d}"))(allow file-write* (literal "/dev/null"))'
+        try:
+            r = subprocess.run(["sandbox-exec", "-p", prof, sys.executable, "-E", "-s", "test_solution.py"], capture_output=True, text=True, timeout=15, cwd=d)
+        except Exception as e:
+            return False, f"รันเทสไม่ได้: {type(e).__name__}"
+        return r.returncode == 0, "" if r.returncode == 0 else ((r.stderr or r.stdout).strip()[-300:] or "เทสล้ม")
 
 
 def claim(c):
@@ -345,6 +382,15 @@ def run_flow(c, t, sems, busy, lock):
             return
         out = text
         if not rv:
+            if chk:
+                good_, why_ = run_check(chk, out)
+                trace.append({"stage": "check", "round": rnd, "verdict": "pass" if good_ else "fail", "issues": [why_] if why_ else None})
+                if not good_ and rnd < int(rounds or 0):
+                    issues = why_
+                    continue
+                if not good_:
+                    c.execute("update tasks set status='rejected',result=?,error=?,trace=?,used_seat=?,finished=? where id=?", (out, why_[:300], json.dumps(trace, ensure_ascii=False), mseat, time.time(), tid)); c.commit()
+                    return
             break
         mgw = (c.execute("select k.gateway from seats s join catalog k on k.name=s.catalog where s.name=?", (mseat,)).fetchone() or ["?"])[0]
         rprompt = (f"โจทย์:\n{brief}\n\nงานที่ต้องตรวจ:\n{out}\n\nตรวจเทียบโจทย์ทีละข้อ ตอบเป็น JSON เท่านั้น: "
@@ -473,6 +519,8 @@ def main():
     p = sp.add_parser("wait"); p.add_argument("job", nargs="?"); p.add_argument("--timeout", type=int, default=900)
     p = sp.add_parser("results"); p.add_argument("--job"); p.add_argument("--status"); p.add_argument("--full", type=int)
     sp.add_parser("queue")
+    p = sp.add_parser("limit"); p.add_argument("n", nargs="?", type=int)
+    p = sp.add_parser("pool"); p.add_argument("action", choices=["set", "ls", "rm"]); p.add_argument("name", nargs="?"); p.add_argument("seats", nargs="*")
     x = ap.parse_args(); c = db()
     key = lambda who: os.environ.get("AI_TEAM_KEY") or getpass.getpass(f"API key ของ {who} (พิมพ์แล้วไม่แสดง): ")
     try:
@@ -561,6 +609,20 @@ def main():
             show_results(c, x.job, x.status, x.full)
         elif x.cmd == "queue":
             print(queue_counts(c))
+        elif x.cmd == "limit":
+            if x.n:
+                c.execute("insert or replace into settings values('max_calls_per_hour',?)", (str(x.n),)); c.commit()
+            print("เพดานเรียกโมเดล/ชั่วโมง =", setting(c, "max_calls_per_hour", MAX_CALLS_PER_HOUR))
+        elif x.cmd == "pool":
+            if x.action == "set":
+                for sn in x.seats:
+                    if not c.execute("select 1 from seats where name=?", (sn,)).fetchone():
+                        raise ValueError(f"ไม่พบช่อง '{sn}'")
+                c.execute("insert or replace into settings values(?,?)", ("pool:" + x.name, ",".join(x.seats))); c.commit(); print(f"@{x.name} = {','.join(x.seats)}")
+            elif x.action == "rm":
+                c.execute("delete from settings where k=?", ("pool:" + x.name,)); c.commit()
+            else:
+                for k_, v_ in c.execute("select k,v from settings where k like 'pool:%'"): print(f"@{k_[5:]}\t{v_}")
         elif x.cmd == "run":
             run(c, x)
         else:
