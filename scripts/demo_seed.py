@@ -29,9 +29,9 @@ if stage == "base":
            ("legacy-70b", "gateway-b", "vendor-b/legacy-70b", None, None, "fail"), ("tiny-e4b", "gateway-b", "vendor-b/tiny-e4b", 0.02, 0.08, None)]
     c.executemany("insert or replace into catalog values(?,?,?,?,?,?)", cat)
     c.execute("delete from seats")
-    for n, t, r, k in [("worker", "Worker", "Fast, accurate, concise.", "fast-coder-v4"), ("reviewer", "Reviewer", "Check claims carefully.", "reasoner-120b"),
-                       ("intern", "Intern", "Explain step by step.", "nano-30b"), ("seat4", "Seat 4", "", None)]:
-        c.execute("insert into seats values(?,?,?,?)", (n, t, r, k))
+    for n, t, r, k, pos in [("worker", "Worker", "Fast, accurate, concise.", "fast-coder-v4", "maker"), ("reviewer", "Reviewer", "Check claims carefully.", "reasoner-120b", "reviewer"),
+                            ("intern", "Intern", "Explain step by step.", "nano-30b", "tester"), ("seat4", "Seat 4", "", None, None)]:
+        c.execute("insert into seats(name,title,role,catalog,position) values(?,?,?,?,?)", (n, t, r, k, pos))
     c.execute("insert or replace into settings values('n','3')"); c.execute("insert or replace into settings values('mode','vote')")
     M = {"worker": "vendor-a/fast-coder-v4", "reviewer": "vendor-b/reasoner-120b", "intern": "vendor-b/nano-30b"}
     for i, (job, brief, note) in enumerate([
@@ -55,5 +55,15 @@ elif stage in ("working", "partial", "done"):
             row(t0, s, M[s], brief, answers[s][0], JOB, answers[s][1])
     if stage == "done":
         c.execute("insert into notes values(?,?,?)", (now, JOB, "Vote: yes x2, no x1 -> yes. Intern's 'no' is wrong: the clause renews when no notice is given, which is automatic renewal. Verified against the clause text."))
+if stage in ("partial", "done"):  # งานตัวอย่างที่มีเส้นทางผู้ทำ→ผู้ตรวจ ให้บอร์ด/หน้างานมีข้อมูลหลายสถานะ
+    import json
+    c.execute("delete from tasks")
+    def task(job, status, seat, trace):
+        c.execute("insert into tasks(job,pool,brief,status,created,finished,trace,used_seat) values(?,?,?,?,?,?,?,?)", (job, seat, "demo", status, now - 300, now - 200, json.dumps(trace), seat))
+    task("Summarise onboarding survey", "done", "worker", [{"stage": "maker", "round": 0, "seat": "worker", "ok": True}, {"stage": "reviewer", "round": 0, "seat": "reviewer", "verdict": "pass", "score": 9}])
+    task("Draft pricing page copy", "rejected", "intern", [{"stage": "maker", "round": 0, "seat": "intern", "ok": True}, {"stage": "reviewer", "round": 0, "seat": "reviewer", "verdict": "fail", "score": 4, "issues": ["States a figure with no source", "Ignores the length limit"]}])
+    task("Translate FAQ to Thai", "error", "worker", [{"stage": "maker", "round": 0, "seat": "worker", "ok": False}])
+    for j, a_, ms in [("Summarise onboarding survey", "worker", 3200), ("Draft pricing page copy", "intern", 21000), ("Translate FAQ to Thai", "worker", 900)]:
+        row(now - 250, a_, M[a_], "Demo brief for " + j, "Demo reply", j, ms)
 c.commit()
 print("stage:", stage, "db:", DB)
