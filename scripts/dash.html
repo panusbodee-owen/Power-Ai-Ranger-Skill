@@ -374,6 +374,22 @@ td{border-bottom:.5px solid var(--ln)}
 .ntgb pre{margin:0;white-space:pre-wrap;word-break:break-word;font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--hair);border-radius:6px;padding:12px 14px;max-height:280px;overflow:auto}
 @media(max-width:760px){.nhd{display:none}.nrow{grid-template-columns:1fr auto}.nrow .nc:nth-child(n+3){display:none}}
 .ntgh.cd{background:none;border-radius:5px;padding:5px 6px;margin:0;box-shadow:none}.ntgh.cd:hover{background:var(--hair)}
+
+/* ===== Notion board ===== */
+.nt.wide{max-width:none}
+.nvt{display:flex;align-items:center;gap:2px;margin:8px 0 14px;border-bottom:.5px solid var(--ln)}
+.nvb{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--mu);font:inherit;font-size:13.5px;padding:7px 10px;border-radius:6px 6px 0 0;cursor:pointer;margin-bottom:-.5px;border-bottom:2px solid transparent}
+.nvb:hover{background:var(--hair)}.nvb.on{color:var(--tx);font-weight:600;border-bottom-color:var(--tx)}
+.nsr{width:200px;border:0;background:var(--hair);border-radius:6px;padding:5px 10px;font:inherit;font-size:13px;color:var(--tx);margin-bottom:4px}
+.nsr::placeholder{color:var(--mu)}
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(250px,1fr);gap:14px;overflow-x:auto;padding-bottom:16px;align-items:start}
+.bcol{background:var(--hair);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.bch{display:flex;align-items:center;gap:8px;padding:2px 4px 4px}
+.bcard{background:var(--p);border-radius:6px;box-shadow:0 0 0 .5px var(--ln),0 1px 2px rgba(0,0,0,.06);padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:7px}
+.bcard:hover{background:var(--p2)}
+.bt{display:flex;align-items:flex-start;gap:8px;font-weight:600;line-height:1.4;word-break:break-word}.bt .nic{margin-top:3px}
+.bm{display:flex;gap:4px;flex-wrap:wrap;font-size:12px}
+.bempty{color:var(--mu);font-size:12.5px;padding:6px 6px 10px}
 </style>
 </head>
 <body>
@@ -497,7 +513,7 @@ function bottom(){
 }
 
 /* ---------- views ---------- */
-let jobPage=false;
+let jobPage=false, jobQ='', jv=(()=>{try{return localStorage.getItem('aiteam-jobs-view')||'board'}catch(e){return 'board'}})();
 function jobsView(){
   const J={};S.audit.forEach(x=>{const k=x.job||NOJOB;(J[k]??={a:[],n:[],last:0}).a.push(x);J[k].last=Math.max(J[k].last,x.t)});
   S.notes.forEach(n=>{const k=n.job||NOJOB;(J[k]??={a:[],n:[],last:0}).n.push(n);J[k].last=Math.max(J[k].last,n.t)});
@@ -511,9 +527,18 @@ function jobsView(){
   const seatTags=k=>seatsOf(k).map(x=>`<span class="ntag g"><i style="background:${col(x)}"></i>${esc(x)}</span>`).join('');
   const doc='<svg class="nic" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path d="M3.5 1.8h6l3 3v9.4h-9z"/><path d="M9.5 1.8v3h3"/></svg>';
   if(!jobPage){
-    const rows=ks.map(k=>{const v=verdict(k);return `<div class="nrow" data-open="${esc(k)}" role="button" tabindex="0"><div class="nc n1">${doc}<span>${esc(k)}</span></div><div class="nc">${tag(v[0],v[1])}</div><div class="nc num">${J[k].a.length}</div><div class="nc tg">${seatTags(k)}</div><div class="nc nmu">${hm(J[k].last)}</div></div>`}).join('');
-    return `<div class="nt"><h1 class="nh1">งานที่แจก</h1><p class="nmu nlead">รายการงานที่สั่งทีมไว้ กดที่ชื่อเพื่อเปิดดูรายละเอียด</p>
-      <div class="ntab"><div class="nhd"><div class="nc n1">ชื่องาน</div><div class="nc">สถานะ</div><div class="nc num">เรียก AI</div><div class="nc">ผู้ร่วมงาน</div><div class="nc">ล่าสุด</div></div>${rows}</div></div>`;
+    const q=jobQ.trim().toLowerCase(), vis=ks.filter(k=>!q||k.toLowerCase().includes(q)||seatsOf(k).some(x=>x.toLowerCase().includes(q)));
+    const cat=k=>{if(J[k].a.some(pend))return 'wk';const t=tasksOf(k).slice().sort((x,y)=>y.id-x.id)[0];if(!t)return J[k].a.every(x=>st(x)==='err')?'err':'done';return t.status==='done'?'pass':t.status==='rejected'?'rej':'err'};
+    const tabs=`<div class="nvt"><button class="nvb ${jv==='board'?'on':''}" data-jv="board">${'<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.8" y="2.5" width="3.6" height="11" rx="1"/><rect x="6.2" y="2.5" width="3.6" height="7" rx="1"/><rect x="10.6" y="2.5" width="3.6" height="9" rx="1"/></svg>'}บอร์ด</button><button class="nvb ${jv==='table'?'on':''}" data-jv="table">${'<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.8" y="2.5" width="12.4" height="11" rx="1.5"/><path d="M1.8 6.5h12.4M1.8 10h12.4M6 6.5v7"/></svg>'}ตาราง</button><span class="sp"></span><input id="jq" class="nsr" type="search" placeholder="ค้นหางานหรือช่อง…" value="${esc(jobQ)}" aria-label="ค้นหางาน"></div>`;
+    if(jv==='board'){
+      const cols=[['wk','กำลังทำ','wk'],['done','เสร็จ (ไม่มีผู้ตรวจ)','g'],['pass','ผ่านการตรวจ','ok'],['rej','ตีกลับครบรอบ','er'],['err','ผิดพลาด / บล็อก','er']];
+      const card=k=>{const lastT=tasksOf(k).slice().sort((x,y)=>y.id-x.id)[0],lv=lastT&&lastT.trace.filter(x=>x.verdict).slice(-1)[0];
+        return `<div class="bcard" data-open="${esc(k)}" role="button" tabindex="0"><div class="bt">${doc}<span>${esc(k)}</span></div><div class="bm">${seatTags(k)}</div><div class="bm nmu">เรียก ${J[k].a.length} ครั้ง · ${hm(J[k].last)}${lv&&lv.score!=null?` · ตรวจ ${lv.score}/10`:''}</div></div>`};
+      return `<div class="nt wide"><h1 class="nh1">งานที่แจก</h1>${tabs}<div class="board">${cols.map(([c,t,tc])=>{const items=vis.filter(k=>cat(k)===c);return `<div class="bcol"><div class="bch"><span class="ntag ${tc}">${t}</span><span class="nmu">${items.length}</span></div>${items.map(card).join('')||'<div class="bempty">ไม่มีงาน</div>'}</div>`}).join('')}</div></div>`;
+    }
+    const rows=vis.map(k=>{const v=verdict(k);return `<div class="nrow" data-open="${esc(k)}" role="button" tabindex="0"><div class="nc n1">${doc}<span>${esc(k)}</span></div><div class="nc">${tag(v[0],v[1])}</div><div class="nc num">${J[k].a.length}</div><div class="nc tg">${seatTags(k)}</div><div class="nc nmu">${hm(J[k].last)}</div></div>`}).join('');
+    return `<div class="nt"><h1 class="nh1">งานที่แจก</h1>${tabs}
+      <div class="ntab"><div class="nhd"><div class="nc n1">ชื่องาน</div><div class="nc">สถานะ</div><div class="nc num">เรียก AI</div><div class="nc">ผู้ร่วมงาน</div><div class="nc">ล่าสุด</div></div>${rows||'<p class="nmu" style="padding:14px 10px">ไม่พบงานที่ตรงกับคำค้น</p>'}</div></div>`;
   }
   const jb=J[selJob], v=verdict(selJob), calls=jb.a.slice().sort((x,y)=>x.t-y.t);
   const tot=calls.reduce((s2,x)=>s2+(x.ms||0),0)/1000, nErr=calls.filter(x=>st(x)==='err').length;
@@ -812,7 +837,7 @@ const ABOUT={design:['ผังงาน','ดูว่างานเดิน�
  usage:['การใช้ AI','ใครถูกเรียกใช้เท่าไร รวม Claude ด้วย ตัวเลขโทเคนของ Claude นับจากเครื่องนี้ ทีมนับเป็นจำนวนครั้ง "ผ่านผู้ตรวจ" บอกคุณภาพจริง ส่วน "API พลาด" แค่เรียกไม่สำเร็จ'],
  audit:['บันทึกการเรียก','ประวัติทุกครั้งที่ระบบส่งงานให้ AI ใช้ตรวจย้อนหลังว่าส่งอะไรไป ใครตอบ ใช้เวลาเท่าไร หรือถูกบล็อกเพราะอะไร']};
 const TERMS='<details class="terms"><summary>ศัพท์ที่เจอบ่อย</summary><dl><dt>Boundary</dt><dd>ด่านตรวจก่อนส่งงานให้ AI: กันข้อมูลลับ ความยาวเกิน และจำนวนครั้งต่อชั่วโมง</dd><dt>Gateway</dt><dd>ผู้ให้บริการ AI ที่เราเชื่อมผ่าน API (เช่น Tokenme, NVIDIA)</dd><dt>Seat (ช่อง)</dt><dd>ที่นั่งของ AI หนึ่งตัวในทีม ใส่โมเดลและตำแหน่งได้</dd><dt>Trace</dt><dd>เส้นทางของงานหนึ่งชิ้นว่าผ่านใครบ้าง</dd><dt>Head</dt><dd>Claude ผู้สั่งและตรวจงานทั้งหมด</dd></dl></details>';
-function aboutBox(){const a=ABOUT[view];return a?`<div class="about"><b>${a[0]}</b> — ${a[1]}</div>`:''}
+function aboutBox(){if(view==='jobs')return '';const a=ABOUT[view];return a?`<div class="about"><b>${a[0]}</b> — ${a[1]}</div>`:''}
 
 /* ---------- summary (iOS grouped list) ---------- */
 function summary(){
@@ -887,6 +912,9 @@ document.addEventListener('click',e=>{
   const tg=e.target.closest('[data-tg]');if(tg){const k=tg.dataset.tg;open.has(k)?open.delete(k):open.add(k);render();return}
 });
 document.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const o=e.target.closest&&e.target.closest('[data-open],[data-back]');if(o){e.preventDefault();o.click()}}});
+
+document.addEventListener('click',e=>{const b=e.target.closest('[data-jv]');if(b){jv=b.dataset.jv;try{localStorage.setItem('aiteam-jobs-view',jv)}catch(_){}render()}});
+document.addEventListener('input',e=>{if(e.target.id==='jq'){jobQ=e.target.value;const pos=e.target.selectionStart;render();const el=document.getElementById('jq');if(el){el.focus();el.setSelectionRange(pos,pos)}}});
 
 async function tick(force){if(dragging)return;try{const n=await (await fetch('/api/state')).json(),j=JSON.stringify(n);const ch=j!==lastJ;if(force===true||ch||view==='design'){lastJ=j;S=n;render();if(modal&&(ch||force===true))renderModal()}}catch(e){}}
 (()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.get('view'))view=h.get('view');if(h.get('rtab'))rtab=h.get('rtab');if(h.get('job'))selJob=h.get('job');if(h.get('modal')){modal=true;mtab=h.get('modal')==='net'?'net':'seq';if(h.get('job'))mjob=h.get('job')}if(h.get('zoom'))mz=Math.min(4,Math.max(.4,+h.get('zoom')||1))})();
