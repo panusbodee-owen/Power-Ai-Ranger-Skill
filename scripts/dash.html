@@ -126,6 +126,28 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .seg button{padding:7px 12px;border:0;background:var(--p2);color:var(--mu);font:inherit;cursor:pointer}
 .seg button.on{background:var(--bl);color:#fff}
 .hint{color:var(--mu);font-size:12px;margin-top:8px}
+.xbtn{position:absolute;top:10px;right:12px;z-index:2;background:#0c1426cc;color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:5px 11px;font:inherit;font-size:12px;cursor:pointer}
+.xbtn:hover{border-color:var(--bl);color:#7db0ff}
+#modal{position:fixed;inset:0;background:#05080fee;backdrop-filter:blur(4px);z-index:50;display:flex}
+#modal[hidden]{display:none}
+.mbox{margin:16px;flex:1;display:flex;flex-direction:column;background:var(--sb);border:1px solid var(--ln);border-radius:14px;min-width:0;overflow:hidden}
+.mh{display:flex;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--ln);flex-wrap:wrap}
+.mh b{font-size:15px}
+.mtabs{display:inline-flex;border:1px solid var(--ln);border-radius:9px;overflow:hidden}
+.mtabs button{padding:6px 12px;border:0;background:var(--p2);color:var(--mu);font:inherit;cursor:pointer}
+.mtabs button.on{background:var(--bl);color:#fff}
+.mjobs{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:180px}
+.mx{background:none;border:1px solid var(--ln);color:var(--tx);border-radius:8px;width:32px;height:32px;font-size:15px;cursor:pointer}
+.mbody{flex:1;display:grid;grid-template-columns:1fr 340px;min-height:0}
+.mmain{overflow:auto;padding:14px;min-width:0}
+.mdet{border-left:1px solid var(--ln);overflow:auto;padding:14px;background:var(--bg)}
+.mmain svg{width:100%;height:auto;display:block}
+.evg{cursor:pointer}
+.evg:hover .al{stroke-width:3.2}
+.evg.sel .hit{fill:#3b82f61a}
+.legd{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--mu);margin-bottom:10px}
+.legd i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+@media(max-width:900px){.mbody{grid-template-columns:1fr}.mdet{border-left:0;border-top:1px solid var(--ln);max-height:38vh}}
 @media(max-width:900px){.stu{grid-template-columns:1fr}}
 @keyframes fl{to{stroke-dashoffset:-24}}
 @keyframes gl{50%{opacity:.45}}
@@ -168,6 +190,15 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
   </aside>
 </div>
 </div>
+<div id="modal" hidden>
+  <div class="mbox">
+    <div class="mh"><b>Flow Inspector</b>
+      <div class="mtabs"><button data-mtab="seq">ลำดับการไหล</button><button data-mtab="net">ผังเครือข่าย</button></div>
+      <div class="mjobs" id="mjobs"></div>
+      <button class="mx" data-close="1" title="ปิด (Esc)">✕</button></div>
+    <div class="mbody"><div class="mmain" id="mmain"></div><aside class="mdet" id="mdet"></aside></div>
+  </div>
+</div>
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -180,7 +211,7 @@ const isErr=a=>a.blocked!=null&&a.blocked.startsWith('error:');
 const isBlk=a=>a.blocked!=null&&!isErr(a);
 const st=a=>a.blocked!=null?'err':pend(a)?'work':'done';
 const NOJOB='(ไม่ระบุชื่องาน)';
-let S={agents:[],seats:[],catalog:[],plan:{n:2,mode:'best-of-n'},audit:[],notes:[]}, view='design', rtab='eval', selNode='claude', selJob=null, open=new Set(), pick=null, dragging=false, lastJ='';
+let S={agents:[],seats:[],catalog:[],plan:{n:2,mode:'best-of-n'},audit:[],notes:[]}, view='design', rtab='eval', selNode='claude', selJob=null, open=new Set(), pick=null, dragging=false, lastJ='', modal=false, mtab='seq', mjob=null, mev=null, EV=[];
 
 function spark(vals,c,w=100,h=26){const m=Math.max(1,...vals),n=vals.length||1;
   const p=vals.map((v,i)=>[i*(w/Math.max(1,n-1)),h-2-(v/m)*(h-4)]);
@@ -189,7 +220,7 @@ function spark(vals,c,w=100,h=26){const m=Math.max(1,...vals),n=vals.length||1;
 function buckets(rows,n=20,step=60){const b=Array(n).fill(0);rows.forEach(a=>{const i=n-1-Math.floor((now()-a.t)/step);if(i>=0&&i<n)b[i]++});return b}
 
 /* ---------- flow canvas ---------- */
-function flow(){
+function flow(inModal){
   const A=S.audit, ag=S.agents, busy=new Set(A.filter(pend).map(a=>a.agent)), anyBusy=busy.size>0;
   const recent=A.some(a=>now()-a.t<20), blk=A.some(a=>isBlk(a)&&now()-a.t<60);
   const noteFresh=S.notes.some(n=>now()-n.t<60);
@@ -219,7 +250,7 @@ function flow(){
     <text x="${o.x+46}" y="${o.y+24}" fill="#e6ebf7" font-size="12.5" font-weight="700">${esc(o.t)}</text>
     <text x="${o.x+46}" y="${o.y+40}" fill="#8693b3" font-size="10">${esc(o.s)}</text>
     ${o.b?`<g><rect x="${o.x+W-30}" y="${o.y-8}" width="26" height="16" rx="8" fill="${o.c}"/><text x="${o.x+W-17}" y="${o.y+3.5}" text-anchor="middle" font-size="10" font-weight="800" fill="#0a0f1c">${o.b}</text></g>`:''}</g>`});
-  return `<div class="canvas"><svg viewBox="0 0 990 450">${g}</svg><div class="zoom">คลิกโหนดเพื่อดูรายละเอียดใน Inspector · ${anyBusy?'● กำลังทำงาน':'○ ว่าง'}</div></div>`;
+  return `<div class="canvas">${inModal?'':'<button class="xbtn" data-expand="1" title="ขยายเต็มจอ ดูการไหลของงาน">⤢ ขยาย</button>'}<svg viewBox="0 0 990 450">${g}</svg><div class="zoom">คลิกโหนดเพื่อดูรายละเอียดใน Inspector · ${anyBusy?'● กำลังทำงาน':'○ ว่าง'}</div></div>`;
 }
 
 /* ---------- bottom cards ---------- */
@@ -276,6 +307,54 @@ function studioView(){
 }
 async function post(path,body){const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-Dash':'1'},body:JSON.stringify(body)});const d=await r.json();if(d.error)alert(d.error);await tick(true);return d}
 
+/* ---------- Flow Inspector (หน้าต่างขยาย) ---------- */
+function jobNames(){const last={};S.audit.forEach(a=>{const k=a.job||NOJOB;last[k]=Math.max(last[k]||0,a.t)});S.notes.forEach(n=>{const k=n.job||NOJOB;last[k]=Math.max(last[k]||0,n.t)});return Object.keys(last).sort((x,y)=>last[y]-last[x])}
+function seqSVG(job){
+  const rows=S.audit.filter(a=>(a.job||NOJOB)===job).slice().sort((x,y)=>x.t-y.t), notes=S.notes.filter(n=>(n.job||NOJOB)===job);
+  const seatInfo=n=>S.seats.find(s=>s.name===n)||{title:n,catalog:''};
+  const lanes=['user','claude',...new Set(rows.map(a=>a.agent))], L=lanes.length;
+  const X=i=>L>1?110+i*(780/(L-1)):500, lx=n=>X(lanes.indexOf(n));
+  const ev=[]; const t0=rows.length?rows[0].t:(notes[0]?.t||0);
+  ev.push({t:t0-.01,f:'user',to:'claude',k:'start',label:job,det:{title:'คำสั่งจากผู้ใช้',text:job}});
+  rows.forEach(a=>{
+    ev.push({t:a.t,f:'claude',to:a.agent,k:'brief',label:'brief: '+a.brief.slice(0,34)+(a.brief.length>34?'…':''),a,det:{title:`Claude → ${a.agent}`,text:a.brief}});
+    if(a.blocked!=null)ev.push({t:a.t+.001,f:a.agent,to:'claude',k:'err',label:a.blocked.slice(0,40),a,det:{title:`${a.agent} → Claude (ผิดพลาด/ถูกบล็อก)`,text:a.blocked}});
+    else if(a.reply!=null)ev.push({t:a.t+(a.ms||0)/1000,f:a.agent,to:'claude',k:'reply',label:(a.ms?(a.ms/1000).toFixed(1)+'s · ':'')+a.reply.replace(/\s+/g,' ').slice(0,34),a,det:{title:`${a.agent} → Claude (คำตอบ${a.ms?' · '+(a.ms/1000).toFixed(1)+'s':''})`,text:a.reply}});
+    else ev.push({t:1e12,f:a.agent,to:'claude',k:'pend',label:'กำลังทำงาน…',a,det:{title:`${a.agent} กำลังทำงาน`,text:'ยังไม่มีคำตอบ'}});
+  });
+  notes.forEach(n=>ev.push({t:n.t,f:'claude',to:'user',k:'note',label:'ตรวจผล: '+n.text.slice(0,34)+(n.text.length>34?'…':''),det:{title:'Claude ตรวจผล → ผู้ใช้',text:n.text}}));
+  ev.sort((x,y)=>x.t-y.t); EV=ev;
+  const RH=58,TOP=104,H=TOP+ev.length*RH+24, C={start:'#3b82f6',brief:null,reply:'#22c55e',err:'#ef4444',note:'#f59e0b',pend:null};
+  let g=`<defs>${[['b','#3b82f6'],['g','#22c55e'],['r','#ef4444'],['o','#f59e0b'],['c','#22d3ee'],['p','#c084fc']].map(([i,c])=>`<marker id="mk${i}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="${c}"/></marker>`).join('')}</defs>`;
+  lanes.forEach(n=>{const x=lx(n),c=n==='user'?'#3b82f6':col(n),s=n==='user'?{title:'คุณ',catalog:'ผู้ใช้'}:n==='claude'?{title:'Claude',catalog:'Head'}:seatInfo(n);
+    g+=`<line x1="${x}" x2="${x}" y1="64" y2="${H}" stroke="#27355a" stroke-dasharray="4 6"/><rect x="${x-70}" y="10" width="140" height="48" rx="10" fill="#0c1426" stroke="${c}" stroke-width="1.6"/>
+    <text x="${x}" y="30" text-anchor="middle" fill="${c}" font-weight="700" font-size="13">${esc(s.title)}</text><text x="${x}" y="46" text-anchor="middle" fill="#8693b3" font-size="10">${esc(String(s.catalog||'').slice(0,22))}</text>`});
+  ev.forEach((e,i)=>{const y=TOP+i*RH,x1=lx(e.f),x2=lx(e.to),dir=x2>x1?1:-1,sel=mev===i;
+    const seat=e.k==='brief'||e.k==='pend'?(e.k==='brief'?e.to:e.f):null;
+    const c=C[e.k]||col(seat), mk=c==='#3b82f6'?'b':c==='#22c55e'?'g':c==='#ef4444'?'r':c==='#f59e0b'?'o':c==='#22d3ee'?'c':'p';
+    const dash=e.k==='pend'?'stroke-dasharray="6 6" style="animation:fl .7s linear infinite"':'';
+    const mid=(x1+x2)/2, w=Math.max(180,Math.abs(x2-x1)-16);
+    g+=`<g class="evg ${sel?'sel':''}" data-ev="${i}"><rect class="hit" x="${Math.min(x1,x2)-4}" y="${y-30}" width="${Math.abs(x2-x1)+8}" height="${RH-6}" rx="8" fill="transparent"/>
+      <line class="al" x1="${x1+dir*3}" x2="${x2-dir*5}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="2.2" ${dash} marker-end="url(#mk${mk})"/>
+      <text x="${mid}" y="${y-8}" text-anchor="middle" font-size="11" fill="${sel?'#e6ebf7':'#b6c1dd'}">${esc(e.label)}</text>
+      <text x="8" y="${y+4}" font-size="10" fill="#8693b3">${e.k==='pend'?'…':hm(e.t)}</text></g>`;
+    if(e.k==='pend')g+=`<circle r="4" fill="${c}" style="filter:drop-shadow(0 0 5px ${c})"><animateMotion dur="1.4s" repeatCount="indefinite" path="M${x1} ${y} L${x2} ${y}"/></circle>`;
+  });
+  return `<div class="legd"><span><i style="background:#3b82f6"></i>คำสั่ง</span><span><i style="background:#22d3ee"></i>brief ส่งลูกทีม</span><span><i style="background:#22c55e"></i>คำตอบกลับ</span><span><i style="background:#f59e0b"></i>ผลตรวจของ Claude</span><span><i style="background:#ef4444"></i>ผิดพลาด/บล็อก</span></div><svg viewBox="0 0 1000 ${H}">${g}</svg>`;
+}
+function renderModal(){
+  const m=$('modal'); m.hidden=!modal; if(!modal)return;
+  const jobs=jobNames(); if(!mjob||!jobs.includes(mjob))mjob=jobs[0]||null;
+  document.querySelectorAll('[data-mtab]').forEach(b=>b.classList.toggle('on',b.dataset.mtab===mtab));
+  $('mjobs').innerHTML=jobs.map(k=>`<button class="jt ${k===mjob?'on':''}" data-mjob="${esc(k)}">${esc(k)}</button>`).join('')||'<span class="empty">ยังไม่มีงาน</span>';
+  const keep=$('mmain').scrollTop;
+  if(mtab==='seq'){
+    $('mmain').innerHTML=mjob?seqSVG(mjob):'<div class="empty">ยังไม่มีงาน — สั่ง Claude ในแชทได้เลย</div>';
+    const e=mev!=null?EV[mev]:null;
+    $('mdet').innerHTML=e?`<div class="sec"><h4>${esc(e.det.title)}</h4><div class="txt r" style="max-height:none">${esc(e.det.text)}</div></div>`:'<div class="empty">คลิกลูกศรในแผนภาพเพื่อดูข้อความเต็มของ brief / คำตอบ / ผลตรวจ<br><br>อ่านจากบนลงล่างตามเวลา: ผู้ใช้ → Claude → ลูกทีม → กลับมาที่ Claude → ผู้ใช้</div>';
+  }else{$('mmain').innerHTML=flow(true);$('mdet').innerHTML=inspector()}
+  $('mmain').scrollTop=keep;
+}
 /* ---------- right panel ---------- */
 function inspector(){
   const A=S.audit,id=selNode, ag=id.startsWith('a:')?S.agents.find(a=>a.name===id.slice(2)):null;
@@ -320,7 +399,17 @@ document.addEventListener('dragstart',e=>{const c=e.target.closest('[data-cat]')
 document.addEventListener('dragend',()=>{dragging=false;document.querySelectorAll('.seat.over').forEach(x=>x.classList.remove('over'))});
 document.addEventListener('dragover',e=>{const t=e.target.closest('[data-seat]');if(t){e.preventDefault();document.querySelectorAll('.seat.over').forEach(x=>x!==t&&x.classList.remove('over'));t.classList.add('over')}});
 document.addEventListener('drop',e=>{const t=e.target.closest('[data-seat]');if(t){e.preventDefault();dragging=false;post('/api/seat',{seat:t.dataset.seat,catalog:e.dataTransfer.getData('text/plain')})}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal){modal=false;renderModal()}});
 document.addEventListener('click',e=>{
+  if(e.target.closest('[data-expand]')){modal=true;mev=null;renderModal();return}
+  if(e.target.closest('#modal')){
+    if(e.target.closest('[data-close]')||e.target.id==='modal'){modal=false;renderModal();return}
+    const mt=e.target.closest('[data-mtab]'); if(mt){mtab=mt.dataset.mtab;mev=null;renderModal();return}
+    const mj=e.target.closest('[data-mjob]'); if(mj){mjob=mj.dataset.mjob;mev=null;renderModal();return}
+    const eg=e.target.closest('[data-ev]'); if(eg){mev=+eg.dataset.ev;renderModal();return}
+    const nd2=e.target.closest('[data-n]'); if(nd2){selNode=nd2.dataset.n;renderModal();return}
+    return;
+  }
   const tst=e.target.closest('[data-test]'); if(tst){tst.textContent='…';post('/api/test',{catalog:tst.dataset.test});return}
   const clr=e.target.closest('[data-clear]'); if(clr){post('/api/seat',{seat:clr.dataset.clear,catalog:null});return}
   if(e.target.closest('[data-undo]')){post('/api/undo',{});return}
@@ -338,8 +427,8 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('[data-t]'); if(t){selNode='a:'+t.dataset.t;rtab='insp';view='design';render()}
 });
 $('exp').onclick=()=>{const b=new Blob([JSON.stringify({audit:S.audit,notes:S.notes},null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ai-team-log.json';a.click()};
-async function tick(force){if(dragging)return;try{const n=await (await fetch('/api/state')).json(),j=JSON.stringify(n);if(force===true||j!==lastJ||view==='design'){lastJ=j;S=n;render()}}catch(e){}}
-(()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.get('view'))view=h.get('view');if(h.get('rtab'))rtab=h.get('rtab');if(h.get('job'))selJob=h.get('job')})();
+async function tick(force){if(dragging)return;try{const n=await (await fetch('/api/state')).json(),j=JSON.stringify(n);const ch=j!==lastJ;if(force===true||ch||view==='design'){lastJ=j;S=n;render();if(modal&&(ch||force===true))renderModal()}}catch(e){}}
+(()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.get('view'))view=h.get('view');if(h.get('rtab'))rtab=h.get('rtab');if(h.get('job'))selJob=h.get('job');if(h.get('modal')){modal=true;mtab=h.get('modal')==='net'?'net':'seq';if(h.get('job'))mjob=h.get('job')}})();
 tick(); setInterval(tick,2000);
 </script>
 </body>

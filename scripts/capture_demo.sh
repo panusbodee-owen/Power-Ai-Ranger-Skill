@@ -20,7 +20,8 @@ python3 demo_seed.py partial >/dev/null
 shot $F/f3.png "http://localhost:8791/#view=design&rtab=eval"
 python3 demo_seed.py done >/dev/null
 shot $F/f4.png "http://localhost:8791/#view=jobs&rtab=eval&job=$JOB"
-shot $F/f5.png "http://localhost:8791/#view=design&rtab=eval"
-cp $F/f1.png "$OUT/ui-studio.png"; cp $F/f2.png "$OUT/ui-design-working.png"; cp $F/f4.png "$OUT/ui-jobs.png"; cp $F/f5.png "$OUT/ui-design.png"
+shot $F/f5.png "http://localhost:8791/#modal=seq&job=$JOB"
+shot $F/f6.png "http://localhost:8791/#view=design&rtab=eval"
+cp $F/f1.png "$OUT/ui-studio.png"; cp $F/f2.png "$OUT/ui-design-working.png"; cp $F/f4.png "$OUT/ui-jobs.png"; cp $F/f5.png "$OUT/ui-flow.png"; cp $F/f6.png "$OUT/ui-design.png"
 ffmpeg -y -loglevel error -framerate 0.6 -i $F/f%d.png -vf "scale=1000:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer" "$OUT/demo.gif"
 ls -l "$OUT"

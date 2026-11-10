@@ -18,6 +18,10 @@ Skill สำหรับ Claude Code: ให้ Claude เป็นหัวห�
 | **Jobs (ผลตรวจของ Claude)** | **Design (เสร็จแล้ว)** |
 | ![jobs](docs/ui-jobs.png) | ![done](docs/ui-design.png) |
 
+**Flow Inspector (กดปุ่ม ⤢ ขยาย บนผัง)**: หน้าต่างเต็มจอ ดูว่างานไหลจากใครไปหาใคร แผนภาพลำดับตามเวลา (ผู้ใช้ → Claude → ลูกทีม → กลับ Claude → ผู้ใช้) คลิกลูกศรเพื่อดู brief/คำตอบ/ผลตรวจเต็ม สลับเป็นผังเครือข่ายขนาดใหญ่ได้ กด Esc เพื่อปิด
+
+![flow](docs/ui-flow.png)
+
 ## ติดตั้ง
 ```bash
 git clone <repo-url> ~/.claude/skills/ai-team
