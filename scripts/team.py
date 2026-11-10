@@ -8,7 +8,7 @@
   note "งาน" "ผลตรวจ" | log [N] | models SEAT [คำค้น] | list
 DB: ~/.ai-team/team.db (env AI_TEAM_DB) — ไม่มีคำสั่งใดพิมพ์ key ออกมา
 """
-import argparse, collections, concurrent.futures as cf, getpass, json, os, re, sqlite3, sys, time, urllib.error, urllib.request
+import argparse, collections, threading, concurrent.futures as cf, getpass, json, os, re, sqlite3, sys, time, urllib.error, urllib.request
 from urllib.parse import urlparse
 
 DB = os.environ.get("AI_TEAM_DB", os.path.expanduser("~/.ai-team/team.db"))
@@ -27,6 +27,7 @@ create table if not exists catalog(name text primary key,gateway text,model text
 create table if not exists seats(name text primary key,title text,role text,catalog text);
 create table if not exists seat_log(t real,seat text,old text,new text);
 create table if not exists settings(k text primary key,v text);
+create table if not exists tasks(id integer primary key autoincrement,job text,pool text,brief text,chk text,status text,result text,error text,attempts integer default 0,used_seat text,created real,started real,finished real);
 """
 
 
@@ -193,6 +194,136 @@ def run(c, a):
             tie = len(top) > 1 and top[0][1] == top[1][1]
             print(f"\n[VOTE] {'เสมอ — Claude ตัดสิน' if tie else 'เสียงข้างมาก'}: " + ", ".join(f"'{k}'×{v}" for k, v in top))
 
+# ---------- คิวงานแบบ async: ส่งงานทีเดียวหลายชิ้น ให้ worker ทำขนานกัน (กันคอขวดที่ Claude) ----------
+def submit(c, brief, pool, job=None, chk=None):
+    pool = [x for x in pool.split(",") if x]
+    for sname in pool:
+        if not c.execute("select 1 from seats where name=?", (sname,)).fetchone():
+            raise ValueError(f"ไม่พบช่อง '{sname}'")
+    tid = c.execute("insert into tasks(job,pool,brief,chk,status,created) values(?,?,?,?,'queued',?)",
+                    (job, ",".join(pool), brief, chk, time.time())).lastrowid
+    c.commit()
+    return tid
+
+
+def run_check(chk, text):
+    """ตรวจคำตอบอัตโนมัติก่อนถึงมือ Claude: json | contains:X | regex:R | notempty"""
+    if not chk:
+        return True, ""
+    kind, _, arg = chk.partition(":")
+    if kind == "notempty":
+        ok = bool(text.strip()); return ok, "" if ok else "ว่าง"
+    if kind == "contains":
+        ok = arg.lower() in text.lower(); return ok, "" if ok else f"ไม่พบ '{arg}'"
+    if kind == "regex":
+        ok = bool(re.search(arg, text, re.S)); return ok, "" if ok else f"ไม่ตรง regex {arg}"
+    if kind == "json":
+        m = re.search(r"(\{.*\}|\[.*\])", text, re.S)
+        try:
+            json.loads(m.group(1)) if m else (_ for _ in ()).throw(ValueError())
+            return True, ""
+        except Exception:
+            return False, "ไม่ใช่ JSON"
+    return True, ""
+
+
+def claim(c):
+    c.execute("begin immediate")
+    r = c.execute("select id,job,pool,brief,chk,attempts from tasks where status='queued' order by id limit 1").fetchone()
+    if r:
+        c.execute("update tasks set status='running',started=?,attempts=attempts+1 where id=?", (time.time(), r[0]))
+    c.commit()
+    return r
+
+
+def process(c, t, sems, busy, lock):
+    tid, job, pool, brief, chk, _ = t
+    seats = pool.split(",")
+    gw = lambda sname: (c.execute("select k.gateway from seats s join catalog k on k.name=s.catalog where s.name=?", (sname,)).fetchone() or ["?"])[0]
+    last = ""
+    for rnd in range(2):
+        with lock:  # เลือกช่องที่เกตเวย์ว่างที่สุดก่อน
+            order = sorted(seats, key=lambda x: busy.get(gw(x), 0))
+        for sname in order:
+            g = gw(sname)
+            with lock:
+                sems.setdefault(g, threading.Semaphore(sems["_per_gw"]))
+                busy[g] = busy.get(g, 0) + 1
+            try:
+                with sems[g]:
+                    ok, text = call(c, sname, brief, job)
+            finally:
+                with lock:
+                    busy[g] -= 1
+            if ok:
+                good, why = run_check(chk, text)
+                c.execute("update tasks set status=?,result=?,error=?,used_seat=?,finished=? where id=?",
+                          ("done" if good else "check_failed", text, why, sname, time.time(), tid)); c.commit()
+                return
+            last = text
+            if text.startswith("[BLOCKED]"):
+                c.execute("update tasks set status='blocked',error=?,used_seat=?,finished=? where id=?", (text, sname, time.time(), tid)); c.commit()
+                return
+        time.sleep(8)  # ทุกช่องล้ม (เช่น rate limit) พักแล้วลองทั้ง pool อีกรอบ
+    c.execute("update tasks set status='error',error=?,finished=? where id=?", (last[:300], time.time(), tid)); c.commit()
+
+
+def worker(concurrency=8, per_gw=3, drain=True):
+    sems, busy, lock = {"_per_gw": per_gw}, {}, threading.Lock()
+    state = {"active": 0}
+    t0 = time.time()
+
+    def loop():
+        c = db()
+        while True:
+            t = claim(c)
+            if not t:
+                with lock:
+                    if drain and state["active"] == 0:
+                        return
+                time.sleep(1); continue
+            with lock:
+                state["active"] += 1
+            try:
+                process(c, t, sems, busy, lock)
+            finally:
+                with lock:
+                    state["active"] -= 1
+    ths = [threading.Thread(target=loop, daemon=True) for _ in range(concurrency)]
+    [th.start() for th in ths]
+    [th.join() for th in ths]
+    c = db()
+    cnt = dict(c.execute("select status,count(*) from tasks where created>=? group by status", (t0 - 1,)).fetchall())
+    print(f"worker เสร็จใน {time.time() - t0:.1f}s · {cnt}")
+
+
+def queue_counts(c, job=None):
+    q = "select status,count(*) from tasks" + (" where job=?" if job else "") + " group by status"
+    return dict(c.execute(q, (job,) if job else ()).fetchall())
+
+
+def wait_job(c, job, timeout=900):
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        cnt = queue_counts(c, job)
+        if not cnt.get("queued") and not cnt.get("running"):
+            print(f"[เสร็จ {time.time() - t0:.0f}s] {cnt}"); return
+        time.sleep(2)
+    print(f"[หมดเวลา] {queue_counts(c, job)}")
+
+
+def show_results(c, job=None, status=None, full=None):
+    if full:
+        r = c.execute("select id,job,used_seat,status,error,result,brief from tasks where id=?", (full,)).fetchone()
+        print(f"#{r[0]} [{r[1]}] {r[2]} {r[3]} {r[4] or ''}\n--- brief\n{r[6]}\n--- result\n{r[5]}"); return
+    w, a = [], []
+    if job: w.append("job=?"); a.append(job)
+    if status: w.append("status=?"); a.append(status)
+    for i, j, st, seat, err, res, ms in c.execute("select id,job,status,used_seat,error,result,(finished-started) from tasks" + (" where " + " and ".join(w) if w else "") + " order by id", a):
+        one = (res or "").strip().replace("\n", " ")[:90]
+        print(f"#{i}\t{st}\t{seat or '-'}\t{(ms or 0):.1f}s\t{('⚠ ' + err + ' | ') if err else ''}{one}")
+
+
 
 def main():
     ap = argparse.ArgumentParser(); sp = ap.add_subparsers(dest="cmd", required=True)
@@ -213,6 +344,12 @@ def main():
     q = k.add_parser("remove"); q.add_argument("name")
     s = sp.add_parser("seat").add_subparsers(dest="sub", required=True); s.add_parser("ls"); s.add_parser("undo"); q = s.add_parser("add"); q.add_argument("name", nargs="?")
     q = s.add_parser("set"); q.add_argument("seat"); q.add_argument("catalog"); q = s.add_parser("clear"); q.add_argument("seat"); q = s.add_parser("remove"); q.add_argument("seat")
+    p = sp.add_parser("submit"); p.add_argument("brief"); p.add_argument("--pool", required=True); p.add_argument("--job"); p.add_argument("--check")
+    p = sp.add_parser("batch"); p.add_argument("file"); p.add_argument("--pool"); p.add_argument("--job"); p.add_argument("--check")
+    p = sp.add_parser("worker"); p.add_argument("--concurrency", type=int, default=8); p.add_argument("--per-gateway", type=int, default=3); p.add_argument("--keep", action="store_true")
+    p = sp.add_parser("wait"); p.add_argument("job", nargs="?"); p.add_argument("--timeout", type=int, default=900)
+    p = sp.add_parser("results"); p.add_argument("--job"); p.add_argument("--status"); p.add_argument("--full", type=int)
+    sp.add_parser("queue")
     x = ap.parse_args(); c = db()
     key = lambda who: os.environ.get("AI_TEAM_KEY") or getpass.getpass(f"API key ของ {who} (พิมพ์แล้วไม่แสดง): ")
     try:
@@ -273,6 +410,24 @@ def main():
             print("\n".join(i for i in sorted(m["id"] for m in json.load(urllib.request.urlopen(rq, timeout=60))["data"]) if x.grep.lower() in i.lower()))
         elif x.cmd == "note":
             c.execute("insert into notes values(?,?,?)", (time.time(), x.job, x.text)); c.commit()
+        elif x.cmd == "submit":
+            print(submit(c, sys.stdin.read() if x.brief == "-" else x.brief, x.pool, x.job, x.check))
+        elif x.cmd == "batch":
+            n = 0
+            for line in open(x.file, encoding="utf-8"):
+                if not line.strip():
+                    continue
+                d = json.loads(line)
+                submit(c, d["brief"], d.get("pool") or x.pool, d.get("job") or x.job, d.get("check") or x.check); n += 1
+            print(f"ส่งเข้าคิว {n} งาน")
+        elif x.cmd == "worker":
+            worker(x.concurrency, x.per_gateway, drain=not x.keep)
+        elif x.cmd == "wait":
+            wait_job(c, x.job, x.timeout)
+        elif x.cmd == "results":
+            show_results(c, x.job, x.status, x.full)
+        elif x.cmd == "queue":
+            print(queue_counts(c))
         elif x.cmd == "run":
             run(c, x)
         else:

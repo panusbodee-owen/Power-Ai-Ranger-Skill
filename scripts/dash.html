@@ -458,7 +458,7 @@ function traces(n){const r=S.audit.slice(0,n);return r.map(a=>{const s=st(a);ret
 function render(){
   document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
   document.querySelectorAll('#rt [data-r]').forEach(b=>b.classList.toggle('on',b.dataset.r===rtab));
-  const busy=S.audit.some(pend); $('live').textContent=busy?'Working':'Live'; $('live').classList.toggle('idle',!busy);
+  const qn=S.queue||{}, qw=(qn.queued||0)+(qn.running||0), busy=S.audit.some(pend)||qw>0; $('live').textContent=qw?`Queue ${qn.running||0} กำลังทำ · ${qn.queued||0} รอ`:(busy?'Working':'Live'); $('live').classList.toggle('idle',!busy);
   $('cen').innerHTML=(view==='design'?flow()+bottom():view==='studio'?studioView():view==='jobs'?jobsView():auditView());
   if(view==='design')applyCtx(CTX.i);
   $('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;

@@ -27,7 +27,8 @@ def state():
              c.execute("select rowid,t,agent,model,brief,reply,blocked,job,ms from audit order by rowid desc limit 150")]
     notes = [dict(t=t, job=j, text=x) for t, j, x in c.execute("select t,job,text from notes order by t desc limit 100")]
     plan = dict(n=int(setting(c, "n", 2)), mode=setting(c, "mode", "best-of-n"))
-    return dict(agents=agents, seats=seats, catalog=catalog, plan=plan, audit=audit, notes=notes,
+    queue = dict(c.execute("select status,count(*) from tasks group by status").fetchall())
+    return dict(agents=agents, seats=seats, catalog=catalog, plan=plan, queue=queue, audit=audit, notes=notes,
                 can_undo=bool(c.execute("select 1 from seat_log limit 1").fetchone()))
 
 
