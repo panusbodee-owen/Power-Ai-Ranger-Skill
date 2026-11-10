@@ -724,7 +724,7 @@ def main():
             if x.sub == "ls":
                 for n, t_, pr, k_ in c.execute("select name,title,prompt,kind from roles"): print(f"{n}\t{t_}\t[{k_}]\t{pr[:60]}")
             elif x.sub == "add":
-                c.execute("insert or replace into roles values(?,?,?,?)", (x.name, x.title, x.prompt, x.kind)); c.commit(); print("บันทึกตำแหน่ง", x.name)
+                c.execute("insert or replace into roles(name,title,prompt,kind,skill) values(?,?,?,?,?)", (x.name, x.title, x.prompt, x.kind, ROLE_SKILL.get(x.name))); c.commit(); print("บันทึกตำแหน่ง", x.name)
             else:
                 c.execute("delete from roles where name=?", (x.name,)); c.commit()
         elif x.cmd == "submit":
@@ -748,7 +748,7 @@ def main():
         elif x.cmd == "skills":
             if x.sub == "set":
                 c.execute("insert into seat_skills(seat,skill,score,n,note) values(?,?,?,0,'ตั้งเอง') on conflict(seat,skill) do update set score=?,note='ตั้งเอง'", (x.seat, x.skill, x.score, x.score)); c.commit()
-            for se, sk, sc, n_, nt in c.execute("select seat,skill,score,n,note from seat_skills" + (" where seat=?" if x.sub == "ls" and x.seat else "") + " order by skill,score desc", (x.seat,) if x.sub == "ls" and x.seat else ()):
+            for se, sk, sc, n_, nt in (() if x.sub == "set" else c.execute("select seat,skill,score,n,note from seat_skills" + (" where seat=?" if x.sub == "ls" and x.seat else "") + " order by skill,score desc", (x.seat,) if x.sub == "ls" and x.seat else ())):
                 print(f"{sk}\t{se}\t{sc:.2f}\tงานจริง {n_} ครั้ง\t{nt}")
         elif x.cmd == "route":
             print(f"ลำดับที่ระบบจะเลือกสำหรับ '{x.skill}':", " > ".join(f"{se} ({skill_score(c, se, x.skill):.2f})" for se in auto_pool(c, x.skill, 0.0)))

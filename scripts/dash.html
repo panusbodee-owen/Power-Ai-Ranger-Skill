@@ -286,15 +286,15 @@ function flow(inModal){
   const A=S.audit, ag=S.agents, busy=new Set(A.filter(pend).map(a=>a.agent)), anyBusy=busy.size>0;
   const recent=A.some(a=>now()-a.t<20), blk=A.some(a=>isBlk(a)&&now()-a.t<60);
   const noteFresh=S.notes.some(n=>now()-n.t<60);
-  const W=150,H=58,n=ag.length||1, top=40, bot=360;
-  const N={trigger:{x:30,y:196,c:'#3b82f6',g:'▶',t:'Trigger',s:'คำสั่งจากผู้ใช้',on:recent||anyBusy},
-    claude:{x:225,y:190,c:COL.claude,g:'C',t:'Claude (Head)',s:'วางแผน · แตกงาน',on:anyBusy,b:S.notes.length},
-    policy:{x:430,y:196,c:'#f59e0b',g:'⛨',t:'Policy Check',s:'Boundary · กรอง brief',on:anyBusy},
-    blocked:{x:430,y:372,c:'#ef4444',g:'!',t:'Blocked',s:'ถูกบล็อก / ผิดพลาด',on:blk,b:A.filter(a=>a.blocked!=null).length},
-    review:{x:810,y:120,c:'#f59e0b',g:'✓',t:'Review',s:'Claude ตรวจผล',on:noteFresh,b:S.notes.length},
-    response:{x:810,y:272,c:'#22c55e',g:'↩',t:'Response',s:'รายงานผู้ใช้',on:noteFresh}};
-  ag.forEach((a,i)=>{const y=n===1?196:top+i*((bot-top-H)/(n-1))+ (i? 0:0);
-    N['a:'+a.name]={x:620,y,c:col(a.name),g:a.name[0].toUpperCase(),t:a.title,s:a.model.split('/').pop().slice(0,24),on:busy.has(a.name),b:A.filter(z=>z.agent===a.name&&z.blocked==null).length}});
+  const W=150,H=58,n=ag.length||1, PITCH=H+18, HH=Math.max(450,n*PITCH+70), MID=HH/2-H/2, top=(HH-(n*PITCH-18))/2;
+  const N={trigger:{x:30,y:MID,c:'#3b82f6',g:'▶',t:'Trigger',s:'คำสั่งจากผู้ใช้',on:recent||anyBusy},
+    claude:{x:225,y:MID,c:COL.claude,g:'C',t:'Claude (Head)',s:'วางแผน · แตกงาน',on:anyBusy,b:S.notes.length},
+    policy:{x:430,y:MID,c:'#f59e0b',g:'⛨',t:'Policy Check',s:'Boundary · กรอง brief',on:anyBusy},
+    blocked:{x:430,y:MID+130,c:'#ef4444',g:'!',t:'Blocked',s:'ถูกบล็อก / ผิดพลาด',on:blk,b:A.filter(a=>a.blocked!=null).length},
+    review:{x:810,y:MID-60,c:'#f59e0b',g:'✓',t:'Review',s:'Claude ตรวจผล',on:noteFresh,b:S.notes.length},
+    response:{x:810,y:MID+60,c:'#22c55e',g:'↩',t:'Response',s:'รายงานผู้ใช้',on:noteFresh}};
+  ag.forEach((a,i)=>{const y=top+i*PITCH;
+    N['a:'+a.name]={x:620,y,c:col(a.name),g:a.name[0].toUpperCase(),t:a.title.length>19?a.title.slice(0,18)+'…':a.title,full:a.title+' · '+a.model,s:a.model.split('/').pop().slice(0,24),on:busy.has(a.name),b:A.filter(z=>z.agent===a.name&&z.blocked==null).length}});
   const vs=Object.values(N); NBOX=[Math.min(...vs.map(o=>o.x)),Math.min(...vs.map(o=>o.y))-12,Math.max(...vs.map(o=>o.x))+W,Math.max(...vs.map(o=>o.y))+H];
   const E=[['trigger','claude',N.trigger.on],['claude','policy',anyBusy]];
   ag.forEach(a=>{E.push(['policy','a:'+a.name,busy.has(a.name)]);E.push(['a:'+a.name,'review',busy.has(a.name)||noteFresh])});
@@ -308,12 +308,12 @@ function flow(inModal){
     g+=`<path id="${id}" d="${d}" fill="none" stroke="${on?c:'#33415f'}" stroke-width="${on?2.2:1.6}" ${on?'stroke-dasharray="6 6" style="animation:fl .7s linear infinite"':''} marker-end="url(#ar)"/>`;
     if(on)for(let k=0;k<2;k++)g+=`<circle r="4" fill="${c}" style="filter:drop-shadow(0 0 5px ${c})"><animateMotion dur="1.5s" begin="${k*.75}s" repeatCount="indefinite"><mpath href="#${id}"/></animateMotion></circle>`});
   Object.entries(N).forEach(([id,o])=>{const sel=selNode===id;
-    g+=`<g data-n="${esc(id)}" style="cursor:pointer"><rect x="${o.x}" y="${o.y}" width="${W}" height="${H}" rx="10" fill="#0c1426" stroke="${o.on||sel?o.c:'#27355a'}" stroke-width="${sel?2:1.4}" style="${o.on?`filter:drop-shadow(0 0 10px ${o.c}88)`:''}"/>
+    g+=`<g data-n="${esc(id)}" style="cursor:pointer"><title>${esc(o.full||o.t)}</title><rect x="${o.x}" y="${o.y}" width="${W}" height="${H}" rx="10" fill="#0c1426" stroke="${o.on||sel?o.c:'#27355a'}" stroke-width="${sel?2:1.4}" style="${o.on?`filter:drop-shadow(0 0 10px ${o.c}88)`:''}"/>
     <circle cx="${o.x+24}" cy="${o.y+H/2}" r="13" fill="${o.c}"/><text x="${o.x+24}" y="${o.y+H/2+4.5}" text-anchor="middle" font-size="12" font-weight="800" fill="#0a0f1c">${esc(o.g)}</text>
     <text x="${o.x+46}" y="${o.y+24}" fill="#e6ebf7" font-size="12.5" font-weight="700">${esc(o.t)}</text>
     <text x="${o.x+46}" y="${o.y+40}" fill="#8693b3" font-size="10">${esc(o.s)}</text>
     ${o.b?`<g><rect x="${o.x+W-30}" y="${o.y-8}" width="26" height="16" rx="8" fill="${o.c}"/><text x="${o.x+W-17}" y="${o.y+3.5}" text-anchor="middle" font-size="10" font-weight="800" fill="#0a0f1c">${o.b}</text></g>`:''}</g>`});
-  return `<div class="canvas">${inModal?'':ZCI}<svg viewBox="0 0 990 450"><g class="zg">${g}</g></svg><div class="zoom">คลิกโหนดเพื่อดูรายละเอียดใน Inspector · ${anyBusy?'● กำลังทำงาน':'○ ว่าง'}</div></div>`;
+  return `<div class="canvas">${inModal?'':ZCI}<svg viewBox="0 0 990 ${HH}"><g class="zg">${g}</g></svg><div class="zoom">คลิกโหนดเพื่อดูรายละเอียดใน Inspector · ${anyBusy?'● กำลังทำงาน':'○ ว่าง'}</div></div>`;
 }
 
 /* ---------- bottom cards ---------- */
