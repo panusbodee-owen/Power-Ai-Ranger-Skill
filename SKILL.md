@@ -96,3 +96,11 @@ python3 ~/.claude/skills/ai-team/scripts/team.py add worker --base-url https://G
 python3 ~/.claude/skills/ai-team/scripts/dash.py   # แล้วเปิด http://localhost:8790
 ```
 แสดงผังหัวหน้า→ลูกทีม สถานะกำลังทำงาน/ว่าง และไทม์ไลน์ brief → คำตอบ → ผลตรวจของ Claude แยกตามงาน ผู้ใช้ต้องการเห็นการสั่งงานเมื่อไร ให้เปิดแดชบอร์ดให้
+
+## จัดคนให้เหมาะกับงาน (skills routing)
+- แต่ละช่องมีคะแนนความถนัด 0–1 ต่องาน: `test_design, odoo_spec, review, code, short_answer, long_output` (`team.py skills ls`, `skills set SEAT SKILL 0.8`)
+- ใช้ `--pool @auto --needs odoo_spec` หรือใน flow `maker@@auto>reviewer@@auto` — ระบบเรียงช่องตามคะแนน ตัดช่องที่ < 0.4 ทิ้ง
+- ตำแหน่งในบทบาทผูกความถนัดอัตโนมัติ (reviewer→review, tester→test_design)
+- ผลงานจริงปรับคะแนนเอง (EMA): ผ่าน +, ตีกลับ/เช็คล้ม −
+- ดูลำดับที่จะเลือก: `team.py route odoo_spec`
+- ค่าเริ่มต้นมาจากผลวัดจริง; ค่าที่ยังไม่เคยวัด = 0.5

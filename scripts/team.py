@@ -28,6 +28,7 @@ create table if not exists seats(name text primary key,title text,role text,cata
 create table if not exists seat_log(t real,seat text,old text,new text);
 create table if not exists settings(k text primary key,v text);
 create table if not exists roles(name text primary key,title text,prompt text,kind text);
+create table if not exists seat_skills(seat text,skill text,score real,n integer default 0,note text,primary key(seat,skill));
 create table if not exists tasks(id integer primary key autoincrement,job text,pool text,brief text,chk text,status text,result text,error text,attempts integer default 0,used_seat text,created real,started real,finished real);
 """
 
@@ -43,8 +44,57 @@ BUILTIN_ROLES = [
 
 def ensure_roles(c):
     for r in BUILTIN_ROLES:
-        c.execute("insert or ignore into roles values(?,?,?,?)", r)
+        c.execute("insert or ignore into roles(name,title,prompt,kind) values(?,?,?,?)", r)
     c.commit()
+
+ROLE_SKILL = {"reviewer": "review", "tester": "test_design", "senior_tester": "test_design", "translator": "text", "cleaner": "data_clean", "analyst": "analysis"}
+SKILL_SEED = [  # (ช่อง, ความถนัด, คะแนน 0-1, หลักฐาน) — มาจากผลวัดจริง 2026-11-10; ค่าที่ยังไม่เคยวัดใช้ 0.5
+    ("seat2", "test_design", .9, "ออกแบบเคสเจอบั๊กจริง 7/10"), ("intern", "test_design", .6, "เจอ 5/10 JSON เสถียร"),
+    ("seat1", "test_design", .25, "เจอ 2/10 อักษรจีนปน JSON พัง"), ("worker", "test_design", .0, "ส่งผลว่างกับ JSON ยาว"),
+    ("seat2", "odoo_spec", .7, "เคสรันแล้วเจอบั๊กจริง แต่บางโมดูลล้มตัวตรวจ/ยาวเกิน"), ("intern", "odoo_spec", .2, "เมธอด/ฟิลด์ผิด ความหมายใช้ไม่ได้"),
+    ("seat1", "odoo_spec", .3, "ยังไม่ได้วัด คาดต่ำ"), ("worker", "odoo_spec", .0, "ส่งผลว่างกับงานยาว"),
+    ("seat5", "review", .92, "ตัดสินถูก 11/12"), ("worker", "review", .83, "ตัดสินถูก 10/12"), ("intern", "review", .83, "ถูก 10/12 แต่ช้า"),
+    ("seat1", "review", .5, "ยังไม่ได้วัด"), ("seat2", "review", .6, "ยังไม่ได้วัด ช้า"),
+    ("worker", "code", .8, "โค้ดสั้นผ่านเทสจริง"), ("seat2", "code", .85, "ผ่านเทสรอบแรก"), ("seat1", "code", .5, "ยังไม่ได้วัด"), ("intern", "code", .3, "ตีกลับครบ 3 รอบ"),
+    ("worker", "short_answer", .9, "ตอบ 1-3 วินาที"), ("seat5", "short_answer", .9, "เร็ว"), ("intern", "short_answer", .5, "ช้า (reasoning)"),
+    ("seat2", "long_output", .8, "ตอบยาวได้ แต่ช้า"), ("intern", "long_output", .7, "JSON ยาวใช้ได้"), ("seat1", "long_output", .4, "พังบ้าง"), ("worker", "long_output", .0, "ส่งผลว่าง"),
+]
+
+
+def ensure_skills(c):
+    for rname, sk in ROLE_SKILL.items():
+        c.execute("update roles set skill=? where name=? and skill is null", (sk, rname))
+    if not c.execute("select 1 from settings where k='skills_seeded'").fetchone():
+        for seat, sk, sc, note in SKILL_SEED:
+            if c.execute("select 1 from seats where name=?", (seat,)).fetchone():
+                c.execute("insert or ignore into seat_skills(seat,skill,score,n,note) values(?,?,?,0,?)", (seat, sk, sc, note))
+        c.execute("insert or replace into settings values('skills_seeded','1')")
+    c.commit()
+
+
+def skill_score(c, seat, skill):
+    r = c.execute("select score from seat_skills where seat=? and skill=?", (seat, skill)).fetchone()
+    return r[0] if r else 0.5
+
+
+def auto_pool(c, skill, min_score=0.5):
+    seats = [r[0] for r in c.execute("select name from seats where catalog is not null order by rowid")]
+    if not skill:
+        return seats
+    ok = sorted((x for x in seats if skill_score(c, x, skill) >= min_score), key=lambda x: -skill_score(c, x, skill))
+    return ok or sorted(seats, key=lambda x: -skill_score(c, x, skill))[:1]
+
+
+def learn(c, seat, skill, success):
+    """เรียนรู้จากงานจริง: คะแนนเลื่อนเข้าหาผลล่าสุด (EMA 0.15)"""
+    if not seat or not skill:
+        return
+    r = c.execute("select score,n from seat_skills where seat=? and skill=?", (seat, skill)).fetchone()
+    old, n = r if r else (0.5, 0)
+    new = round(old + 0.15 * ((1.0 if success else 0.0) - old), 3)
+    c.execute("insert into seat_skills(seat,skill,score,n,note) values(?,?,?,?,'วัดจากงานจริง') on conflict(seat,skill) do update set score=?,n=?", (seat, skill, new, n + 1, new, n + 1))
+    c.commit()
+
 
 
 def role_prompt(c, name):
@@ -78,10 +128,11 @@ def db():
         if col not in cols(c, "audit"):
             c.execute(f"alter table audit add column {col} {typ}")
     for t_, col, typ in (("seats", "position", "text"), ("tasks", "flow", "text"), ("tasks", "rounds", "integer"),
-                         ("tasks", "trace", "text"), ("tasks", "asrole", "text")):
+                         ("tasks", "trace", "text"), ("tasks", "asrole", "text"), ("roles", "skill", "text"), ("tasks", "skill", "text")):
         if col not in cols(c, t_):
             c.execute(f"alter table {t_} add column {col} {typ}")
     ensure_roles(c)
+    ensure_skills(c)
     migrate(c)
     os.chmod(DB, 0o600)
     return c
@@ -274,33 +325,42 @@ def run(c, a):
             print(f"\n[VOTE] {'เสมอ — Claude ตัดสิน' if tie else 'เสียงข้างมาก'}: " + ", ".join(f"'{k}'×{v}" for k, v in top))
 
 # ---------- คิวงานแบบ async: ส่งงานทีเดียวหลายชิ้น ให้ worker ทำขนานกัน (กันคอขวดที่ Claude) ----------
-def expand_pool(c, names):
-    """@ชื่อ -> รายชื่อช่องที่ตั้งไว้ด้วย team.py pool set"""
+def expand_pool(c, names, skill=None):
+    """@ชื่อ = กลุ่มช่องที่ตั้งไว้ | @auto = ช่องที่เหมาะกับความถนัด (skill) เรียงตามคะแนน"""
     out = []
     for n in names:
-        if n.startswith("@"):
+        if n == "@auto":
+            out += auto_pool(c, skill)
+        elif n.startswith("@"):
             v = setting(c, "pool:" + n[1:])
             if v is None:
                 raise ValueError(f"ไม่พบกลุ่มช่อง '{n}' (ดู: team.py pool ls)")
             out += [x for x in v.split(",") if x]
         elif n:
             out.append(n)
-    return out
+    return list(dict.fromkeys(out))
 
 
-def submit(c, brief, pool, job=None, chk=None, flow=None, rounds=0, asrole=None):
-    pool = expand_pool(c, (pool or "").split(","))
+def role_skill(c, name):
+    r = c.execute("select skill from roles where name=?", (name,)).fetchone() if name else None
+    return r[0] if r else None
+
+
+def submit(c, brief, pool, job=None, chk=None, flow=None, rounds=0, asrole=None, needs=None):
+    skill = needs or (role_skill(c, flow[0]["role"]) if flow else role_skill(c, asrole))
+    pool = expand_pool(c, (pool or "").split(","), skill)
     if flow:
         for st in flow:
-            st["pool"] = expand_pool(c, st["pool"])
+            st["skill"] = role_skill(c, st["role"]) if not (st is flow[0] and needs) else needs
+            st["pool"] = expand_pool(c, st["pool"], st["skill"])
         pool = [x for st in flow for x in st["pool"]]
     if asrole:
         role_prompt(c, asrole)
     for sname in pool:
         if not c.execute("select 1 from seats where name=?", (sname,)).fetchone():
             raise ValueError(f"ไม่พบช่อง '{sname}'")
-    tid = c.execute("insert into tasks(job,pool,brief,chk,status,created,flow,rounds,asrole) values(?,?,?,?,'queued',?,?,?,?)",
-                    (job, ",".join(pool), brief, chk, time.time(), json.dumps(flow, ensure_ascii=False) if flow else None, rounds, asrole)).lastrowid
+    tid = c.execute("insert into tasks(job,pool,brief,chk,status,created,flow,rounds,asrole,skill) values(?,?,?,?,'queued',?,?,?,?,?)",
+                    (job, ",".join(pool), brief, chk, time.time(), json.dumps(flow, ensure_ascii=False) if flow else None, rounds, asrole, skill)).lastrowid
     c.commit()
     return tid
 
@@ -347,7 +407,7 @@ def run_py_check(test_path, text):
 
 def claim(c):
     c.execute("begin immediate")
-    r = c.execute("select id,job,pool,brief,chk,attempts,flow,rounds,asrole from tasks where status='queued' order by id limit 1").fetchone()
+    r = c.execute("select id,job,pool,brief,chk,attempts,flow,rounds,asrole,skill from tasks where status='queued' order by id limit 1").fetchone()
     if r:
         c.execute("update tasks set status='running',started=?,attempts=attempts+1 where id=?", (time.time(), r[0]))
     c.commit()
@@ -355,7 +415,7 @@ def claim(c):
 
 
 def parse_flow(spec):
-    """'maker@worker,seat3>reviewer@intern,seat4' -> [{"role":"maker","pool":[...]}, ...]"""
+    """'maker@worker,seat3>reviewer@intern,seat4' -> [{"role":"maker","pool":[...]}, ...]  (ใช้ @auto ได้: reviewer@@auto)"""
     out = []
     for part in spec.split(">"):
         role, _, pool = part.strip().partition("@")
@@ -365,14 +425,17 @@ def parse_flow(spec):
     return out
 
 
-def try_pool(c, pool, brief, job, role_ov, sems, busy, lock, exclude=(), avoid_gw=None):
-    """ลองช่องใน pool ตามลำดับ (เกตเวย์ว่างสุด/ต่างเกตเวย์จาก avoid_gw ก่อน) คืน (ok, text, seat, err)"""
+def try_pool(c, pool, brief, job, role_ov, sems, busy, lock, exclude=(), avoid_gw=None, skill=None):
+    """ลองช่องใน pool: เรียงตามความถนัด (skill) ก่อน แล้วตามเกตเวย์ที่ว่าง/ต่างเกตเวย์จาก avoid_gw  คืน (ok, text, seat, err)"""
     gw = lambda sname: (c.execute("select k.gateway from seats s join catalog k on k.name=s.catalog where s.name=?", (sname,)).fetchone() or ["?"])[0]
     cands = [x for x in pool if x not in exclude] or list(pool)
+    if skill:  # ตัดช่องที่ไม่เหมาะกับงานนี้ทิ้ง (คะแนน < 0.4) ถ้ายังเหลือตัวเลือกอื่น
+        good = [x for x in cands if skill_score(c, x, skill) >= 0.4]
+        cands = good or cands
     last = ""
     for rnd in range(2):
         with lock:
-            order = sorted(cands, key=lambda x: (gw(x) == avoid_gw, busy.get(gw(x), 0)))
+            order = sorted(cands, key=lambda x: (-round(skill_score(c, x, skill), 1) if skill else 0, gw(x) == avoid_gw, busy.get(gw(x), 0)))
         for sname in order:
             g = gw(sname)
             with lock:
@@ -426,17 +489,25 @@ def parse_verdict(text):
 
 
 def run_flow(c, t, sems, busy, lock):
-    tid, job, pool, brief, chk, _, flow, rounds, asrole = t
+    tid, job, pool, brief, chk, _, flow, rounds, asrole, skill = t
     stages = json.loads(flow)
     mk, rv = stages[0], (stages[1] if len(stages) > 1 else None)
+    mskill = mk.get("skill") or skill
     trace, out, issues, mseat = [], "", "", None
+
+    def end(status, result, error):
+        c.execute("update tasks set status=?,result=?,error=?,trace=?,used_seat=?,finished=? where id=?",
+                  (status, result, (error or "")[:300], json.dumps(trace, ensure_ascii=False), mseat, time.time(), tid)); c.commit()
+        if status in ("done", "check_failed", "rejected") and mskill:
+            learn(c, mseat, mskill, status == "done")
+
     for rnd in range(int(rounds or 0) + 1):
-        prompt = brief if rnd == 0 else f"{brief}\n\n--- งานเดิมของคุณ\n{out}\n\n--- ข้อบกพร่องที่ผู้ตรวจพบ (แก้ให้ครบทุกข้อแล้วส่งงานฉบับเต็ม)\n{issues}"
-        ok, text, mseat, err = try_pool(c, mk["pool"], prompt, job, role_prompt(c, mk["role"]), sems, busy, lock)
+        prev = out[:8000] + ("\n...(ตัดส่วนท้ายเพื่อประหยัดความยาว)" if len(out) > 8000 else "")
+        prompt = brief if rnd == 0 else f"{brief}\n\n--- งานเดิมของคุณ\n{prev}\n\n--- ข้อบกพร่องที่พบ (แก้ให้ครบทุกข้อแล้วส่งงานฉบับเต็ม)\n{issues}"
+        ok, text, mseat, err = try_pool(c, mk["pool"], prompt, job, role_prompt(c, mk["role"]), sems, busy, lock, skill=mskill)
         trace.append({"stage": mk["role"], "round": rnd, "seat": mseat, "ok": ok})
         if not ok:
-            c.execute("update tasks set status=?,error=?,trace=?,finished=? where id=?", (err or "error", text[:300], json.dumps(trace, ensure_ascii=False), time.time(), tid)); c.commit()
-            return
+            return end(err or "error", out, text)
         out = text
         if not rv:
             if chk:
@@ -446,22 +517,21 @@ def run_flow(c, t, sems, busy, lock):
                     issues = why_
                     continue
                 if not good_:
-                    c.execute("update tasks set status='rejected',result=?,error=?,trace=?,used_seat=?,finished=? where id=?", (out, why_[:300], json.dumps(trace, ensure_ascii=False), mseat, time.time(), tid)); c.commit()
-                    return
+                    return end("rejected", out, why_)
             break
         mgw = (c.execute("select k.gateway from seats s join catalog k on k.name=s.catalog where s.name=?", (mseat,)).fetchone() or ["?"])[0]
-        rprompt = (f"โจทย์:\n{brief}\n\nงานที่ต้องตรวจ:\n{out}\n\nตรวจเทียบโจทย์ทีละข้อ ตอบเป็น JSON เท่านั้น: "
+        rprompt = (f"โจทย์:\n{brief[:6000]}\n\nงานที่ต้องตรวจ:\n{out[:9000]}\n\nตรวจเทียบโจทย์ทีละข้อ ตอบเป็น JSON เท่านั้น: "
                    '{"verdict":"pass" หรือ "fail","score":0-10,"issues":["ข้อบกพร่อง"],"evidence":["หลักฐานจากตัวงาน"]}')
-        ok2, rtext, rseat, err2 = try_pool(c, rv["pool"], rprompt, job, role_prompt(c, rv["role"]), sems, busy, lock, exclude={mseat}, avoid_gw=mgw)
+        ok2, rtext, rseat, err2 = try_pool(c, rv["pool"], rprompt, job, role_prompt(c, rv["role"]), sems, busy, lock, exclude={mseat}, avoid_gw=mgw, skill=rv.get("skill") or "review")
         if not ok2:
             trace.append({"stage": rv["role"], "round": rnd, "seat": rseat, "ok": False})
-            c.execute("update tasks set status='error',result=?,error=?,trace=?,used_seat=?,finished=? where id=?", (out, "ผู้ตรวจล้ม: " + rtext[:200], json.dumps(trace, ensure_ascii=False), mseat, time.time(), tid)); c.commit()
-            return
+            return end("error", out, "ผู้ตรวจล้ม: " + rtext)
         passed, d = parse_verdict(rtext)
-        if d.get("verdict") == "unparsable":  # ผู้ตรวจตอบว่าง/ไม่ใช่ JSON (โมเดล reasoning ชน token) -> ให้ผู้ตรวจอีกช่องตรวจแทน ไม่นับเป็น fail
-            ok3, rtext2, rseat2, _ = try_pool(c, rv["pool"], rprompt, job, role_prompt(c, rv["role"]), sems, busy, lock, exclude={mseat, rseat}, avoid_gw=mgw)
+        if d.get("verdict") == "unparsable":
+            ok3, rtext2, rseat2, _ = try_pool(c, rv["pool"], rprompt, job, role_prompt(c, rv["role"]), sems, busy, lock, exclude={mseat, rseat}, avoid_gw=mgw, skill=rv.get("skill") or "review")
             if ok3 and rseat2 != rseat:
                 trace.append({"stage": rv["role"], "round": rnd, "seat": rseat, "verdict": "unparsable"})
+                learn(c, rseat, "review", False)
                 passed, d = parse_verdict(rtext2)
                 rseat = rseat2
         trace.append({"stage": rv["role"], "round": rnd, "seat": rseat, "verdict": "pass" if passed else "fail", "score": d.get("score"), "issues": d.get("issues")})
@@ -469,22 +539,22 @@ def run_flow(c, t, sems, busy, lock):
             break
         issues = "\n".join(f"- {x}" for x in (d.get("issues") or ["(ผู้ตรวจไม่ระบุ)"]))
     else:
-        c.execute("update tasks set status='rejected',result=?,error=?,trace=?,used_seat=?,finished=? where id=?", (out, issues[:300], json.dumps(trace, ensure_ascii=False), mseat, time.time(), tid)); c.commit()
-        return
+        return end("rejected", out, issues)
     good, why = run_check(chk, out)
-    c.execute("update tasks set status=?,result=?,error=?,trace=?,used_seat=?,finished=? where id=?",
-              ("done" if good else "check_failed", out, why, json.dumps(trace, ensure_ascii=False), mseat, time.time(), tid)); c.commit()
+    end("done" if good else "check_failed", out, why)
 
 
 def process(c, t, sems, busy, lock):
-    tid, job, pool, brief, chk, _, flow, rounds, asrole = t
+    tid, job, pool, brief, chk, _, flow, rounds, asrole, skill = t
     if flow:
         return run_flow(c, t, sems, busy, lock)
     ov = role_prompt(c, asrole) if asrole else None
-    ok, text, seat, err = try_pool(c, pool.split(","), brief, job, ov, sems, busy, lock)
+    ok, text, seat, err = try_pool(c, pool.split(","), brief, job, ov, sems, busy, lock, skill=skill)
     if ok:
         good, why = run_check(chk, text)
         c.execute("update tasks set status=?,result=?,error=?,used_seat=?,finished=? where id=?", ("done" if good else "check_failed", text, why, seat, time.time(), tid))
+        if skill:
+            learn(c, seat, skill, good)
     elif err == "blocked":
         c.execute("update tasks set status='blocked',error=?,used_seat=?,finished=? where id=?", (text, seat, time.time(), tid))
     else:
@@ -574,15 +644,17 @@ def main():
     q = s.add_parser("title"); q.add_argument("seat"); q.add_argument("text")
     q = s.add_parser("set"); q.add_argument("seat"); q.add_argument("catalog"); q = s.add_parser("clear"); q.add_argument("seat"); q = s.add_parser("remove"); q.add_argument("seat")
     p = sp.add_parser("submit"); p.add_argument("brief"); p.add_argument("--pool"); p.add_argument("--job"); p.add_argument("--check")
-    p.add_argument("--flow"); p.add_argument("--rounds", type=int, default=1); p.add_argument("--as", dest="asrole")
+    p.add_argument("--flow"); p.add_argument("--rounds", type=int, default=1); p.add_argument("--as", dest="asrole"); p.add_argument("--needs")
     p = sp.add_parser("batch"); p.add_argument("file"); p.add_argument("--pool"); p.add_argument("--job"); p.add_argument("--check")
-    p.add_argument("--flow"); p.add_argument("--rounds", type=int, default=1); p.add_argument("--as", dest="asrole")
+    p.add_argument("--flow"); p.add_argument("--rounds", type=int, default=1); p.add_argument("--as", dest="asrole"); p.add_argument("--needs")
     r_ = sp.add_parser("role").add_subparsers(dest="sub", required=True); r_.add_parser("ls"); q = r_.add_parser("add"); q.add_argument("name"); q.add_argument("--title", required=True)
     q.add_argument("--prompt", required=True); q.add_argument("--kind", default="maker"); q = r_.add_parser("rm"); q.add_argument("name")
     p = sp.add_parser("worker"); p.add_argument("--concurrency", type=int, default=8); p.add_argument("--per-gateway", type=int, default=3); p.add_argument("--keep", action="store_true")
     p = sp.add_parser("wait"); p.add_argument("job", nargs="?"); p.add_argument("--timeout", type=int, default=900)
     p = sp.add_parser("results"); p.add_argument("--job"); p.add_argument("--status"); p.add_argument("--full", type=int)
     sp.add_parser("queue")
+    k_ = sp.add_parser("skills").add_subparsers(dest="sub", required=True); q = k_.add_parser("ls"); q.add_argument("--seat"); q = k_.add_parser("set"); q.add_argument("seat"); q.add_argument("skill"); q.add_argument("score", type=float)
+    p = sp.add_parser("route"); p.add_argument("skill")
     p = sp.add_parser("limit"); p.add_argument("n", nargs="?", type=int); p.add_argument("--chars", type=int)
     p = sp.add_parser("pool"); p.add_argument("action", choices=["set", "ls", "rm"]); p.add_argument("name", nargs="?"); p.add_argument("seats", nargs="*")
     x = ap.parse_args(); c = db()
@@ -656,7 +728,7 @@ def main():
             else:
                 c.execute("delete from roles where name=?", (x.name,)); c.commit()
         elif x.cmd == "submit":
-            print(submit(c, sys.stdin.read() if x.brief == "-" else x.brief, x.pool, x.job, x.check, parse_flow(x.flow) if x.flow else None, x.rounds if x.flow else 0, x.asrole))
+            print(submit(c, sys.stdin.read() if x.brief == "-" else x.brief, x.pool, x.job, x.check, parse_flow(x.flow) if x.flow else None, x.rounds if x.flow else 0, x.asrole, x.needs))
         elif x.cmd == "batch":
             n = 0
             for line in open(x.file, encoding="utf-8"):
@@ -665,7 +737,7 @@ def main():
                 d = json.loads(line)
                 fl = d.get("flow") or x.flow
                 submit(c, d["brief"], d.get("pool") or x.pool, d.get("job") or x.job, d.get("check") or x.check,
-                       parse_flow(fl) if fl else None, d.get("rounds", x.rounds) if fl else 0, d.get("as") or x.asrole); n += 1
+                       parse_flow(fl) if fl else None, d.get("rounds", x.rounds) if fl else 0, d.get("as") or x.asrole, d.get("needs") or x.needs); n += 1
             print(f"ส่งเข้าคิว {n} งาน")
         elif x.cmd == "worker":
             worker(x.concurrency, x.per_gateway, drain=not x.keep)
@@ -673,6 +745,13 @@ def main():
             wait_job(c, x.job, x.timeout)
         elif x.cmd == "results":
             show_results(c, x.job, x.status, x.full)
+        elif x.cmd == "skills":
+            if x.sub == "set":
+                c.execute("insert into seat_skills(seat,skill,score,n,note) values(?,?,?,0,'ตั้งเอง') on conflict(seat,skill) do update set score=?,note='ตั้งเอง'", (x.seat, x.skill, x.score, x.score)); c.commit()
+            for se, sk, sc, n_, nt in c.execute("select seat,skill,score,n,note from seat_skills" + (" where seat=?" if x.sub == "ls" and x.seat else "") + " order by skill,score desc", (x.seat,) if x.sub == "ls" and x.seat else ()):
+                print(f"{sk}\t{se}\t{sc:.2f}\tงานจริง {n_} ครั้ง\t{nt}")
+        elif x.cmd == "route":
+            print(f"ลำดับที่ระบบจะเลือกสำหรับ '{x.skill}':", " > ".join(f"{se} ({skill_score(c, se, x.skill):.2f})" for se in auto_pool(c, x.skill, 0.0)))
         elif x.cmd == "queue":
             print(queue_counts(c))
         elif x.cmd == "limit":
