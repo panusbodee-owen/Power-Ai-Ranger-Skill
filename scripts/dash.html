@@ -293,13 +293,14 @@ td{border-bottom:.5px solid var(--ln)}
 .about{font-size:13.5px;color:var(--mu)}
 .terms summary{color:var(--ac)}
 .gate .ic{color:#fff}
-/* grouped list (summary) */
-.grp{background:var(--p);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
-.lr{display:flex;align-items:center;gap:12px;padding:11px 16px;position:relative}
-.lr+.lr:before{content:"";position:absolute;left:36px;right:0;top:0;height:.5px;background:var(--ln)}
-.ld{width:9px;height:9px;border-radius:50%;flex:none}
-.lt{flex:1;min-width:0}.lt b{display:block;font-weight:500}.lt small{color:var(--mu);font-size:12px}
-.lv{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+/* summary strip (compact) */
+.grp{display:grid;grid-template-columns:repeat(4,1fr);background:var(--p);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}
+.lr{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"d t" "v v";gap:2px 7px;align-items:center;padding:9px 14px;position:relative}
+.lr+.lr:before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:.5px;background:var(--ln)}
+.ld{grid-area:d;width:7px;height:7px;border-radius:50%}
+.lt{grid-area:t;color:var(--mu);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lv{grid-area:v;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1.2}
+@media(max-width:760px){.grp{grid-template-columns:repeat(2,1fr)}.lr:nth-child(3):before{display:none}}
 </style>
 </head>
 <body>
@@ -734,7 +735,7 @@ function summary(){
   const ok=A.filter(a=>st(a)==='done').length, er=A.filter(a=>st(a)==='err').length, rate=ok+er?Math.round(ok*100/(ok+er)):null;
   const busy=(q.running||0)+(q.queued||0);
   const wk=(typeof U!=='undefined'&&U&&U.plan)?(U.plan.windows.find(w=>/weekly/i.test(w.label)&&/all/i.test(w.label))||{}).pct:null;
-  const row=(l,v,sub,dot)=>`<div class="lr"><span class="ld" style="background:${dot}"></span><div class="lt"><b>${l}</b><small>${sub}</small></div><span class="lv">${v}</span></div>`;
+  const row=(l,v,sub,dot)=>`<div class="lr" title="${sub}"><span class="ld" style="background:${dot}"></span><span class="lt">${l}</span><span class="lv">${v}</span></div>`;
   return `<section class="grp" aria-label="สรุปภาพรวม">
     ${row('ทีมพร้อมทำงาน',`${ready} / ${seats.length}`,'ช่องที่ใส่โมเดลไว้แล้ว','var(--gr)')}
     ${row('งานที่กำลังทำหรือรอคิว',busy,'ตอนนี้','var(--or)')}
