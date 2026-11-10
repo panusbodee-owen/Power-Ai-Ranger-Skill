@@ -98,11 +98,29 @@ def team_usage(c, days=14):
             r["ms"] += ms; r["msn"] += 1
         per_day[day(t)][agent] += 1
         jobs[job or "—"] += 1
+    q = defaultdict(lambda: [0, 0])  # ผู้ทำ -> [ผ่าน, ไม่ผ่าน] ตามผู้ตรวจ (AI)
+    ck = defaultdict(lambda: [0, 0])  # ผู้ทำ -> [ผ่าน, ไม่ผ่าน] ตามตัวเช็กอัตโนมัติ
+    for (tr,) in c.execute("select trace from tasks where trace is not null"):
+        try:
+            t = json.loads(tr)
+        except ValueError:
+            continue
+        maker = None
+        for st in t:
+            if st.get("stage") == "check":
+                continue
+            if st.get("verdict") is None and st.get("ok") and st.get("seat"):
+                maker = st["seat"]
+            elif st.get("verdict") in ("pass", "fail") and maker:
+                q[maker][0 if st["verdict"] == "pass" else 1] += 1
+    for seat, stt in c.execute("select used_seat,status from tasks where trace is null and chk is not null and used_seat is not null and status in ('done','check_failed')"):
+        ck[seat][0 if stt == "done" else 1] += 1  # งานเดี่ยวที่มีตัวเช็กอัตโนมัติ (json/py/spec)
     cutoff = day(time.time() - days * 86400)
     seats = []
     for a, r in by.items():
         seats.append(dict(agent=a, model=r["model"], gateway=gw.get(a, "—"), calls=r["calls"], errors=r["errors"], blocked=r["blocked"],
-                          avg_s=round(r["ms"] / r["msn"] / 1000, 1) if r["msn"] else None, chars_in=r["chars_in"], chars_out=r["chars_out"], last=r["last"]))
+                          avg_s=round(r["ms"] / r["msn"] / 1000, 1) if r["msn"] else None, chars_in=r["chars_in"], chars_out=r["chars_out"], last=r["last"],
+                          q_pass=q[a][0], q_fail=q[a][1], c_pass=ck[a][0], c_fail=ck[a][1]))
     seats.sort(key=lambda x: -x["calls"])
     return dict(seats=seats, days=[{"d": d, "by": dict(v)} for d, v in sorted(per_day.items()) if d >= cutoff],
                 top_jobs=sorted(({"job": j, "calls": n} for j, n in jobs.items()), key=lambda x: -x["calls"])[:8])
