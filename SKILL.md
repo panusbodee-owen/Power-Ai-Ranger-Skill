@@ -43,6 +43,18 @@ python3 ~/.claude/skills/ai-team/scripts/team.py add worker --base-url https://G
 - กลุ่มช่อง: `team.py pool set reliable worker intern seat1 seat2` แล้วใช้ `@reliable` ใน `--pool`/`--flow` ได้ (ใช้กลุ่มที่เกตเวย์เสถียรสำหรับงานจริง เกตเวย์ฟรีใช้เป็นตัวสำรอง)
 - ตัวตรวจแบบรันเทสจริงในกล่องทราย (macOS sandbox-exec: ห้ามเน็ตเวิร์ก ห้ามเขียนไฟล์นอกโฟลเดอร์ชั่วคราว จำกัด 15 วินาที): `--check "py:/path/test_x.py"` โค้ดบล็อกแรกจากโมเดลถูกบันทึกเป็น `solution.py` ให้สคริปต์เทส import ได้ ถ้าล้ม และมี `--rounds` จะส่งข้อความ error กลับให้ผู้ทำแก้ ตัวอย่างเทส: `scripts/tests/test_thai_id.py` ทดสอบแล้วว่าจับโค้ดผิดที่ผู้ตรวจ AI เคยให้ผ่านได้
 
+## ทีมมาตรฐาน (จัดตามผลวัดจริง 2026-11-10 — ปรับได้ในหน้า Studio)
+| ช่อง | โมเดล | ตำแหน่ง | เหตุผลจากผลวัด |
+|---|---|---|---|
+| seat2 | Nemotron Ultra 550B (NVIDIA) | ผู้ทดสอบอาวุโส | ออกแบบเคสเจอบั๊กจริง 7/10 ตรงจุดที่สุด แต่ช้า (~2-4 นาที/งาน) |
+| intern | Nemotron nano omni reasoning (NVIDIA) | ผู้ทดสอบ | JSON เสถียร 6/6 เคสพื้นฐานดี (~2 นาที/งาน) |
+| seat1 | Nemotron 3.5 lightning (NVIDIA) | เด็กฝึกงาน | ผลคลุมเครือ มีอักษรจีนปน ใช้เมื่อมีผู้ตรวจ/เทสตรวจทุกครั้ง |
+| seat5 | Qwen 3.8 27B (Tokenme) | ผู้ตรวจหลัก | ตัดสินถูก 11/12 เร็ว (~4 วินาที) พลาดแค่ข้อเท็จจริง Odoo 20 |
+| worker | DeepSeek V4 Flash (Tokenme) | ผู้ตรวจสำรอง / งานสั้น | ตัดสินถูก 10/12 เร็วมากกับงานสั้น แต่ส่งผลว่างกับงาน JSON ยาว ห้ามใช้เป็นผู้ทำงานยาว |
+| seat3/seat4 | OpenRouter ฟรี / Groq | สำรอง | โควตา/rate limit ไม่เสถียร |
+กลุ่มช่อง: `@makers`=seat2,intern,seat1 · `@testers`=seat2,intern · `@reviewers`=seat5,worker · `@reliable`=ทุกช่องหลัก
+สายงานมาตรฐาน: `--flow "senior_tester@@testers>reviewer@@reviewers" --rounds 1 --check json` (ออกแบบเคส) และ `--flow "trainee@@makers" --rounds 2 --check "py:ไฟล์เทส"` (โค้ด) — ผู้ตรวจ AI ผ่านแล้วต้องผ่าน Claude อีกชั้นเสมอ เลือกช่องใน pool ตามเกตเวย์ว่างสุด (ไม่ใช่ตามความอาวุโส) ถ้าต้องการช่องเฉพาะให้ระบุชื่อช่องตรงๆ
+
 ## ช่องทีมและหลาย AI ต่องาน (Team Builder)
 โครงสร้าง: `gateways` (URL + key) → `catalog` (โมเดล + ราคา) → `seats` (ช่องทีม ชี้ catalog) ผู้ใช้ลากโมเดลใส่ช่อง เลือกจำนวน AI และโหมดในแดชบอร์ด (แท็บ Studio) แล้วบอก Claude ให้ทำงาน
 1. อ่านค่าที่ผู้ใช้เลือก: `team.py plan` → `mode=… n=… active=seatA,seatB` ใช้เฉพาะช่อง active นี้ ห้ามเพิ่มเองโดยไม่ถาม (N ตัว = จ่าย N เท่า)

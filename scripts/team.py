@@ -94,9 +94,9 @@ def migrate(c):
         host = urlparse(url).netloc
         c.execute("insert or ignore into gateways values(?,?,?)", (host, url, key))
         c.execute("insert or ignore into catalog(name,gateway,model) values(?,?,?)", (model.split("/")[-1], host, model))
-        c.execute("insert or ignore into seats values(?,?,?,?)", (name, title, role, model.split("/")[-1]))
+        c.execute("insert or ignore into seats(name,title,role,catalog) values(?,?,?,?)", (name, title, role, model.split("/")[-1]))
     for i in (3, 4):
-        c.execute("insert or ignore into seats values(?,?,?,null)", (f"seat{i}", f"ช่อง {i}", "ผู้ช่วย AI: ทำงานตามที่ได้รับมอบหมาย กระชับ ถูกต้อง"))
+        c.execute("insert or ignore into seats(name,title,role,catalog) values(?,?,?,null)", (f"seat{i}", f"ช่อง {i}", "ผู้ช่วย AI: ทำงานตามที่ได้รับมอบหมาย กระชับ ถูกต้อง"))
     c.executemany("insert or ignore into settings values(?,?)", [("migrated", "1"), ("n", "2"), ("mode", "best-of-n")])
     c.commit()
 
@@ -178,7 +178,7 @@ def seat_add(c):
     n = 1
     while c.execute("select 1 from seats where name=?", (f"seat{n}",)).fetchone():
         n += 1
-    c.execute("insert into seats values(?,?,?,null)", (f"seat{n}", f"ช่อง {n}", "ผู้ช่วย AI: ทำงานตามที่ได้รับมอบหมาย กระชับ ถูกต้อง")); c.commit()
+    c.execute("insert into seats(name,title,role,catalog) values(?,?,?,null)", (f"seat{n}", f"ช่อง {n}", "ผู้ช่วย AI: ทำงานตามที่ได้รับมอบหมาย กระชับ ถูกต้อง")); c.commit()
     return f"seat{n}"
 
 
@@ -282,12 +282,7 @@ def run_check(chk, text):
     if kind == "py":
         return run_py_check(arg, text)
     if kind == "json":
-        m = re.search(r"(\{.*\}|\[.*\])", text, re.S)
-        try:
-            json.loads(m.group(1)) if m else (_ for _ in ()).throw(ValueError())
-            return True, ""
-        except Exception:
-            return False, "ไม่ใช่ JSON"
+        return (True, "") if first_json(text) is not None else (False, "ไม่ใช่ JSON")
     return True, ""
 
 
@@ -358,14 +353,36 @@ def try_pool(c, pool, brief, job, role_ov, sems, busy, lock, exclude=(), avoid_g
     return False, last, None, "error"
 
 
+def first_json(text, want=None):
+    """คืนวัตถุ JSON ตัวแรกที่ parse ได้ในข้อความ (want = ชนิด dict/list ที่ต้องการ)"""
+    dec = json.JSONDecoder()
+    for i, ch in enumerate(text):
+        if ch in "{[":
+            try:
+                obj, _ = dec.raw_decode(text[i:])
+            except ValueError:
+                continue
+            if want is None or isinstance(obj, want):
+                return obj
+    return None
+
+
 def parse_verdict(text):
-    m = re.search(r"\{.*\}", text, re.S)
-    try:
-        d = json.loads(m.group(0))
-        v = str(d.get("verdict", "")).strip().lower()
-        return v in ("pass", "ผ่าน"), d
-    except Exception:
+    cands = []
+    dec = json.JSONDecoder()
+    for i, ch in enumerate(text):
+        if ch == "{":
+            try:
+                obj, _ = dec.raw_decode(text[i:])
+            except ValueError:
+                continue
+            if isinstance(obj, dict) and "verdict" in obj:
+                cands.append(obj)
+    if not cands:
         return False, {"verdict": "unparsable", "issues": ["ผู้ตรวจไม่ได้ตอบเป็น JSON: " + text[:120]]}
+    d = cands[0]
+    v = str(d.get("verdict", "")).strip().lower()
+    return v in ("pass", "ผ่าน"), d
 
 
 def run_flow(c, t, sems, busy, lock):
@@ -508,6 +525,7 @@ def main():
     q = k.add_parser("remove"); q.add_argument("name")
     s = sp.add_parser("seat").add_subparsers(dest="sub", required=True); s.add_parser("ls"); s.add_parser("undo"); q = s.add_parser("add"); q.add_argument("name", nargs="?")
     q = s.add_parser("position"); q.add_argument("seat"); q.add_argument("role")
+    q = s.add_parser("title"); q.add_argument("seat"); q.add_argument("text")
     q = s.add_parser("set"); q.add_argument("seat"); q.add_argument("catalog"); q = s.add_parser("clear"); q.add_argument("seat"); q = s.add_parser("remove"); q.add_argument("seat")
     p = sp.add_parser("submit"); p.add_argument("brief"); p.add_argument("--pool"); p.add_argument("--job"); p.add_argument("--check")
     p.add_argument("--flow"); p.add_argument("--rounds", type=int, default=1); p.add_argument("--as", dest="asrole")
@@ -529,7 +547,7 @@ def main():
             if not c.execute("select 1 from gateways where name=?", (host,)).fetchone() or os.environ.get("AI_TEAM_KEY"):
                 c.execute("insert or replace into gateways values(?,?,?)", (host, x.base_url, key(host)))
             c.execute("insert or replace into catalog(name,gateway,model) values(?,?,?)", (cat, host, x.model))
-            c.execute("insert or replace into seats values(?,?,?,?)", (x.name, x.title or x.name, x.role, cat)); c.commit()
+            c.execute("insert or replace into seats(name,title,role,catalog) values(?,?,?,?)", (x.name, x.title or x.name, x.role, cat)); c.commit()
             print(f"บันทึกช่อง {x.name} ← {cat}")
         elif x.cmd == "list" or (x.cmd == "seat" and x.sub == "ls"):
             for n, t, k_, m in c.execute("select s.name,s.title,s.catalog,k.model from seats s left join catalog k on k.name=s.catalog"):
@@ -558,12 +576,14 @@ def main():
             else:
                 c.execute("delete from catalog where name=?", (x.name,)); c.commit()
         elif x.cmd == "seat":
-            if x.sub == "position": set_position(c, x.seat, None if x.role == "-" else x.role); print(f"{x.seat} ตำแหน่ง: {x.role}")
+            if x.sub == "title":
+                c.execute("update seats set title=? where name=?", (x.text, x.seat)); c.commit(); print(x.seat, "ชื่อตำแหน่ง:", x.text)
+            elif x.sub == "position": set_position(c, x.seat, None if x.role == "-" else x.role); print(f"{x.seat} ตำแหน่ง: {x.role}")
             elif x.sub == "set": seat_set(c, x.seat, x.catalog); print(f"{x.seat} ← {x.catalog}")
             elif x.sub == "clear": seat_set(c, x.seat, None)
             elif x.sub == "undo": print("ย้อนช่อง", seat_undo(c))
             elif x.sub == "add":
-                if x.name: c.execute("insert into seats values(?,?,?,null)", (x.name, x.name, "")); c.commit(); print(x.name)
+                if x.name: c.execute("insert into seats(name,title,role,catalog) values(?,?,?,null)", (x.name, x.name, "")); c.commit(); print(x.name)
                 else: print(seat_add(c))
             else: c.execute("delete from seats where name=?", (x.seat,)); c.commit()
         elif x.cmd == "plan":
