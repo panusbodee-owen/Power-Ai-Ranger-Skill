@@ -7,23 +7,26 @@
 <title>AI Team Studio</title>
 <style>
 :root{color-scheme:light;
---bg:#f5f4f0;--sb:#fbfaf7;--p:#ffffff;--p2:#f1efe9;--ln:#e2dfd6;--ln2:#c9c5b8;--tx:#1f2430;--mu:#646a78;
---bl:#3d5a99;--ac:#3d5a99;--act:#2f4a82;--acs:color-mix(in srgb,#3d5a99 10%,transparent);
---gr:#2d7a4f;--or:#a8650f;--rd:#bf3a30;--cy:#2a7f8c;--pk:#7a5fb0;--vi:#7a5fb0;
---on:#ffffff;--hair:rgba(31,36,48,.06);--shadow:0 1px 2px rgba(31,36,48,.06);--scrim:rgba(245,244,240,.82)}
+--bg:#f3f1ec;--sb:#faf8f4;--p:#ffffff;--p2:#efece6;--ln:#e0dcd2;--ln2:#c6c1b3;--tx:#1b1b1f;--mu:#66666f;
+--bl:#b3101f;--ac:#b3101f;--act:#8f0c19;--acs:color-mix(in srgb,#b3101f 9%,transparent);
+--gr:#2d7a4f;--or:#a8650f;--rd:#b3261e;--cy:#2a7f8c;--pk:#7a5fb0;--vi:#7a5fb0;
+--on:#ffffff;--onac:#fff;--hair:rgba(27,27,31,.06);--shadow:0 1px 2px rgba(27,27,31,.06);--scrim:rgba(243,241,236,.86);
+--metal:linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,255,255,0) 60%);--vig:radial-gradient(1200px 340px at 50% -120px,rgba(179,16,31,.06),transparent 70%);--tick:#b9b4a6}
 :root[data-theme=dark]{color-scheme:dark;
---bg:#14161b;--sb:#181b21;--p:#1d2027;--p2:#242831;--ln:#2e333d;--ln2:#434a57;--tx:#e8eaee;--mu:#9aa1b0;
---bl:#8fa8e0;--ac:#8fa8e0;--act:#a9bdee;--acs:color-mix(in srgb,#8fa8e0 14%,transparent);
---gr:#5cc38b;--or:#e0a73f;--rd:#f07a6e;--cy:#57b6c4;--pk:#b39ae0;--vi:#b39ae0;
---on:#14161b;--hair:rgba(255,255,255,.06);--shadow:none;--scrim:rgba(20,22,27,.82)}
+--bg:#0b0b0d;--sb:#0f0f12;--p:#141417;--p2:#1b1b1f;--ln:#27272d;--ln2:#3b3b44;--tx:#ece9e4;--mu:#9a99a2;
+--bl:#e5333c;--ac:#e5333c;--act:#ff6a72;--acs:color-mix(in srgb,#e5333c 14%,transparent);
+--gr:#5cc38b;--or:#e0a73f;--rd:#ff7b6e;--cy:#57b6c4;--pk:#b39ae0;--vi:#b39ae0;
+--on:#0b0b0d;--onac:#fff;--hair:rgba(255,255,255,.06);--shadow:0 1px 0 rgba(255,255,255,.03) inset;--scrim:rgba(11,11,13,.86);
+--metal:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 40%);--vig:radial-gradient(1200px 380px at 50% -120px,rgba(229,51,60,.10),transparent 70%);--tick:#4a4a53}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;
---bg:#14161b;--sb:#181b21;--p:#1d2027;--p2:#242831;--ln:#2e333d;--ln2:#434a57;--tx:#e8eaee;--mu:#9aa1b0;
---bl:#8fa8e0;--ac:#8fa8e0;--act:#a9bdee;--acs:color-mix(in srgb,#8fa8e0 14%,transparent);
---gr:#5cc38b;--or:#e0a73f;--rd:#f07a6e;--cy:#57b6c4;--pk:#b39ae0;--vi:#b39ae0;
---on:#14161b;--hair:rgba(255,255,255,.06);--shadow:none;--scrim:rgba(20,22,27,.82)}}
+--bg:#0b0b0d;--sb:#0f0f12;--p:#141417;--p2:#1b1b1f;--ln:#27272d;--ln2:#3b3b44;--tx:#ece9e4;--mu:#9a99a2;
+--bl:#e5333c;--ac:#e5333c;--act:#ff6a72;--acs:color-mix(in srgb,#e5333c 14%,transparent);
+--gr:#5cc38b;--or:#e0a73f;--rd:#ff7b6e;--cy:#57b6c4;--pk:#b39ae0;--vi:#b39ae0;
+--on:#0b0b0d;--onac:#fff;--hair:rgba(255,255,255,.06);--shadow:0 1px 0 rgba(255,255,255,.03) inset;--scrim:rgba(11,11,13,.86);
+--metal:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 40%);--vig:radial-gradient(1200px 380px at 50% -120px,rgba(229,51,60,.10),transparent 70%);--tick:#4a4a53}}
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.6 -apple-system,"Sukhumvit Set",Thonburi,"Noto Sans Thai",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--vig),var(--bg);background-repeat:no-repeat;color:var(--tx);font:14px/1.6 -apple-system,"Sukhumvit Set",Thonburi,"Noto Sans Thai",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 ::selection{background:var(--acs)}
 :focus-visible{outline:2px solid var(--ac);outline-offset:2px}
 html{scrollbar-color:var(--ln2) transparent}
@@ -32,33 +35,35 @@ button,select,input{font-family:inherit}
 /* sidebar */
 .sb{background:var(--sb);border-right:1px solid var(--ln);padding:14px 12px;display:flex;flex-direction:column;gap:6px;overflow:auto}
 .brand{display:flex;gap:9px;align-items:center;font-weight:700;font-size:15px;margin-bottom:8px}
-.brand i{width:26px;height:26px;border-radius:7px;background:var(--tx);color:var(--bg);display:grid;place-items:center;font-style:normal;font-size:13px}
+.brand{letter-spacing:.14em;font-size:13px;text-transform:uppercase}
+.brand i{width:26px;height:30px;display:grid;place-items:center;font-style:normal}
+.brand i svg{width:100%;height:100%;display:block}
 .ws{border:1px solid var(--ln);border-radius:9px;padding:7px 10px;color:var(--gr);font-size:12px;margin-bottom:10px;background:var(--p)}
-.sb h6{margin:14px 8px 4px;font-size:11px;letter-spacing:.04em;color:var(--mu);font-weight:600}
+.sb h6{margin:16px 8px 4px;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--mu);font-weight:600}
 .nv{display:flex;gap:9px;align-items:center;padding:7px 10px;border-radius:8px;color:var(--mu);cursor:pointer;border:0;background:none;font:inherit;text-align:left;width:100%}
 .nv:hover{background:var(--p2);color:var(--tx)}
-.nv.on{background:var(--acs);color:var(--act);font-weight:600}
+.nv.on{background:var(--acs);color:var(--tx);font-weight:600;box-shadow:inset 2px 0 0 var(--ac)}
 .nv b{width:16px;text-align:center;font-weight:400}
 /* main */
 .main{display:grid;grid-template-columns:1fr 330px;grid-template-rows:auto 1fr;min-width:0;min-height:0}
 .hd{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:12px 18px 0;border-bottom:1px solid var(--ln);flex-wrap:wrap}
 .crumb{color:var(--mu);font-size:12px;width:100%}
-.hd h1{margin:0;font-size:20px;display:flex;align-items:center;gap:10px}
+.hd h1{margin:0;font-size:19px;font-weight:600;letter-spacing:.01em;display:flex;align-items:center;gap:10px}
 .draft{font-size:11px;padding:2px 9px;border-radius:99px;background:color-mix(in srgb,var(--gr) 14%,transparent);color:var(--gr);border:1px solid color-mix(in srgb,var(--gr) 33%,transparent);font-weight:600}
 .draft.idle{background:var(--hair);color:var(--mu);border-color:var(--ln)}
 .tabsx{display:flex;gap:2px;width:100%}
 .tabx{padding:8px 14px;border:0;background:none;color:var(--mu);font:inherit;cursor:pointer;border-bottom:2px solid transparent}
-.tabx.on{color:var(--act);border-color:var(--bl)}
+.tabx.on{color:var(--tx);border-color:var(--ac)}
 .sp{flex:1}
 .btn{padding:7px 14px;border-radius:8px;border:1px solid var(--ln);background:var(--p);color:var(--tx);font:inherit;cursor:pointer}
-.btn.pr{background:var(--ac);border-color:var(--ac);color:var(--on);font-weight:600}
+.btn.pr{background:var(--ac);border-color:var(--ac);color:var(--onac);font-weight:600;letter-spacing:.02em}
 .btn:hover{border-color:var(--ln2)}
 .cen{padding:20px 22px;display:flex;flex-direction:column;gap:16px;overflow:auto;min-width:0}
 .canvas{background:var(--p);border:1px solid var(--ln);border-radius:12px;position:relative;overflow:hidden}
 .canvas svg{width:100%;display:block}
 .zoom{position:absolute;left:12px;bottom:10px;font-size:11px;color:var(--mu)}
 .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.card{background:var(--p);border:1px solid var(--ln);border-radius:10px;padding:16px 18px;min-width:0;box-shadow:var(--shadow)}
+.card{background:var(--metal),var(--p);border:1px solid var(--ln);border-radius:10px;padding:18px 20px;min-width:0;box-shadow:var(--shadow)}
 .card h3{margin:0 0 10px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
 .card h3 a{color:var(--bl);font-weight:400;font-size:12px}
 .src{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:12px}
@@ -73,13 +78,13 @@ button,select,input{font-family:inherit}
 .mon{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .mon div{border:1px solid var(--ln);border-radius:8px;padding:6px 8px;background:var(--p2)}
 .mon small{color:var(--mu);font-size:10px;display:block}
-.mon b{font-size:17px;display:block}
+.mon b{font-size:19px;font-weight:300;display:block;font-variant-numeric:tabular-nums;letter-spacing:.01em}
 .mon svg{width:100%;height:26px;display:block}
 /* right */
 .rt{border-left:1px solid var(--ln);background:var(--sb);display:flex;flex-direction:column;min-height:0}
 .rtabs{display:flex;border-bottom:1px solid var(--ln)}
 .rtabs button{flex:1;padding:11px 4px;border:0;background:none;color:var(--mu);font:inherit;cursor:pointer;border-bottom:2px solid transparent}
-.rtabs button.on{color:var(--act);border-color:var(--bl)}
+.rtabs button.on{color:var(--tx);border-color:var(--ac)}
 .rbody{padding:14px;overflow:auto;display:flex;flex-direction:column;gap:18px}
 .sec h4{margin:0 0 8px;font-size:13px;display:flex;justify-content:space-between}
 .sec h4 a{color:var(--bl);font-weight:400;font-size:12px}
@@ -161,7 +166,7 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .mh b{font-size:15px}
 .mtabs{display:inline-flex;border:1px solid var(--ln);border-radius:9px;overflow:hidden}
 .mtabs button{padding:6px 12px;border:0;background:var(--p2);color:var(--mu);font:inherit;cursor:pointer}
-.mtabs button.on{background:var(--ac);color:var(--on)}
+.mtabs button.on{background:var(--ac);color:var(--onac)}
 .mjobs{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:180px}
 .mx{background:none;border:1px solid var(--ln);color:var(--tx);border-radius:8px;width:32px;height:32px;font-size:15px;cursor:pointer}
 .mbody{flex:1;display:grid;grid-template-columns:1fr 340px;min-height:0}
@@ -219,6 +224,24 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .terms dl{margin:8px 0 0;display:grid;grid-template-columns:110px 1fr;gap:6px 14px}
 .terms dt{color:var(--tx);font-weight:600}.terms dd{margin:0}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+
+.hero{position:relative;display:grid;grid-template-columns:minmax(220px,1.1fr) repeat(4,minmax(120px,1fr));gap:6px 10px;align-items:center;padding:22px 24px 14px;border:1px solid var(--ln);border-radius:14px;background:var(--metal),var(--p);box-shadow:var(--shadow);overflow:hidden}
+.hero:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(45deg,var(--hair) 0 1px,transparent 1px 6px);opacity:.5;pointer-events:none;-webkit-mask-image:linear-gradient(90deg,#000,transparent 70%);mask-image:linear-gradient(90deg,#000,transparent 70%)}
+.hero:after{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--ac),transparent);opacity:.7}
+.hero>*{position:relative}
+.wm{padding-right:10px}
+.wm b{display:block;font-size:26px;font-weight:300;letter-spacing:.2em;text-transform:uppercase;line-height:1.15}
+.wm b em{font-style:normal;color:var(--ac);font-weight:600}
+.wm p{margin:8px 0 0;color:var(--mu);font-size:13px;max-width:34ch}
+.gz{text-align:center}
+.gz svg{width:100%;max-width:150px;height:auto;display:block;margin:0 auto}
+.gz .nd{transform-origin:75px 78px;transform:rotate(var(--a))}
+.gz.boot .nd{animation:sweep 1.6s cubic-bezier(.22,.8,.2,1) both}
+@keyframes sweep{0%{transform:rotate(-135deg)}50%{transform:rotate(135deg)}100%{transform:rotate(var(--a))}}
+.gz .v{font-size:25px;font-weight:300;font-variant-numeric:tabular-nums;letter-spacing:.01em;fill:var(--tx)}
+.gz .u{font-size:9px;letter-spacing:.14em;text-transform:uppercase;fill:var(--mu)}
+.gz small{display:block;margin-top:2px;color:var(--mu);font-size:11.5px;letter-spacing:.06em}
+@media(max-width:1100px){.hero{grid-template-columns:repeat(2,1fr)}.wm{grid-column:1/-1}}
 @keyframes fl{to{stroke-dashoffset:-24}}
 @keyframes gl{50%{opacity:.45}}
 .sec>svg{width:100%;height:70px;display:block}
@@ -230,7 +253,7 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 <body>
 <div class="app">
 <nav class="sb">
-  <div class="brand"><i>◆</i>AI Team</div>
+  <div class="brand"><i><svg viewBox="0 0 26 30" aria-hidden="true"><path d="M3 2h20v14c0 6-5 10-10 12C8 26 3 22 3 16z" fill="none" stroke="var(--tx)" stroke-width="1.4"/><path d="M8 17l5-9 5 9" fill="none" stroke="var(--ac)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></i>AI Team</div>
   <div class="ws">● Claude Workspace</div>
   <h6>BUILD</h6>
   <button class="nv" data-v="design"><b>◇</b>ผังงาน</button>
@@ -624,7 +647,7 @@ function evaluations(){
   const gate=(t,good,note)=>`<div class="gate"><div class="ic ${good?'':'w'}">${good?'✓':'!'}</div><span>${t}</span><em>${esc(note)}</em></div>`;
   const ms=A.filter(a=>a.ms).slice(0,20).reverse().map(a=>a.ms);
   const tot=ok.length+er.length+wk.length||1, C=2*Math.PI*30, seg=(n,o)=>`${n/tot*C} ${C}`, offs=[0,ok.length/tot*C,(ok.length+wk.length)/tot*C];
-  const ring=[[ok.length,'var(--bl)',offs[0]],[wk.length,'var(--or)',offs[1]],[er.length,'var(--rd)',offs[2]]].map(([n,c,o])=>n?`<circle cx="40" cy="40" r="30" fill="none" stroke="${c}" stroke-width="10" stroke-dasharray="${n/tot*C} ${C}" stroke-dashoffset="${-o}" transform="rotate(-90 40 40)"/>`:'').join('');
+  const ring=[[ok.length,'var(--gr)',offs[0]],[wk.length,'var(--or)',offs[1]],[er.length,'var(--rd)',offs[2]]].map(([n,c,o])=>n?`<circle cx="40" cy="40" r="30" fill="none" stroke="${c}" stroke-width="10" stroke-dasharray="${n/tot*C} ${C}" stroke-dashoffset="${-o}" transform="rotate(-90 40 40)"/>`:'').join('');
   return `<div class="sec"><h4>Release Gate <a>Boundary</a></h4>
     ${gate('ไม่มีข้อมูลลับใน brief',true,forb?`บล็อกแล้ว ${forb}`:'ไม่พบ')}
     ${gate('ความยาว brief ≤ 8,000',true,long?`บล็อกแล้ว ${long}`:'ปกติ')}
@@ -633,7 +656,7 @@ function evaluations(){
     ${gate('สายบังคับบัญชา Head→ลูกทีม',true,'บังคับใช้')}</div>
   <div class="sec"><h4>Evaluation Results <a>เวลาตอบ (ms)</a></h4>${spark(ms,'var(--bl)',290,70)}</div>
   <div class="sec"><h4>Task Status</h4><div class="tc"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30" fill="none" stroke="var(--hair)" stroke-width="10"/>${ring}</svg>
-    <div class="leg"><span><i style="background:var(--bl)"></i>Passed ${ok.length}</span><span><i style="background:var(--or)"></i>Working ${wk.length}</span><span><i style="background:var(--rd)"></i>Failed ${er.length}</span></div></div></div>
+    <div class="leg"><span><i style="background:var(--gr)"></i>Passed ${ok.length}</span><span><i style="background:var(--or)"></i>Working ${wk.length}</span><span><i style="background:var(--rd)"></i>Failed ${er.length}</span></div></div></div>
   <div class="sec"><h4>Latest Traces <a data-r="hist" style="cursor:pointer">View all</a></h4>${traces(5)}</div>`;
 }
 function traces(n){const r=S.audit.slice(0,n);return r.map(a=>{const s=st(a);return `<div class="tr" data-t="${esc(a.agent)}"><span class="t">${esc(a.brief.slice(0,46))}</span><span class="badge ${s==='done'?'ok':s==='work'?'wk':'er'}">${s==='done'?'completed':s==='work'?'working':isBlk(a)?'blocked':'error'}</span><small>${ago(a.t)}</small></div>`}).join('')||'<div class="empty">ยังไม่มี trace</div>'}
@@ -653,11 +676,41 @@ const ABOUT={design:['ผังงาน','ดูว่างานเดิน�
 const TERMS='<details class="terms"><summary>ศัพท์ที่เจอบ่อย</summary><dl><dt>Boundary</dt><dd>ด่านตรวจก่อนส่งงานให้ AI: กันข้อมูลลับ ความยาวเกิน และจำนวนครั้งต่อชั่วโมง</dd><dt>Gateway</dt><dd>ผู้ให้บริการ AI ที่เราเชื่อมผ่าน API (เช่น Tokenme, NVIDIA)</dd><dt>Seat (ช่อง)</dt><dd>ที่นั่งของ AI หนึ่งตัวในทีม ใส่โมเดลและตำแหน่งได้</dd><dt>Trace</dt><dd>เส้นทางของงานหนึ่งชิ้นว่าผ่านใครบ้าง</dd><dt>Head</dt><dd>Claude ผู้สั่งและตรวจงานทั้งหมด</dd></dl></details>';
 function aboutBox(){const a=ABOUT[view];return a?`<div class="about"><b>${a[0]}</b> — ${a[1]}</div>`:''}
 
+/* ---------- instrument cluster ---------- */
+let bootDone=false; try{bootDone=sessionStorage.getItem('aiteam-boot')==='1'}catch(e){}
+function gauge(frac,val,unit,label,tone){
+  frac=Math.max(0,Math.min(1,frac||0));const cx=75,cy=78,r=58,A0=135,A1=405,pt=(a,rr)=>[cx+rr*Math.cos(a*Math.PI/180),cy+rr*Math.sin(a*Math.PI/180)];
+  const arc=(f0,f1)=>{const a0=A0+(A1-A0)*f0,a1=A0+(A1-A0)*f1,[x0,y0]=pt(a0,r),[x1,y1]=pt(a1,r);return `M${x0.toFixed(1)} ${y0.toFixed(1)} A${r} ${r} 0 ${(a1-a0)>180?1:0} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`};
+  let ticks='';for(let i=0;i<=24;i++){const a=A0+(A1-A0)*i/24,big=i%6===0,[x0,y0]=pt(a,r+3),[x1,y1]=pt(a,r+(big?10:7));ticks+=`<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${big?'var(--mu)':'var(--tick)'}" stroke-width="${big?1.4:1}"/>`}
+  const rot=-135+270*frac, c=tone||'var(--ac)';
+  return `<div class="gz${bootDone?'':' boot'}"><svg viewBox="0 0 150 130" role="img" aria-label="${esc(label)} ${esc(String(val))}${esc(unit||'')}">${ticks}
+    <path d="${arc(0,1)}" fill="none" stroke="var(--ln)" stroke-width="3" stroke-linecap="round"/>
+    ${frac>0.004?`<path d="${arc(0,frac)}" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round"/>`:''}
+    <g class="nd" style="--a:${rot}deg"><line x1="75" y1="78" x2="75" y2="26" stroke="${c}" stroke-width="2" stroke-linecap="round"/></g>
+    <circle cx="75" cy="78" r="5" fill="var(--p)" stroke="var(--ln2)" stroke-width="1.5"/>
+    <text class="v" x="75" y="112" text-anchor="middle">${esc(String(val))}</text><text class="u" x="75" y="125" text-anchor="middle">${esc(unit||'')}</text></svg><small>${esc(label)}</small></div>`;
+}
+function hero(){
+  const A=S.audit||[], q=S.queue||{}, seats=(S.seats||[]), ready=seats.filter(x=>x.model).length;
+  const ok=A.filter(a=>st(a)==='done').length, er=A.filter(a=>st(a)==='err').length, rate=ok+er?ok/(ok+er):0;
+  const busy=(q.running||0)+(q.queued||0);
+  const wk=(typeof U!=='undefined'&&U&&U.plan)?(U.plan.windows.find(w=>/weekly/i.test(w.label)&&/all/i.test(w.label))||{}).pct:null;
+  const html=`<section class="hero" aria-label="สถานะภาพรวมของทีม">
+   <div class="wm"><b>AI <em>Team</em></b><p>ศูนย์ควบคุมทีม AI ของคุณ มอบหมายงาน ตรวจผล และดูว่าใครทำอะไรอยู่ในที่เดียว</p></div>
+   ${gauge(seats.length?ready/seats.length:0,ready+'/'+seats.length,'ช่อง','ทีมพร้อมทำงาน','var(--gr)')}
+   ${gauge(Math.min(1,busy/8),busy,'งาน','งานที่กำลังทำ/รอ','var(--or)')}
+   ${gauge(rate,Math.round(rate*100),'%','สำเร็จ ใน 150 ครั้งล่าสุด',rate>=.7?'var(--gr)':rate>=.4?'var(--or)':'var(--rd)')}
+   ${wk==null?'<div class="gz"><svg viewBox="0 0 150 130"><text class="v" x="75" y="78" text-anchor="middle">—</text></svg><small>โควตา Claude (ยังไม่โหลด)</small></div>':gauge(wk/100,wk,'%','โควตา Claude รายสัปดาห์')}
+  </section>`;
+  if(!bootDone){bootDone=true;try{sessionStorage.setItem('aiteam-boot','1')}catch(e){}}
+  return html;
+}
+
 function render(){
   document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
   document.querySelectorAll('#rt [data-r]').forEach(b=>b.classList.toggle('on',b.dataset.r===rtab));
   const qn=S.queue||{}, qw=(qn.queued||0)+(qn.running||0), busy=S.audit.some(pend)||qw>0; $('live').textContent=qw?`Queue ${qn.running||0} กำลังทำ · ${qn.queued||0} รอ`:(busy?'Working':'Live'); $('live').classList.toggle('idle',!busy);
-  $('cen').innerHTML=aboutBox()+(view==='design'?flow()+bottom():view==='studio'?studioView():view==='jobs'?jobsView():view==='usage'?usageView():auditView())+TERMS;
+  $('cen').innerHTML=aboutBox()+(view==='design'?hero()+flow()+bottom():view==='studio'?studioView():view==='jobs'?jobsView():view==='usage'?usageView():auditView())+TERMS;
   if(view==='design')applyCtx(CTX.i);
   $('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;
 }
@@ -704,6 +757,7 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('[data-t]'); if(t){selNode='a:'+t.dataset.t;rtab='insp';view='design';render()}
 });
 $('exp').onclick=()=>{const b=new Blob([JSON.stringify({audit:S.audit,notes:S.notes},null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ai-team-log.json';a.click()};
+(async()=>{try{if(typeof loadUsage==='function'){U=await (await fetch('/api/usage')).json();uAt=Date.now()}}catch(e){}})();
 async function tick(force){if(dragging)return;try{const n=await (await fetch('/api/state')).json(),j=JSON.stringify(n);const ch=j!==lastJ;if(force===true||ch||view==='design'){lastJ=j;S=n;render();if(modal&&(ch||force===true))renderModal()}}catch(e){}}
 (()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.get('view'))view=h.get('view');if(h.get('rtab'))rtab=h.get('rtab');if(h.get('job'))selJob=h.get('job');if(h.get('modal')){modal=true;mtab=h.get('modal')==='net'?'net':'seq';if(h.get('job'))mjob=h.get('job')}if(h.get('zoom'))mz=Math.min(4,Math.max(.4,+h.get('zoom')||1))})();
 tick(); setInterval(tick,2000);
