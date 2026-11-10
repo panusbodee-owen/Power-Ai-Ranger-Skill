@@ -335,6 +335,45 @@ td{border-bottom:.5px solid var(--ln)}
 .cb{padding:0 16px 14px 36px}.cb small{display:block;color:var(--mu);font-weight:600;margin:8px 0 4px}
 .cb pre{margin:0;white-space:pre-wrap;word-break:break-word;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--p2);border-radius:8px;padding:10px 12px;max-height:260px;overflow:auto;color:var(--tx)}
 @media(max-width:900px){.jobs{grid-template-columns:1fr}.jl{max-height:none;flex-direction:row;overflow-x:auto}.jrow{width:auto;min-width:180px}}
+
+/* ===== Notion-style jobs ===== */
+.nt{max-width:920px;width:100%;margin:0 auto;padding:12px 8px 60px;color:var(--tx)}
+.nh1{font-size:36px;line-height:1.2;font-weight:700;letter-spacing:-.02em;margin:18px 0 6px}
+.nh2{font-size:19px;font-weight:600;margin:34px 0 8px;padding-bottom:6px;border-bottom:.5px solid var(--ln)}
+.nmu{color:var(--mu)}.nsm{font-size:12px;font-weight:400;margin-left:8px}
+.nlead{margin:0 0 22px;font-size:15px}
+.ntab{border-top:.5px solid var(--ln)}
+.nhd,.nrow{display:grid;grid-template-columns:minmax(200px,2.2fr) 120px 80px minmax(150px,1.6fr) 90px;align-items:center;border-bottom:.5px solid var(--ln)}
+.nhd{color:var(--mu);font-size:12.5px}
+.nrow{cursor:pointer}.nrow:hover{background:var(--hair)}
+.nc{padding:8px 10px;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.nc.n1{display:flex;align-items:center;gap:8px;font-weight:500}.nc.n1 span{overflow:hidden;text-overflow:ellipsis}
+.nc.num{text-align:right;font-variant-numeric:tabular-nums}
+.nc.tg{display:flex;gap:4px;flex-wrap:nowrap;overflow:hidden}
+.nic{color:var(--mu);flex:none}
+.ntag{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;line-height:1.4;padding:1px 8px;border-radius:4px;background:var(--hair);color:var(--tx);white-space:nowrap}
+.ntag i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.ntag.ok{background:color-mix(in srgb,var(--gr) 18%,transparent)}
+.ntag.wk{background:color-mix(in srgb,var(--or) 20%,transparent)}
+.ntag.er{background:color-mix(in srgb,var(--rd) 17%,transparent)}
+.nback{color:var(--mu);font-size:13px;cursor:pointer;display:inline-block;padding:4px 6px;margin-left:-6px;border-radius:5px}.nback:hover{background:var(--hair);color:var(--tx)}
+.nprops{margin:10px 0 18px;display:grid;gap:2px}
+.npr{display:grid;grid-template-columns:130px 1fr;align-items:center;min-height:32px}
+.npl{color:var(--mu);font-size:13.5px;padding:0 4px}.npv{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.ncall{display:flex;gap:10px;background:var(--hair);border-radius:6px;padding:14px 16px;margin:12px 0;line-height:1.6}
+.ncall svg{flex:none;margin-top:3px;color:var(--mu)}
+.ntg{margin:1px 0}
+.ntgh{display:flex;align-items:center;gap:9px;padding:5px 6px;border-radius:5px;cursor:pointer;min-height:32px}.ntgh:hover{background:var(--hair)}
+.chev{width:0;height:0;border-left:5px solid var(--mu);border-top:4px solid transparent;border-bottom:4px solid transparent;margin:0 4px;transition:transform .12s;flex:none}
+.chev.o{transform:rotate(90deg)}
+.ntrunc{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nts{font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ntgb{padding:2px 6px 10px 30px}
+.nbul{margin:0;padding-left:20px}.nbul>li{padding:3px 0;line-height:1.7}.nbul ul{margin:4px 0 6px;padding-left:20px;color:var(--mu);font-size:13px}.nbul ul li{list-style:circle;padding:1px 0}
+.nlab{color:var(--mu);font-size:12px;margin:10px 0 4px}
+.ntgb pre{margin:0;white-space:pre-wrap;word-break:break-word;font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--hair);border-radius:6px;padding:12px 14px;max-height:280px;overflow:auto}
+@media(max-width:760px){.nhd{display:none}.nrow{grid-template-columns:1fr auto}.nrow .nc:nth-child(n+3){display:none}}
+.ntgh.cd{background:none;border-radius:5px;padding:5px 6px;margin:0;box-shadow:none}.ntgh.cd:hover{background:var(--hair)}
 </style>
 </head>
 <body>
@@ -458,35 +497,45 @@ function bottom(){
 }
 
 /* ---------- views ---------- */
+let jobPage=false;
 function jobsView(){
   const J={};S.audit.forEach(x=>{const k=x.job||NOJOB;(J[k]??={a:[],n:[],last:0}).a.push(x);J[k].last=Math.max(J[k].last,x.t)});
   S.notes.forEach(n=>{const k=n.job||NOJOB;(J[k]??={a:[],n:[],last:0}).n.push(n);J[k].last=Math.max(J[k].last,n.t)});
-  const ks=Object.keys(J).sort((x,y)=>J[y].last-J[x].last); if(!ks.includes(selJob))selJob=ks[0]||null;
-  if(!selJob)return '<div class="card empty">ยังไม่มีงาน — สั่ง Claude ในแชทได้เลย</div>';
+  const ks=Object.keys(J).sort((x,y)=>J[y].last-J[x].last);
+  if(!ks.length)return '<div class="nt"><p class="nmu">ยังไม่มีงาน — สั่ง Claude ในแชทได้เลย</p></div>';
+  if(!ks.includes(selJob))jobPage=false;
   const tasksOf=k=>(S.tasks||[]).filter(t=>(t.job||NOJOB)===k&&t.trace);
   const verdict=k=>{const t=tasksOf(k).slice().sort((x,y)=>y.id-x.id)[0];if(J[k].a.some(pend))return['wk','กำลังทำ'];if(!t)return J[k].a.every(x=>st(x)==='err')?['er','มีปัญหา']:['ok','เสร็จ'];return t.status==='done'?['ok','ผ่านการตรวจ']:['er',({rejected:'ตีกลับครบรอบ',error:'ผิดพลาด',blocked:'ถูกบล็อก',check_failed:'ไม่ผ่านเช็ก'})[t.status]||t.status]};
-  const dot={ok:'var(--gr)',wk:'var(--or)',er:'var(--rd)'};
-  const list=ks.map(k=>{const v=verdict(k),n=J[k].a.length;return `<button class="jrow jt ${k===selJob?'on':''}" data-k="${esc(k)}"><span class="ld" style="background:${dot[v[0]]}"></span><span class="jn"><b>${esc(k)}</b><small>${v[1]} · เรียก ${n} ครั้ง · ${hm(J[k].last)}</small></span></button>`}).join('');
+  const tag=(c,t)=>`<span class="ntag ${c}">${esc(t)}</span>`;
+  const seatsOf=k=>[...new Set(J[k].a.map(x=>x.agent))];
+  const seatTags=k=>seatsOf(k).map(x=>`<span class="ntag g"><i style="background:${col(x)}"></i>${esc(x)}</span>`).join('');
+  const doc='<svg class="nic" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path d="M3.5 1.8h6l3 3v9.4h-9z"/><path d="M9.5 1.8v3h3"/></svg>';
+  if(!jobPage){
+    const rows=ks.map(k=>{const v=verdict(k);return `<div class="nrow" data-open="${esc(k)}" role="button" tabindex="0"><div class="nc n1">${doc}<span>${esc(k)}</span></div><div class="nc">${tag(v[0],v[1])}</div><div class="nc num">${J[k].a.length}</div><div class="nc tg">${seatTags(k)}</div><div class="nc nmu">${hm(J[k].last)}</div></div>`}).join('');
+    return `<div class="nt"><h1 class="nh1">งานที่แจก</h1><p class="nmu nlead">รายการงานที่สั่งทีมไว้ กดที่ชื่อเพื่อเปิดดูรายละเอียด</p>
+      <div class="ntab"><div class="nhd"><div class="nc n1">ชื่องาน</div><div class="nc">สถานะ</div><div class="nc num">เรียก AI</div><div class="nc">ผู้ร่วมงาน</div><div class="nc">ล่าสุด</div></div>${rows}</div></div>`;
+  }
   const jb=J[selJob], v=verdict(selJob), calls=jb.a.slice().sort((x,y)=>x.t-y.t);
-  const tot=calls.reduce((s2,x)=>s2+(x.ms||0),0)/1000, seats=[...new Set(calls.map(x=>x.agent))];
-  const nErr=calls.filter(x=>st(x)==='err').length;
+  const tot=calls.reduce((s2,x)=>s2+(x.ms||0),0)/1000, nErr=calls.filter(x=>st(x)==='err').length;
   const rt=Object.fromEntries((S.roles||[]).map(r=>[r.name,r.title]));
   const stepsOf=t=>t.trace.map(x=>{
-    const who=`${esc(rt[x.stage]||x.stage)} <span style="color:${col(x.seat)}">${esc(x.seat||'?')}</span>`;
-    if(x.verdict){const ok=x.verdict==='pass';return `<li class="${ok?'ok':'no'}"><span class="sd"></span><div><b>${who}</b> ตรวจแล้ว <span class="badge ${ok?'ok':'er'}">${ok?'ผ่าน':'ไม่ผ่าน'}${x.score!=null?' · '+x.score+'/10':''}</span>${(x.issues&&x.issues.length)?`<ul class="iss">${x.issues.slice(0,4).map(i=>`<li>${esc(String(i).slice(0,200))}</li>`).join('')}${x.issues.length>4?`<li>…และอีก ${x.issues.length-4} ข้อ</li>`:''}</ul>`:''}</div></li>`}
-    return `<li class="${x.ok===false?'no':'ok'}"><span class="sd"></span><div><b>${who}</b> ${x.ok===false?'ทำไม่สำเร็จ':'ส่งงาน'}${x.round?` <small>(แก้รอบที่ ${x.round})</small>`:''}</div></li>`}).join('');
-  const timeline=tasksOf(selJob).sort((x,y)=>x.id-y.id).map(t=>{const sm={done:['ok','ผ่านการตรวจ'],rejected:['er','ตีกลับครบรอบ'],error:['er','ผิดพลาด'],blocked:['er','ถูกบล็อก'],check_failed:['er','ไม่ผ่านเช็ก']}[t.status]||['id',t.status];
-    return `<div class="tk"><div class="tkh"><b>งาน #${t.id}</b><span class="badge ${sm[0]}">${sm[1]}</span></div><ol class="tl">${stepsOf(t)}</ol>${t.error&&t.status!=='done'?`<p class="why">${esc(String(t.error).slice(0,260))}</p>`:''}</div>`}).join('');
-  const rows=calls.map(x=>{const o=open.has(x.id),sx=st(x),lab=sx==='work'?['wk','กำลังทำ']:sx==='err'?(isBlk(x)?['er','ถูกบล็อก']:['er','ผิดพลาด']):['ok','สำเร็จ'];
-    const first=(x.brief||'').split('\n').find(l=>l.trim())||'';
-    return `<div class="cd cl" data-id="${x.id}"><div class="clh"><span class="ld" style="background:${col(x.agent)}"></span><span class="cw">${esc(x.agent)}</span><span class="cs">${esc(first.slice(0,70))}</span><span class="badge ${lab[0]}">${lab[1]}</span><span class="ct">${x.ms?(x.ms/1000).toFixed(1)+'s':''} · ${hm(x.t)}</span></div>
-    ${o?`<div class="cb"><small>ที่ส่งไป</small><pre>${esc((x.brief||'').slice(0,6000))}</pre><small>ที่ได้กลับมา</small><pre>${esc(x.blocked||x.reply||'กำลังทำงาน…')}</pre></div>`:''}</div>`}).join('');
-  return `<div class="jobs"><nav class="jl" aria-label="รายการงาน">${list}</nav><section class="jd">
-    <div class="jh"><h2>${esc(selJob)}</h2><span class="badge ${v[0]}">${v[1]}</span></div>
-    <p class="jsum">เรียก AI ${calls.length} ครั้ง${nErr?` (พลาด ${nErr})`:''} · รวมเวลาตอบ ${tot>=60?(tot/60).toFixed(1)+' นาที':tot.toFixed(0)+' วินาที'} · ผู้ที่ร่วมงาน: ${seats.map(x=>`<span style="color:${col(x)}">${esc(x)}</span>`).join(', ')}</p>
-    ${jb.n.slice().sort((x,y)=>x.t-y.t).map(n=>`<div class="note"><small>Claude สรุปผล · ${hm(n.t)}</small>${esc(n.text)}</div>`).join('')}
-    ${timeline?`<h3 class="jt3">เส้นทางของงาน</h3>${timeline}`:''}
-    <h3 class="jt3">การเรียก AI ทั้งหมด <small>กดที่แถวเพื่อดูข้อความที่ส่งและตอบกลับ</small></h3><div class="cls">${rows}</div></section></div>`;
+    const who=`<b>${esc(rt[x.stage]||x.stage)}</b> <span class="ntag g"><i style="background:${col(x.seat)}"></i>${esc(x.seat||'?')}</span>`;
+    if(x.verdict){const ok=x.verdict==='pass';return `<li>${who} ตรวจแล้ว ${tag(ok?'ok':'er',(ok?'ผ่าน':'ไม่ผ่าน')+(x.score!=null?' · '+x.score+'/10':''))}${(x.issues&&x.issues.length)?`<ul>${x.issues.slice(0,4).map(i=>`<li>${esc(String(i).slice(0,200))}</li>`).join('')}${x.issues.length>4?`<li class="nmu">…และอีก ${x.issues.length-4} ข้อ</li>`:''}</ul>`:''}</li>`}
+    return `<li>${who} ${x.ok===false?'ทำไม่สำเร็จ':'ส่งงาน'}${x.round?` <span class="nmu">(แก้รอบที่ ${x.round})</span>`:''}</li>`}).join('');
+  const tsm={done:['ok','ผ่านการตรวจ'],rejected:['er','ตีกลับครบรอบ'],error:['er','ผิดพลาด'],blocked:['er','ถูกบล็อก'],check_failed:['er','ไม่ผ่านเช็ก']};
+  const toggles=tasksOf(selJob).sort((x,y)=>x.id-y.id).map(t=>{const sm=tsm[t.status]||['id',t.status],key='t'+t.id,o=open.has(key);
+    return `<div class="ntg"><div class="ntgh" data-tg="${key}"><span class="chev ${o?'o':''}"></span><b>งาน #${t.id}</b>${tag(sm[0],sm[1])}</div>${o?`<div class="ntgb"><ul class="nbul">${stepsOf(t)}</ul>${t.error&&t.status!=='done'?`<div class="ncall"><span>${esc(String(t.error).slice(0,300))}</span></div>`:''}</div>`:''}</div>`}).join('');
+  const callRows=calls.map(x=>{const o=open.has(x.id),sx=st(x),lab=sx==='work'?['wk','กำลังทำ']:sx==='err'?['er',isBlk(x)?'ถูกบล็อก':'ผิดพลาด']:['ok','สำเร็จ'];
+    const first=((x.brief||'').split('\n').find(l=>l.trim())||'').slice(0,80);
+    return `<div class="ntg"><div class="ntgh cd" data-id="${x.id}"><span class="chev ${o?'o':''}"></span><span class="ntag g"><i style="background:${col(x.agent)}"></i>${esc(x.agent)}</span><span class="nmu ntrunc">${esc(first)}</span>${tag(lab[0],lab[1])}<span class="nmu nts">${x.ms?(x.ms/1000).toFixed(1)+'s · ':''}${hm(x.t)}</span></div>
+    ${o?`<div class="ntgb"><div class="nlab">ที่ส่งไป</div><pre>${esc((x.brief||'').slice(0,6000))}</pre><div class="nlab">ที่ได้กลับมา</div><pre>${esc(x.blocked||x.reply||'กำลังทำงาน…')}</pre></div>`:''}</div>`}).join('');
+  const prop=(l,val)=>`<div class="npr"><div class="npl">${l}</div><div class="npv">${val}</div></div>`;
+  return `<div class="nt"><a class="nback" data-back="1" role="button" tabindex="0">← งานทั้งหมด</a>
+    <h1 class="nh1">${esc(selJob)}</h1>
+    <div class="nprops">${prop('สถานะ',tag(v[0],v[1]))}${prop('เรียก AI',calls.length+' ครั้ง'+(nErr?` · พลาด ${nErr}`:''))}${prop('เวลาตอบรวม',tot>=60?(tot/60).toFixed(1)+' นาที':tot.toFixed(0)+' วินาที')}${prop('ผู้ร่วมงาน',seatTags(selJob))}${prop('ล่าสุด',hm(jb.last))}</div>
+    ${jb.n.slice().sort((x,y)=>x.t-y.t).map(n=>`<div class="ncall"><svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="8" cy="8" r="6.3"/><path d="M8 7.2v4M8 4.9v.1"/></svg><div><b>Claude สรุปผล</b> <span class="nmu">${hm(n.t)}</span><br>${esc(n.text)}</div></div>`).join('')}
+    ${toggles?`<h2 class="nh2">เส้นทางของงาน</h2>${toggles}`:''}
+    <h2 class="nh2">การเรียก AI ทั้งหมด <span class="nmu nsm">กดเพื่อดูข้อความ</span></h2>${callRows}</div>`;
 }
 
 /* ---------- usage ---------- */
@@ -832,6 +881,13 @@ document.addEventListener('click',e=>{
 });
 $('exp').onclick=()=>{const b=new Blob([JSON.stringify({audit:S.audit,notes:S.notes},null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ai-team-log.json';a.click()};
 (async()=>{try{if(typeof loadUsage==='function'){U=await (await fetch('/api/usage')).json();uAt=Date.now()}}catch(e){}})();
+document.addEventListener('click',e=>{
+  const o=e.target.closest('[data-open]');if(o){selJob=o.dataset.open;jobPage=true;render();window.scrollTo(0,0);return}
+  if(e.target.closest('[data-back]')){jobPage=false;render();return}
+  const tg=e.target.closest('[data-tg]');if(tg){const k=tg.dataset.tg;open.has(k)?open.delete(k):open.add(k);render();return}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const o=e.target.closest&&e.target.closest('[data-open],[data-back]');if(o){e.preventDefault();o.click()}}});
+
 async function tick(force){if(dragging)return;try{const n=await (await fetch('/api/state')).json(),j=JSON.stringify(n);const ch=j!==lastJ;if(force===true||ch||view==='design'){lastJ=j;S=n;render();if(modal&&(ch||force===true))renderModal()}}catch(e){}}
 (()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.get('view'))view=h.get('view');if(h.get('rtab'))rtab=h.get('rtab');if(h.get('job'))selJob=h.get('job');if(h.get('modal')){modal=true;mtab=h.get('modal')==='net'?'net':'seq';if(h.get('job'))mjob=h.get('job')}if(h.get('zoom'))mz=Math.min(4,Math.max(.4,+h.get('zoom')||1))})();
 tick(); setInterval(tick,2000);
