@@ -302,6 +302,39 @@ td{border-bottom:.5px solid var(--ln)}
 .lv{grid-area:v;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1.2}
 @media(max-width:760px){.grp{grid-template-columns:repeat(2,1fr)}.lr:nth-child(3):before{display:none}}
 .hd h1 .lg{width:30px;height:30px;flex:none}
+
+/* ===== jobs (master-detail) ===== */
+.jobs{display:grid;grid-template-columns:260px minmax(0,1fr);gap:18px;align-items:start}
+.jl{display:flex;flex-direction:column;gap:2px;background:var(--p);border-radius:12px;box-shadow:var(--shadow);padding:6px;max-height:72vh;overflow:auto}
+.jrow{display:flex;align-items:flex-start;gap:10px;text-align:left;border:0;background:none;border-radius:8px;padding:9px 10px;cursor:pointer;color:var(--tx);font:inherit;width:100%;max-width:none;white-space:normal}
+.jrow:hover{background:var(--hair)}
+.jrow.on{background:var(--acs);color:var(--tx)}
+.jrow,.jrow.on{padding:9px 10px;border-radius:8px}
+.jrow .ld{margin-top:6px}
+.jn{min-width:0}.jn b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.jn small{color:var(--mu);font-size:11.5px}
+.jd{min-width:0;display:flex;flex-direction:column;gap:12px}
+.jh{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.jh h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.015em}
+.jsum{margin:0;color:var(--mu)}
+.jt3{margin:10px 0 0;font-size:15px;font-weight:600}.jt3 small{color:var(--mu);font-weight:400;font-size:12px;margin-left:8px}
+.note{background:var(--p);border:0;box-shadow:var(--shadow);border-radius:12px;padding:12px 16px;margin:0}
+.note small{color:var(--mu);font-weight:600}
+.tk{background:var(--p);border-radius:12px;box-shadow:var(--shadow);padding:14px 18px}
+.tkh{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.tl{list-style:none;margin:0;padding:0 0 0 4px}
+.tl>li{position:relative;display:flex;gap:12px;padding:6px 0}
+.tl>li:not(:last-child):before{content:"";position:absolute;left:4px;top:20px;bottom:-6px;width:1.5px;background:var(--ln)}
+.sd{width:10px;height:10px;border-radius:50%;margin-top:6px;flex:none;background:var(--gr)}
+.tl>li.no .sd{background:var(--rd)}
+.iss{margin:6px 0 0;padding-left:18px;color:var(--mu);font-size:12.5px}.iss li{padding:1px 0;list-style:disc}
+.why{margin:8px 0 0;color:var(--mu);font-size:12.5px;background:var(--p2);border-radius:8px;padding:8px 10px}
+.cls{background:var(--p);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+.cl{border-radius:0;box-shadow:none;background:none;padding:0;margin:0;border-top:.5px solid var(--ln);cursor:pointer}.cl:first-child{border-top:0}
+.cl:hover{background:var(--hair)}
+.clh{display:flex;align-items:center;gap:10px;padding:10px 16px;font-size:13px}
+.clh .cw{font-weight:600;min-width:62px}.clh .cs{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mu)}.clh .ct{color:var(--mu);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.cb{padding:0 16px 14px 36px}.cb small{display:block;color:var(--mu);font-weight:600;margin:8px 0 4px}
+.cb pre{margin:0;white-space:pre-wrap;word-break:break-word;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--p2);border-radius:8px;padding:10px 12px;max-height:260px;overflow:auto;color:var(--tx)}
+@media(max-width:900px){.jobs{grid-template-columns:1fr}.jl{max-height:none;flex-direction:row;overflow-x:auto}.jrow{width:auto;min-width:180px}}
 </style>
 </head>
 <body>
@@ -426,17 +459,34 @@ function bottom(){
 
 /* ---------- views ---------- */
 function jobsView(){
-  const J={};S.audit.forEach(a=>{const k=a.job||NOJOB;(J[k]??={a:[],n:[],last:0}).a.push(a);J[k].last=Math.max(J[k].last,a.t)});
+  const J={};S.audit.forEach(x=>{const k=x.job||NOJOB;(J[k]??={a:[],n:[],last:0}).a.push(x);J[k].last=Math.max(J[k].last,x.t)});
   S.notes.forEach(n=>{const k=n.job||NOJOB;(J[k]??={a:[],n:[],last:0}).n.push(n);J[k].last=Math.max(J[k].last,n.t)});
   const ks=Object.keys(J).sort((x,y)=>J[y].last-J[x].last); if(!ks.includes(selJob))selJob=ks[0]||null;
   if(!selJob)return '<div class="card empty">ยังไม่มีงาน — สั่ง Claude ในแชทได้เลย</div>';
-  const jb=J[selJob],by={work:[],done:[],err:[]};jb.a.slice().sort((x,y)=>y.t-x.t).forEach(a=>by[st(a)].push(a));
-  const card=a=>{const o=open.has(a.id);return `<div class="cd" data-id="${a.id}" style="--c:${col(a.agent)}"><div class="t">Claude → ${esc(a.agent)}<span>${a.ms?(a.ms/1000).toFixed(1)+'s · ':''}${hm(a.t)}</span></div><p>${esc(o?a.brief:a.brief.slice(0,110)+(a.brief.length>110?'…':''))}</p>${o?`<p class="r">${esc(a.blocked||a.reply||'⏳ กำลังทำงาน…')}</p>`:''}</div>`};
-  const col3=(t,k)=>`<div class="kc"><h4>${t}<b>${by[k].length}</b></h4>${by[k].map(card).join('')||'<div class="empty">—</div>'}</div>`;
-  return `<div class="jtabs">${ks.map(k=>`<button class="jt ${k===selJob?'on':''}" data-k="${esc(k)}">${esc(k)}</button>`).join('')}</div>`+
-    jb.n.slice().sort((x,y)=>x.t-y.t).map(n=>`<div class="note"><small>Claude ตรวจผล · ${hm(n.t)}</small>${esc(n.text)}</div>`).join('')+
-    flowPanel(selJob)+
-    `<div class="kan">${col3('กำลังทำ','work')}${col3('เสร็จ','done')}${col3('ปัญหา / บล็อก','err')}</div>`;
+  const tasksOf=k=>(S.tasks||[]).filter(t=>(t.job||NOJOB)===k&&t.trace);
+  const verdict=k=>{const t=tasksOf(k).slice().sort((x,y)=>y.id-x.id)[0];if(J[k].a.some(pend))return['wk','กำลังทำ'];if(!t)return J[k].a.every(x=>st(x)==='err')?['er','มีปัญหา']:['ok','เสร็จ'];return t.status==='done'?['ok','ผ่านการตรวจ']:['er',({rejected:'ตีกลับครบรอบ',error:'ผิดพลาด',blocked:'ถูกบล็อก',check_failed:'ไม่ผ่านเช็ก'})[t.status]||t.status]};
+  const dot={ok:'var(--gr)',wk:'var(--or)',er:'var(--rd)'};
+  const list=ks.map(k=>{const v=verdict(k),n=J[k].a.length;return `<button class="jrow jt ${k===selJob?'on':''}" data-k="${esc(k)}"><span class="ld" style="background:${dot[v[0]]}"></span><span class="jn"><b>${esc(k)}</b><small>${v[1]} · เรียก ${n} ครั้ง · ${hm(J[k].last)}</small></span></button>`}).join('');
+  const jb=J[selJob], v=verdict(selJob), calls=jb.a.slice().sort((x,y)=>x.t-y.t);
+  const tot=calls.reduce((s2,x)=>s2+(x.ms||0),0)/1000, seats=[...new Set(calls.map(x=>x.agent))];
+  const nErr=calls.filter(x=>st(x)==='err').length;
+  const rt=Object.fromEntries((S.roles||[]).map(r=>[r.name,r.title]));
+  const stepsOf=t=>t.trace.map(x=>{
+    const who=`${esc(rt[x.stage]||x.stage)} <span style="color:${col(x.seat)}">${esc(x.seat||'?')}</span>`;
+    if(x.verdict){const ok=x.verdict==='pass';return `<li class="${ok?'ok':'no'}"><span class="sd"></span><div><b>${who}</b> ตรวจแล้ว <span class="badge ${ok?'ok':'er'}">${ok?'ผ่าน':'ไม่ผ่าน'}${x.score!=null?' · '+x.score+'/10':''}</span>${(x.issues&&x.issues.length)?`<ul class="iss">${x.issues.slice(0,4).map(i=>`<li>${esc(String(i).slice(0,200))}</li>`).join('')}${x.issues.length>4?`<li>…และอีก ${x.issues.length-4} ข้อ</li>`:''}</ul>`:''}</div></li>`}
+    return `<li class="${x.ok===false?'no':'ok'}"><span class="sd"></span><div><b>${who}</b> ${x.ok===false?'ทำไม่สำเร็จ':'ส่งงาน'}${x.round?` <small>(แก้รอบที่ ${x.round})</small>`:''}</div></li>`}).join('');
+  const timeline=tasksOf(selJob).sort((x,y)=>x.id-y.id).map(t=>{const sm={done:['ok','ผ่านการตรวจ'],rejected:['er','ตีกลับครบรอบ'],error:['er','ผิดพลาด'],blocked:['er','ถูกบล็อก'],check_failed:['er','ไม่ผ่านเช็ก']}[t.status]||['id',t.status];
+    return `<div class="tk"><div class="tkh"><b>งาน #${t.id}</b><span class="badge ${sm[0]}">${sm[1]}</span></div><ol class="tl">${stepsOf(t)}</ol>${t.error&&t.status!=='done'?`<p class="why">${esc(String(t.error).slice(0,260))}</p>`:''}</div>`}).join('');
+  const rows=calls.map(x=>{const o=open.has(x.id),sx=st(x),lab=sx==='work'?['wk','กำลังทำ']:sx==='err'?(isBlk(x)?['er','ถูกบล็อก']:['er','ผิดพลาด']):['ok','สำเร็จ'];
+    const first=(x.brief||'').split('\n').find(l=>l.trim())||'';
+    return `<div class="cd cl" data-id="${x.id}"><div class="clh"><span class="ld" style="background:${col(x.agent)}"></span><span class="cw">${esc(x.agent)}</span><span class="cs">${esc(first.slice(0,70))}</span><span class="badge ${lab[0]}">${lab[1]}</span><span class="ct">${x.ms?(x.ms/1000).toFixed(1)+'s':''} · ${hm(x.t)}</span></div>
+    ${o?`<div class="cb"><small>ที่ส่งไป</small><pre>${esc((x.brief||'').slice(0,6000))}</pre><small>ที่ได้กลับมา</small><pre>${esc(x.blocked||x.reply||'กำลังทำงาน…')}</pre></div>`:''}</div>`}).join('');
+  return `<div class="jobs"><nav class="jl" aria-label="รายการงาน">${list}</nav><section class="jd">
+    <div class="jh"><h2>${esc(selJob)}</h2><span class="badge ${v[0]}">${v[1]}</span></div>
+    <p class="jsum">เรียก AI ${calls.length} ครั้ง${nErr?` (พลาด ${nErr})`:''} · รวมเวลาตอบ ${tot>=60?(tot/60).toFixed(1)+' นาที':tot.toFixed(0)+' วินาที'} · ผู้ที่ร่วมงาน: ${seats.map(x=>`<span style="color:${col(x)}">${esc(x)}</span>`).join(', ')}</p>
+    ${jb.n.slice().sort((x,y)=>x.t-y.t).map(n=>`<div class="note"><small>Claude สรุปผล · ${hm(n.t)}</small>${esc(n.text)}</div>`).join('')}
+    ${timeline?`<h3 class="jt3">เส้นทางของงาน</h3>${timeline}`:''}
+    <h3 class="jt3">การเรียก AI ทั้งหมด <small>กดที่แถวเพื่อดูข้อความที่ส่งและตอบกลับ</small></h3><div class="cls">${rows}</div></section></div>`;
 }
 
 /* ---------- usage ---------- */
