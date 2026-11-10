@@ -63,7 +63,7 @@ python3 ~/.claude/skills/ai-team/scripts/team.py add worker --base-url https://G
 - ลบผู้ให้บริการได้เมื่อไม่มีช่องในทีมใช้โมเดลของมัน (ลบโมเดลของมันออกจากแคตตาล็อกด้วย)
 
 ## ทีมทดสอบ Odoo ของจริง (พนักงานเขียนเคส Claude รันให้)
-พนักงาน AI **ไม่ได้รับรหัส/เซสชัน Odoo** — เขียนเคสเป็น JSON ตาม DSL (`scripts/odoo-qa/odoo_spec.py` อธิบายกฎ) แล้ว
+พนักงาน AI **ไม่ได้รับรหัส/เซสชัน Odoo** — เขียนเคสเป็น JSON ตาม DSL (`scripts/odoo_spec.py` อธิบายกฎ) แล้ว
 1. ส่งงานด้วย `--flow "senior_tester@seat2" --rounds 2 --check spec` → ตัวตรวจ `spec` ปฏิเสธโมเดล/เมธอดนอก whitelist, id ตรงๆ, ฟิลด์ต้องห้าม, scenario ที่ไม่มี assert และส่งข้อผิดพลาดกลับให้พนักงานแก้ (ดูตัวอย่างบรีฟใน `scripts/odoo-qa/brief_gen_example.py`)
 2. ผู้ใช้ล็อกอิน Odoo เองในเบราว์เซอร์ Claude วาง `scripts/odoo-qa/odoo_runner.js` (ต้องมี `window.rpc`) แล้วเรียก `runScenarios(specs)` ผลคือ PASS/FAIL ต่อ scenario พร้อมขั้นที่ล้ม
 3. ตัวรันเขียน/สั่งงานได้เฉพาะเรคอร์ดที่สร้างหลังเริ่มรัน, ไม่มี unlink, ชื่อพาร์ทเนอร์/สินค้าใส่ `[TEST]` — ใช้กับฐานข้อมูลทดสอบที่ผู้ใช้ยืนยันเท่านั้น
