@@ -28,7 +28,8 @@ def state():
     seats = [dict(name=n, title=t, role=r, position=pos, catalog=k, model=cat[k]["model"] if k in cat else None,
                   host=cat[k]["host"] if k in cat else None, cin=cat[k]["cin"] if k in cat else None, cout=cat[k]["cout"] if k in cat else None)
              for n, t, r, k, pos in c.execute("select name,title,role,catalog,position from seats order by rowid")]
-    agents = [dict(name=s["name"], title=s["title"], model=s["model"], role=s["role"], host=s["host"]) for s in seats if s["model"]]
+    kinds = {n: k for n, k in c.execute("select name,kind from roles")}
+    agents = [dict(name=s["name"], title=s["title"], model=s["model"], role=s["role"], host=s["host"], position=s.get("position"), kind=kinds.get(s.get("position") or "maker", "maker")) for s in seats if s["model"]]
     audit = [dict(id=i, t=t, agent=a, model=m, brief=b, reply=r, blocked=bl, job=j, ms=ms) for i, t, a, m, b, r, bl, j, ms in
              c.execute("select rowid,t,agent,model,brief,reply,blocked,job,ms from audit order by rowid desc limit 150")]
     notes = [dict(t=t, job=j, text=x) for t, j, x in c.execute("select t,job,text from notes order by t desc limit 100")]
