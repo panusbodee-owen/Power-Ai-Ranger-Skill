@@ -126,6 +126,11 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .seg button{padding:7px 12px;border:0;background:var(--p2);color:var(--mu);font:inherit;cursor:pointer}
 .seg button.on{background:var(--bl);color:#fff}
 .hint{color:var(--mu);font-size:12px;margin-top:8px}
+.pos{margin-top:8px;width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--ln);border-radius:7px;padding:4px 6px;font:inherit;font-size:12px}
+.fl{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;border:1px solid var(--ln);border-radius:8px;padding:6px 10px;margin-bottom:6px;background:var(--p2)}
+.fl b{color:var(--mu);font-weight:600}
+.fl .st{padding:1px 8px;border-radius:6px;border:1px solid}
+.fl .ok{color:var(--gr);border-color:#22c55e66}.fl .no{color:var(--rd);border-color:#ef444466}
 .cen>*{flex:none}
 .canvas{touch-action:none}
 .canvas .zc{top:auto;bottom:10px;right:12px}
@@ -230,7 +235,7 @@ const isErr=a=>a.blocked!=null&&a.blocked.startsWith('error:');
 const isBlk=a=>a.blocked!=null&&!isErr(a);
 const st=a=>a.blocked!=null?'err':pend(a)?'work':'done';
 const NOJOB='(ไม่ระบุชื่องาน)';
-let S={agents:[],seats:[],catalog:[],plan:{n:2,mode:'best-of-n'},audit:[],notes:[]}, view='design', rtab='eval', selNode='claude', selJob=null, open=new Set(), pick=null, dragging=false, lastJ='', modal=false, mtab='seq', mjob=null, mev=null, EV=[], mz=1, mpx=0, mpy=0, NBOX=[0,0,990,450];
+let S={agents:[],seats:[],catalog:[],roles:[],tasks:[],plan:{n:2,mode:'best-of-n'},audit:[],notes:[]}, view='design', rtab='eval', selNode='claude', selJob=null, open=new Set(), pick=null, dragging=false, lastJ='', modal=false, mtab='seq', mjob=null, mev=null, EV=[], mz=1, mpx=0, mpy=0, NBOX=[0,0,990,450];
 
 function spark(vals,c,w=100,h=26){const m=Math.max(1,...vals),n=vals.length||1;
   const p=vals.map((v,i)=>[i*(w/Math.max(1,n-1)),h-2-(v/m)*(h-4)]);
@@ -299,6 +304,7 @@ function jobsView(){
   const col3=(t,k)=>`<div class="kc"><h4>${t}<b>${by[k].length}</b></h4>${by[k].map(card).join('')||'<div class="empty">—</div>'}</div>`;
   return `<div class="jtabs">${ks.map(k=>`<button class="jt ${k===selJob?'on':''}" data-k="${esc(k)}">${esc(k)}</button>`).join('')}</div>`+
     jb.n.slice().sort((x,y)=>x.t-y.t).map(n=>`<div class="note"><small>Claude ตรวจผล · ${hm(n.t)}</small>${esc(n.text)}</div>`).join('')+
+    flowPanel(selJob)+
     `<div class="kan">${col3('กำลังทำ','work')}${col3('เสร็จ','done')}${col3('ปัญหา / บล็อก','err')}</div>`;
 }
 function auditView(){
@@ -307,6 +313,13 @@ function auditView(){
   <td><span class="badge ${s==='done'?'ok':s==='work'?'wk':'er'}">${s==='done'?'ok':s==='work'?'working':isBlk(a)?'blocked':'error'}</span></td><td>${a.ms??'—'}</td><td>${esc(a.brief.slice(0,90))}</td></tr>`}).join('')+`</table></div>`;
 }
 
+function flowPanel(job){
+  const ts=(S.tasks||[]).filter(t=>(t.job||NOJOB)===job&&t.trace); if(!ts.length)return '';
+  const rt=Object.fromEntries((S.roles||[]).map(r=>[r.name,r.title]));
+  const stat={done:['ok','ผ่านการตรวจ'],rejected:['no','ตีกลับครบรอบ'],error:['no','ผิดพลาด'],blocked:['no','ถูกบล็อก'],check_failed:['no','ไม่ผ่านเช็ก']};
+  return `<div style="margin-bottom:12px"><div class="hint" style="margin:0 0 6px">สายงาน (ผู้ทำ → ผู้ตรวจ)</div>`+ts.map(t=>{const s=stat[t.status]||['','' ];
+    return `<div class="fl"><b>#${t.id}</b>`+t.trace.map(x=>`<span>${esc(rt[x.stage]||x.stage)} <span style="color:${col(x.seat)}">(${esc(x.seat||'?')})</span>${x.verdict?` <span class="st ${x.verdict==='pass'?'ok':'no'}">${x.verdict==='pass'?'ผ่าน':'ไม่ผ่าน'}${x.score!=null?' '+x.score+'/10':''}</span>`:''}</span>`).join(' → ')+` <span class="st ${s[0]}">${s[1]||esc(t.status)}</span></div>`}).join('')+`</div>`;
+}
 /* ---------- studio (เลือกโมเดลใส่ช่อง) ---------- */
 function studioView(){
   const P=S.plan, filled=S.seats.filter(x=>x.model), act=new Set(filled.slice(0,P.n).map(x=>x.name));
@@ -314,7 +327,8 @@ function studioView(){
   const pr=k=>k.cin!=null&&k.cout!=null?`$${k.cin}/${k.cout} ต่อ 1M`:'ยังไม่ตั้งราคา';
   const chips=S.catalog.map(k=>`<div class="chip ${pick===k.name?'pick':''}" draggable="true" data-cat="${esc(k.name)}"><b>${esc(k.name)}</b><small><span>${esc(k.host)}</span>${ic(k)}</small><small><span>${pr(k)}</span><button class="tst" data-test="${esc(k.name)}">ทดสอบ</button></small></div>`).join('')||'<div class="empty">แคตตาล็อกว่าง — ใช้ team.py catalog import</div>';
   const seats=S.seats.map(x=>`<div class="seat ${act.has(x.name)?'act':x.model?'stby':''}" data-seat="${esc(x.name)}"><h5><span>${esc(x.name)}</span><span>${act.has(x.name)?'ทำงาน':x.model?'สำรอง':''}</span></h5>
-    ${x.model?`<button class="x" data-clear="${esc(x.name)}" title="ล้างช่อง">✕</button><div class="m">${esc(x.catalog)}</div><div class="g">${esc(x.host||'')}</div>`:`<div class="emp">ว่าง — ลากโมเดลมาวาง${pick?' หรือคลิกที่นี่':''}</div>`}</div>`).join('');
+    ${x.model?`<button class="x" data-clear="${esc(x.name)}" title="ล้างช่อง">✕</button><div class="m">${esc(x.catalog)}</div><div class="g">${esc(x.host||'')}</div>`:`<div class="emp">ว่าง — ลากโมเดลมาวาง${pick?' หรือคลิกที่นี่':''}</div>`}
+    <select class="pos" data-pos="${esc(x.name)}" title="ตำแหน่ง (บทบาท) ของช่องนี้"><option value="">— ไม่กำหนดตำแหน่ง —</option>${S.roles.map(r=>`<option value="${esc(r.name)}" ${x.position===r.name?'selected':''}>${esc(r.title)}</option>`).join('')}</select></div>`).join('');
   const use=filled.filter(x=>act.has(x.name)); let est=0,unk=false; use.forEach(x=>{if(x.cin==null||x.cout==null)unk=true;else est+=(x.cin+x.cout)*1000/1e6});
   const modes={'best-of-n':'ทุกช่องทำงานเดียวกัน Claude เลือกผลที่ดีที่สุด','vote':'ทุกช่องตอบคำถามเดียวกัน ใช้เสียงข้างมาก','split':'Claude แตกงานย่อยให้แต่ละช่องตามจุดแข็ง'};
   return `<div class="stu"><div class="card"><h3>Model Catalog <span style="color:var(--mu);font-weight:400">${S.catalog.length}</span></h3><div class="cat">${chips}</div></div>
@@ -467,6 +481,7 @@ document.addEventListener('dragstart',e=>{const c=e.target.closest('[data-cat]')
 document.addEventListener('dragend',()=>{dragging=false;document.querySelectorAll('.seat.over').forEach(x=>x.classList.remove('over'))});
 document.addEventListener('dragover',e=>{const t=e.target.closest('[data-seat]');if(t){e.preventDefault();document.querySelectorAll('.seat.over').forEach(x=>x!==t&&x.classList.remove('over'));t.classList.add('over')}});
 document.addEventListener('drop',e=>{const t=e.target.closest('[data-seat]');if(t){e.preventDefault();dragging=false;post('/api/seat',{seat:t.dataset.seat,catalog:e.dataTransfer.getData('text/plain')})}});
+document.addEventListener('change',e=>{const s=e.target.closest('[data-pos]'); if(s)post('/api/position',{seat:s.dataset.pos,role:s.value||null})});
 document.addEventListener('keydown',e=>{
   if(!modal)return;
   if(e.key==='Escape'){modal=false;renderModal()}
@@ -494,6 +509,7 @@ document.addEventListener('click',e=>{
   const nn=e.target.closest('[data-n]'); if(nn&&view==='studio'){post('/api/plan',{n:Math.max(1,S.plan.n+ +nn.dataset.n),mode:S.plan.mode});return}
   const md=e.target.closest('[data-mode]'); if(md){post('/api/plan',{n:S.plan.n,mode:md.dataset.mode});return}
   const ch=e.target.closest('[data-cat]'); if(ch){pick=pick===ch.dataset.cat?null:ch.dataset.cat;render();return}
+  if(e.target.closest('select'))return;
   const sd=e.target.closest('[data-seat]'); if(sd&&pick){const p=pick;pick=null;post('/api/seat',{seat:sd.dataset.seat,catalog:p});return}
   const v=e.target.closest('[data-v]'); if(v){view=v.dataset.v;render();return}
   const r=e.target.closest('[data-r]'); if(r){rtab=r.dataset.r;render();return}

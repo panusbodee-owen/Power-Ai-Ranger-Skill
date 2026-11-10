@@ -5,7 +5,7 @@ POST ป้องกัน CSRF: ต้องมี Host/Origin เป็น loc
 import json, os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
-from team import db, setting, seat_set, seat_undo, seat_add, catalog_test, MODES
+from team import db, setting, seat_set, seat_undo, seat_add, catalog_test, set_position, MODES
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PORT = int(os.environ.get("AI_TEAM_PORT", 8790))
@@ -19,16 +19,18 @@ def state():
     catalog = [dict(name=n, gateway=g, host=gws.get(g, g), model=m, cin=ci, cout=co, status=s)
                for n, g, m, ci, co, s in c.execute("select name,gateway,model,cin,cout,status from catalog order by rowid")]
     cat = {k["name"]: k for k in catalog}
-    seats = [dict(name=n, title=t, role=r, catalog=k, model=cat[k]["model"] if k in cat else None,
+    seats = [dict(name=n, title=t, role=r, position=pos, catalog=k, model=cat[k]["model"] if k in cat else None,
                   host=cat[k]["host"] if k in cat else None, cin=cat[k]["cin"] if k in cat else None, cout=cat[k]["cout"] if k in cat else None)
-             for n, t, r, k in c.execute("select name,title,role,catalog from seats order by rowid")]
+             for n, t, r, k, pos in c.execute("select name,title,role,catalog,position from seats order by rowid")]
     agents = [dict(name=s["name"], title=s["title"], model=s["model"], role=s["role"], host=s["host"]) for s in seats if s["model"]]
     audit = [dict(id=i, t=t, agent=a, model=m, brief=b, reply=r, blocked=bl, job=j, ms=ms) for i, t, a, m, b, r, bl, j, ms in
              c.execute("select rowid,t,agent,model,brief,reply,blocked,job,ms from audit order by rowid desc limit 150")]
     notes = [dict(t=t, job=j, text=x) for t, j, x in c.execute("select t,job,text from notes order by t desc limit 100")]
     plan = dict(n=int(setting(c, "n", 2)), mode=setting(c, "mode", "best-of-n"))
+    roles = [dict(name=n, title=t, kind=k) for n, t, k in c.execute("select name,title,kind from roles order by rowid")]
+    tasks = [dict(id=i, job=j, status=st, seat=u, trace=json.loads(tr) if tr else None, error=e) for i, j, st, u, tr, e in c.execute("select id,job,status,used_seat,trace,error from tasks where trace is not null order by id desc limit 60")]
     queue = dict(c.execute("select status,count(*) from tasks group by status").fetchall())
-    return dict(agents=agents, seats=seats, catalog=catalog, plan=plan, queue=queue, audit=audit, notes=notes,
+    return dict(agents=agents, seats=seats, catalog=catalog, plan=plan, queue=queue, roles=roles, tasks=tasks, audit=audit, notes=notes,
                 can_undo=bool(c.execute("select 1 from seat_log limit 1").fetchone()))
 
 
@@ -36,6 +38,8 @@ def act(path, b):
     c = db()
     if path == "/api/seat":
         seat_set(c, b["seat"], b.get("catalog"))
+    elif path == "/api/position":
+        set_position(c, b["seat"], b.get("role") or None)
     elif path == "/api/undo":
         seat_undo(c)
     elif path == "/api/seat_add":

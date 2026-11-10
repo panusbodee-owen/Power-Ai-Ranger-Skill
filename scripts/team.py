@@ -27,8 +27,43 @@ create table if not exists catalog(name text primary key,gateway text,model text
 create table if not exists seats(name text primary key,title text,role text,catalog text);
 create table if not exists seat_log(t real,seat text,old text,new text);
 create table if not exists settings(k text primary key,v text);
+create table if not exists roles(name text primary key,title text,prompt text,kind text);
 create table if not exists tasks(id integer primary key autoincrement,job text,pool text,brief text,chk text,status text,result text,error text,attempts integer default 0,used_seat text,created real,started real,finished real);
 """
+
+BUILTIN_ROLES = [
+    ("maker", "ผู้ทำ", "คุณคือผู้ทำงาน: ทำตามโจทย์ให้ครบทุกข้อ ถูกต้อง กระชับ ถ้าได้รับข้อบกพร่องจากผู้ตรวจให้แก้ทุกข้อและตอบเป็นงานฉบับแก้ไขเต็ม", "maker"),
+    ("reviewer", "ผู้ตรวจ", "คุณคือผู้ตรวจงานที่เข้มงวดและเป็นกลาง: ตรวจงานเทียบกับโจทย์ทีละข้อ ห้ามให้ผ่านถ้ายังไม่แน่ใจ ทุกข้อบกพร่องต้องมีหลักฐานจากตัวงาน อย่าชมเกินจริง ตอบเป็น JSON เท่านั้น", "reviewer"),
+    ("tester", "ผู้ทดสอบ", "คุณคือผู้ทดสอบซอฟต์แวร์: ออกแบบเคสทดสอบทั้งปกติ เคสขอบ และเคสผิดพลาด ระบุขั้นตอนและผลที่คาดหวังให้ชัดเจน", "maker"),
+    ("translator", "ผู้แปล/สรุป", "คุณคือผู้แปลและสรุป: ถ่ายทอดเนื้อหาให้ครบถ้วนไม่เพิ่มข้อมูลเอง ใช้ภาษาไทยที่เป็นธรรมชาติ", "maker"),
+    ("cleaner", "ผู้ล้างข้อมูล", "คุณคือผู้ล้างข้อมูล: ตรวจรูปแบบ ชื่อ เบอร์โทร เลขภาษี ที่อยู่ไทย หาค่าที่ซ้ำหรือผิดปกติ และรายงานตามที่พบเท่านั้น ห้ามเดาค่าที่ไม่มีในข้อมูล", "maker"),
+    ("analyst", "ผู้วิเคราะห์", "คุณคือผู้วิเคราะห์: สรุปประเด็นสำคัญ ข้อเท็จจริงที่ยืนยันได้ แยกจากข้อสันนิษฐาน และบอกสิ่งที่ยังไม่รู้", "maker"),
+]
+
+
+def ensure_roles(c):
+    for r in BUILTIN_ROLES:
+        c.execute("insert or ignore into roles values(?,?,?,?)", r)
+    c.commit()
+
+
+def role_prompt(c, name):
+    r = c.execute("select prompt from roles where name=?", (name,)).fetchone()
+    if not r:
+        raise ValueError(f"ไม่พบตำแหน่ง '{name}' (ดู: team.py role ls)")
+    return r[0]
+
+
+def set_position(c, seat, role):
+    """ตั้งตำแหน่งให้ช่อง: ใช้คำสั่งบทบาทของตำแหน่งนั้นเป็นค่าเริ่มต้นของช่อง (role=None = ล้าง)"""
+    if not c.execute("select 1 from seats where name=?", (seat,)).fetchone():
+        raise ValueError(f"ไม่พบช่อง '{seat}'")
+    if role:
+        c.execute("update seats set position=?, role=? where name=?", (role, role_prompt(c, role), seat))
+    else:
+        c.execute("update seats set position=null, role=? where name=?", ("ผู้ช่วย AI: ทำงานตามที่ได้รับมอบหมาย กระชับ ถูกต้อง", seat))
+    c.commit()
+
 
 
 def cols(c, t):
@@ -42,6 +77,11 @@ def db():
     for col, typ in (("job", "text"), ("ms", "integer")):
         if col not in cols(c, "audit"):
             c.execute(f"alter table audit add column {col} {typ}")
+    for t_, col, typ in (("seats", "position", "text"), ("tasks", "flow", "text"), ("tasks", "rounds", "integer"),
+                         ("tasks", "trace", "text"), ("tasks", "asrole", "text")):
+        if col not in cols(c, t_):
+            c.execute(f"alter table {t_} add column {col} {typ}")
+    ensure_roles(c)
     migrate(c)
     os.chmod(DB, 0o600)
     return c
@@ -83,12 +123,14 @@ def resolve(c, seat):
         join catalog k on k.name=s.catalog join gateways g on g.name=k.gateway where s.name=?""", (seat,)).fetchone()
 
 
-def call(c, seat, brief, job=None):
+def call(c, seat, brief, job=None, role_ov=None):
     """คืน (ok, text) ไม่ throw/exit — ใช้ได้ทั้ง ask และ run"""
     r = resolve(c, seat)
     if not r:
         return False, f"[ERROR] ช่อง '{seat}' ไม่มีหรือยังว่าง (ดู: team.py seat ls)"
     role, model, url, key, _, _, _ = r
+    if role_ov is not None:
+        role = role_ov
     why = None
     if PLACEHOLDER.search(url):
         why = "base_url ยังเป็นค่าตัวอย่าง ห้ามส่ง key ไป"
@@ -195,13 +237,17 @@ def run(c, a):
             print(f"\n[VOTE] {'เสมอ — Claude ตัดสิน' if tie else 'เสียงข้างมาก'}: " + ", ".join(f"'{k}'×{v}" for k, v in top))
 
 # ---------- คิวงานแบบ async: ส่งงานทีเดียวหลายชิ้น ให้ worker ทำขนานกัน (กันคอขวดที่ Claude) ----------
-def submit(c, brief, pool, job=None, chk=None):
-    pool = [x for x in pool.split(",") if x]
+def submit(c, brief, pool, job=None, chk=None, flow=None, rounds=0, asrole=None):
+    pool = [x for x in (pool or "").split(",") if x]
+    if flow:
+        pool = [x for st in flow for x in st["pool"]]
+    if asrole:
+        role_prompt(c, asrole)
     for sname in pool:
         if not c.execute("select 1 from seats where name=?", (sname,)).fetchone():
             raise ValueError(f"ไม่พบช่อง '{sname}'")
-    tid = c.execute("insert into tasks(job,pool,brief,chk,status,created) values(?,?,?,?,'queued',?)",
-                    (job, ",".join(pool), brief, chk, time.time())).lastrowid
+    tid = c.execute("insert into tasks(job,pool,brief,chk,status,created,flow,rounds,asrole) values(?,?,?,?,'queued',?,?,?,?)",
+                    (job, ",".join(pool), brief, chk, time.time(), json.dumps(flow, ensure_ascii=False) if flow else None, rounds, asrole)).lastrowid
     c.commit()
     return tid
 
@@ -229,21 +275,32 @@ def run_check(chk, text):
 
 def claim(c):
     c.execute("begin immediate")
-    r = c.execute("select id,job,pool,brief,chk,attempts from tasks where status='queued' order by id limit 1").fetchone()
+    r = c.execute("select id,job,pool,brief,chk,attempts,flow,rounds,asrole from tasks where status='queued' order by id limit 1").fetchone()
     if r:
         c.execute("update tasks set status='running',started=?,attempts=attempts+1 where id=?", (time.time(), r[0]))
     c.commit()
     return r
 
 
-def process(c, t, sems, busy, lock):
-    tid, job, pool, brief, chk, _ = t
-    seats = pool.split(",")
+def parse_flow(spec):
+    """'maker@worker,seat3>reviewer@intern,seat4' -> [{"role":"maker","pool":[...]}, ...]"""
+    out = []
+    for part in spec.split(">"):
+        role, _, pool = part.strip().partition("@")
+        if not role or not pool:
+            raise ValueError(f"รูปแบบ flow ผิด: '{part}' (ต้องเป็น ตำแหน่ง@ช่อง1,ช่อง2)")
+        out.append({"role": role.strip(), "pool": [x.strip() for x in pool.split(",") if x.strip()]})
+    return out
+
+
+def try_pool(c, pool, brief, job, role_ov, sems, busy, lock, exclude=(), avoid_gw=None):
+    """ลองช่องใน pool ตามลำดับ (เกตเวย์ว่างสุด/ต่างเกตเวย์จาก avoid_gw ก่อน) คืน (ok, text, seat, err)"""
     gw = lambda sname: (c.execute("select k.gateway from seats s join catalog k on k.name=s.catalog where s.name=?", (sname,)).fetchone() or ["?"])[0]
+    cands = [x for x in pool if x not in exclude] or list(pool)
     last = ""
     for rnd in range(2):
-        with lock:  # เลือกช่องที่เกตเวย์ว่างที่สุดก่อน
-            order = sorted(seats, key=lambda x: busy.get(gw(x), 0))
+        with lock:
+            order = sorted(cands, key=lambda x: (gw(x) == avoid_gw, busy.get(gw(x), 0)))
         for sname in order:
             g = gw(sname)
             with lock:
@@ -251,21 +308,79 @@ def process(c, t, sems, busy, lock):
                 busy[g] = busy.get(g, 0) + 1
             try:
                 with sems[g]:
-                    ok, text = call(c, sname, brief, job)
+                    ok, text = call(c, sname, brief, job, role_ov)
             finally:
                 with lock:
                     busy[g] -= 1
             if ok:
-                good, why = run_check(chk, text)
-                c.execute("update tasks set status=?,result=?,error=?,used_seat=?,finished=? where id=?",
-                          ("done" if good else "check_failed", text, why, sname, time.time(), tid)); c.commit()
-                return
+                return True, text, sname, ""
             last = text
             if text.startswith("[BLOCKED]"):
-                c.execute("update tasks set status='blocked',error=?,used_seat=?,finished=? where id=?", (text, sname, time.time(), tid)); c.commit()
-                return
-        time.sleep(8)  # ทุกช่องล้ม (เช่น rate limit) พักแล้วลองทั้ง pool อีกรอบ
-    c.execute("update tasks set status='error',error=?,finished=? where id=?", (last[:300], time.time(), tid)); c.commit()
+                return False, text, sname, "blocked"
+        time.sleep(8)
+    return False, last, None, "error"
+
+
+def parse_verdict(text):
+    m = re.search(r"\{.*\}", text, re.S)
+    try:
+        d = json.loads(m.group(0))
+        v = str(d.get("verdict", "")).strip().lower()
+        return v in ("pass", "ผ่าน"), d
+    except Exception:
+        return False, {"verdict": "unparsable", "issues": ["ผู้ตรวจไม่ได้ตอบเป็น JSON: " + text[:120]]}
+
+
+def run_flow(c, t, sems, busy, lock):
+    tid, job, pool, brief, chk, _, flow, rounds, asrole = t
+    stages = json.loads(flow)
+    mk, rv = stages[0], (stages[1] if len(stages) > 1 else None)
+    trace, out, issues, mseat = [], "", "", None
+    for rnd in range(int(rounds or 0) + 1):
+        prompt = brief if rnd == 0 else f"{brief}\n\n--- งานเดิมของคุณ\n{out}\n\n--- ข้อบกพร่องที่ผู้ตรวจพบ (แก้ให้ครบทุกข้อแล้วส่งงานฉบับเต็ม)\n{issues}"
+        ok, text, mseat, err = try_pool(c, mk["pool"], prompt, job, role_prompt(c, mk["role"]), sems, busy, lock)
+        trace.append({"stage": mk["role"], "round": rnd, "seat": mseat, "ok": ok})
+        if not ok:
+            c.execute("update tasks set status=?,error=?,trace=?,finished=? where id=?", (err or "error", text[:300], json.dumps(trace, ensure_ascii=False), time.time(), tid)); c.commit()
+            return
+        out = text
+        if not rv:
+            break
+        mgw = (c.execute("select k.gateway from seats s join catalog k on k.name=s.catalog where s.name=?", (mseat,)).fetchone() or ["?"])[0]
+        rprompt = (f"โจทย์:\n{brief}\n\nงานที่ต้องตรวจ:\n{out}\n\nตรวจเทียบโจทย์ทีละข้อ ตอบเป็น JSON เท่านั้น: "
+                   '{"verdict":"pass" หรือ "fail","score":0-10,"issues":["ข้อบกพร่อง"],"evidence":["หลักฐานจากตัวงาน"]}')
+        ok2, rtext, rseat, err2 = try_pool(c, rv["pool"], rprompt, job, role_prompt(c, rv["role"]), sems, busy, lock, exclude={mseat}, avoid_gw=mgw)
+        if not ok2:
+            trace.append({"stage": rv["role"], "round": rnd, "seat": rseat, "ok": False})
+            c.execute("update tasks set status='error',result=?,error=?,trace=?,used_seat=?,finished=? where id=?", (out, "ผู้ตรวจล้ม: " + rtext[:200], json.dumps(trace, ensure_ascii=False), mseat, time.time(), tid)); c.commit()
+            return
+        passed, d = parse_verdict(rtext)
+        trace.append({"stage": rv["role"], "round": rnd, "seat": rseat, "verdict": "pass" if passed else "fail", "score": d.get("score"), "issues": d.get("issues")})
+        if passed:
+            break
+        issues = "\n".join(f"- {x}" for x in (d.get("issues") or ["(ผู้ตรวจไม่ระบุ)"]))
+    else:
+        c.execute("update tasks set status='rejected',result=?,error=?,trace=?,used_seat=?,finished=? where id=?", (out, issues[:300], json.dumps(trace, ensure_ascii=False), mseat, time.time(), tid)); c.commit()
+        return
+    good, why = run_check(chk, out)
+    c.execute("update tasks set status=?,result=?,error=?,trace=?,used_seat=?,finished=? where id=?",
+              ("done" if good else "check_failed", out, why, json.dumps(trace, ensure_ascii=False), mseat, time.time(), tid)); c.commit()
+
+
+def process(c, t, sems, busy, lock):
+    tid, job, pool, brief, chk, _, flow, rounds, asrole = t
+    if flow:
+        return run_flow(c, t, sems, busy, lock)
+    ov = role_prompt(c, asrole) if asrole else None
+    ok, text, seat, err = try_pool(c, pool.split(","), brief, job, ov, sems, busy, lock)
+    if ok:
+        good, why = run_check(chk, text)
+        c.execute("update tasks set status=?,result=?,error=?,used_seat=?,finished=? where id=?", ("done" if good else "check_failed", text, why, seat, time.time(), tid))
+    elif err == "blocked":
+        c.execute("update tasks set status='blocked',error=?,used_seat=?,finished=? where id=?", (text, seat, time.time(), tid))
+    else:
+        c.execute("update tasks set status='error',error=?,finished=? where id=?", (text[:300], time.time(), tid))
+    c.commit()
 
 
 def worker(concurrency=8, per_gw=3, drain=True):
@@ -319,9 +434,12 @@ def show_results(c, job=None, status=None, full=None):
     w, a = [], []
     if job: w.append("job=?"); a.append(job)
     if status: w.append("status=?"); a.append(status)
-    for i, j, st, seat, err, res, ms in c.execute("select id,job,status,used_seat,error,result,(finished-started) from tasks" + (" where " + " and ".join(w) if w else "") + " order by id", a):
+    for i, j, st, seat, err, res, ms, tr in c.execute("select id,job,status,used_seat,error,result,(finished-started),trace from tasks" + (" where " + " and ".join(w) if w else "") + " order by id", a):
         one = (res or "").strip().replace("\n", " ")[:90]
-        print(f"#{i}\t{st}\t{seat or '-'}\t{(ms or 0):.1f}s\t{('⚠ ' + err + ' | ') if err else ''}{one}")
+        flow_txt = ""
+        if tr:
+            flow_txt = " ⟨" + "→".join(f"{x['stage']}({x.get('seat')})" + (f":{x['verdict']}" if x.get('verdict') else "") for x in json.loads(tr)) + "⟩"
+        print(f"#{i}\t{st}\t{seat or '-'}\t{(ms or 0):.1f}s\t{('⚠ ' + err + ' | ') if err else ''}{one}{flow_txt}")
 
 
 
@@ -343,9 +461,14 @@ def main():
     q = k.add_parser("test"); q.add_argument("name"); q = k.add_parser("price"); q.add_argument("name"); q.add_argument("--in-cost", type=float); q.add_argument("--out-cost", type=float)
     q = k.add_parser("remove"); q.add_argument("name")
     s = sp.add_parser("seat").add_subparsers(dest="sub", required=True); s.add_parser("ls"); s.add_parser("undo"); q = s.add_parser("add"); q.add_argument("name", nargs="?")
+    q = s.add_parser("position"); q.add_argument("seat"); q.add_argument("role")
     q = s.add_parser("set"); q.add_argument("seat"); q.add_argument("catalog"); q = s.add_parser("clear"); q.add_argument("seat"); q = s.add_parser("remove"); q.add_argument("seat")
-    p = sp.add_parser("submit"); p.add_argument("brief"); p.add_argument("--pool", required=True); p.add_argument("--job"); p.add_argument("--check")
+    p = sp.add_parser("submit"); p.add_argument("brief"); p.add_argument("--pool"); p.add_argument("--job"); p.add_argument("--check")
+    p.add_argument("--flow"); p.add_argument("--rounds", type=int, default=1); p.add_argument("--as", dest="asrole")
     p = sp.add_parser("batch"); p.add_argument("file"); p.add_argument("--pool"); p.add_argument("--job"); p.add_argument("--check")
+    p.add_argument("--flow"); p.add_argument("--rounds", type=int, default=1); p.add_argument("--as", dest="asrole")
+    r_ = sp.add_parser("role").add_subparsers(dest="sub", required=True); r_.add_parser("ls"); q = r_.add_parser("add"); q.add_argument("name"); q.add_argument("--title", required=True)
+    q.add_argument("--prompt", required=True); q.add_argument("--kind", default="maker"); q = r_.add_parser("rm"); q.add_argument("name")
     p = sp.add_parser("worker"); p.add_argument("--concurrency", type=int, default=8); p.add_argument("--per-gateway", type=int, default=3); p.add_argument("--keep", action="store_true")
     p = sp.add_parser("wait"); p.add_argument("job", nargs="?"); p.add_argument("--timeout", type=int, default=900)
     p = sp.add_parser("results"); p.add_argument("--job"); p.add_argument("--status"); p.add_argument("--full", type=int)
@@ -387,7 +510,8 @@ def main():
             else:
                 c.execute("delete from catalog where name=?", (x.name,)); c.commit()
         elif x.cmd == "seat":
-            if x.sub == "set": seat_set(c, x.seat, x.catalog); print(f"{x.seat} ← {x.catalog}")
+            if x.sub == "position": set_position(c, x.seat, None if x.role == "-" else x.role); print(f"{x.seat} ตำแหน่ง: {x.role}")
+            elif x.sub == "set": seat_set(c, x.seat, x.catalog); print(f"{x.seat} ← {x.catalog}")
             elif x.sub == "clear": seat_set(c, x.seat, None)
             elif x.sub == "undo": print("ย้อนช่อง", seat_undo(c))
             elif x.sub == "add":
@@ -410,15 +534,24 @@ def main():
             print("\n".join(i for i in sorted(m["id"] for m in json.load(urllib.request.urlopen(rq, timeout=60))["data"]) if x.grep.lower() in i.lower()))
         elif x.cmd == "note":
             c.execute("insert into notes values(?,?,?)", (time.time(), x.job, x.text)); c.commit()
+        elif x.cmd == "role":
+            if x.sub == "ls":
+                for n, t_, pr, k_ in c.execute("select name,title,prompt,kind from roles"): print(f"{n}\t{t_}\t[{k_}]\t{pr[:60]}")
+            elif x.sub == "add":
+                c.execute("insert or replace into roles values(?,?,?,?)", (x.name, x.title, x.prompt, x.kind)); c.commit(); print("บันทึกตำแหน่ง", x.name)
+            else:
+                c.execute("delete from roles where name=?", (x.name,)); c.commit()
         elif x.cmd == "submit":
-            print(submit(c, sys.stdin.read() if x.brief == "-" else x.brief, x.pool, x.job, x.check))
+            print(submit(c, sys.stdin.read() if x.brief == "-" else x.brief, x.pool, x.job, x.check, parse_flow(x.flow) if x.flow else None, x.rounds if x.flow else 0, x.asrole))
         elif x.cmd == "batch":
             n = 0
             for line in open(x.file, encoding="utf-8"):
                 if not line.strip():
                     continue
                 d = json.loads(line)
-                submit(c, d["brief"], d.get("pool") or x.pool, d.get("job") or x.job, d.get("check") or x.check); n += 1
+                fl = d.get("flow") or x.flow
+                submit(c, d["brief"], d.get("pool") or x.pool, d.get("job") or x.job, d.get("check") or x.check,
+                       parse_flow(fl) if fl else None, d.get("rounds", x.rounds) if fl else 0, d.get("as") or x.asrole); n += 1
             print(f"ส่งเข้าคิว {n} งาน")
         elif x.cmd == "worker":
             worker(x.concurrency, x.per_gateway, drain=not x.keep)

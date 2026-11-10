@@ -33,6 +33,13 @@ python3 ~/.claude/skills/ai-team/scripts/team.py add worker --base-url https://G
 5. งานที่ต้องการเหตุผลเชิงลึกหรือความถูกต้องสูงให้ Claude ทำเอง ส่วนงานร่าง/ชุดข้อมูล/เคสทดสอบจำนวนมาก/แปลง/สรุปยกให้คิว
 แดชบอร์ดแสดงสถานะคิวที่ป้ายหัวหน้าจอ (Queue n กำลังทำ · m รอ)
 
+## ตำแหน่ง (Role) และสายงานผู้ทำ → ผู้ตรวจ
+- ตำแหน่งสำเร็จรูป: `maker` ผู้ทำ, `reviewer` ผู้ตรวจ, `tester`, `translator`, `cleaner`, `analyst` (`team.py role ls|add|rm`) ตั้งตำแหน่งให้ช่องด้วย `team.py seat position SEAT ROLE` (`-` = ล้าง) หรือเลือกในการ์ดช่องบนหน้า Studio
+- งานเดี่ยวสวมตำแหน่งชั่วคราว: `submit --pool a,b --as reviewer`
+- สายงาน: `team.py submit "brief" --flow "maker@worker,seat3>reviewer@intern,seat4" --rounds 2` (หรือใส่ `flow`/`rounds` ใน JSONL ของ batch) ผู้ตรวจต้องคนละช่องกับผู้ทำและเลือกเกตเวย์ต่างกันก่อน ตอบ JSON verdict pass/fail ถ้า fail ส่งกลับผู้ทำแก้ตามรอบ สถานะ `done` / `rejected` (ตีกลับครบรอบ)
+- **ผู้ตรวจ AI ไม่ใช่ด่านสุดท้าย:** วัด 12 ข้อ/ตัว (ครึ่งหนึ่งมีคำตอบผิดแฝง) ตัดสินถูก 10/12 (DeepSeek, Nemotron) และ 7/12 (Qwen มีล้มเพราะ rate limit) ปล่อยผ่านคำตอบผิด ~1 ใน 6 และเคย pass โค้ดตรวจเลขบัตร ปชช. ที่ผิดจริง (รวม 13 หลักแล้วหาร 11 ลงตัว ไม่ตรงสูตร) → งานโค้ดต้องตรวจด้วยเทสที่รันได้ (ในกล่องทราย) และงานสำคัญต้องผ่าน Claude เสมอ
+- งบเรียก 60 ครั้ง/ชั่วโมง (MAX_CALLS_PER_HOUR ใน team.py) อาจไม่พอเมื่อใช้คิว งานที่เกินจะสถานะ blocked
+
 ## ช่องทีมและหลาย AI ต่องาน (Team Builder)
 โครงสร้าง: `gateways` (URL + key) → `catalog` (โมเดล + ราคา) → `seats` (ช่องทีม ชี้ catalog) ผู้ใช้ลากโมเดลใส่ช่อง เลือกจำนวน AI และโหมดในแดชบอร์ด (แท็บ Studio) แล้วบอก Claude ให้ทำงาน
 1. อ่านค่าที่ผู้ใช้เลือก: `team.py plan` → `mode=… n=… active=seatA,seatB` ใช้เฉพาะช่อง active นี้ ห้ามเพิ่มเองโดยไม่ถาม (N ตัว = จ่าย N เท่า)
