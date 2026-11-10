@@ -520,7 +520,9 @@ def run_flow(c, t, sems, busy, lock):
                     return end("rejected", out, why_)
             break
         mgw = (c.execute("select k.gateway from seats s join catalog k on k.name=s.catalog where s.name=?", (mseat,)).fetchone() or ["?"])[0]
-        rprompt = (f"โจทย์:\n{brief[:6000]}\n\nงานที่ต้องตรวจ:\n{out[:9000]}\n\nตรวจเทียบโจทย์ทีละข้อ ตอบเป็น JSON เท่านั้น: "
+        task_part = brief if len(brief) <= 7000 else "(ตัดส่วนต้นของบริบทออก แสดงส่วนท้ายที่เป็นตัวงานและกติกา)\n..." + brief[-7000:]
+        out_part = out if len(out) <= 18000 else out[:18000] + "\n...(ตัดส่วนท้ายเพราะยาวเกินช่องตรวจ: ห้ามนับว่างานขาดหัวข้อท้ายๆ)"
+        rprompt = (f"โจทย์:\n{task_part}\n\nงานที่ต้องตรวจ:\n{out_part}\n\nตรวจเทียบโจทย์ทีละข้อ ตอบเป็น JSON เท่านั้น: "
                    '{"verdict":"pass" หรือ "fail","score":0-10,"issues":["ข้อบกพร่อง"],"evidence":["หลักฐานจากตัวงาน"]}')
         ok2, rtext, rseat, err2 = try_pool(c, rv["pool"], rprompt, job, role_prompt(c, rv["role"]), sems, busy, lock, exclude={mseat}, avoid_gw=mgw, skill=rv.get("skill") or "review")
         if not ok2:
