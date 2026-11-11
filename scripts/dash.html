@@ -390,6 +390,26 @@ td{border-bottom:.5px solid var(--ln)}
 .bt{display:flex;align-items:flex-start;gap:8px;font-weight:600;line-height:1.4;word-break:break-word}.bt .nic{margin-top:3px}
 .bm{display:flex;gap:4px;flex-wrap:wrap;font-size:12px}
 .bempty{color:var(--mu);font-size:12.5px;padding:6px 6px 10px}
+
+/* ===== home ===== */
+.home{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px;margin-top:14px;align-items:start}
+.hl{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--mu);flex:1;min-width:0}
+.hl textarea,.hl input,.hl select{font:inherit;font-size:14px;color:var(--tx);background:var(--hair);border:1px solid transparent;border-radius:8px;padding:8px 10px;width:100%;resize:vertical}
+.hl textarea:focus,.hl input:focus,.hl select:focus{outline:2px solid var(--ac);outline-offset:-1px}
+.hl.sm{flex:none}.hl.dim{opacity:.5}
+.hr{display:flex;gap:12px;margin-top:12px;align-items:flex-end;flex-wrap:wrap}.hr.end{justify-content:flex-end;align-items:center}
+.hck{display:flex;gap:8px;align-items:center;font-size:14px;flex:1}
+.hmsg{font-size:13px;flex:1}.hmsg.ok{color:var(--gr)}.hmsg.er{color:var(--rd)}
+.tds{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.td{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;background:var(--hair)}
+.tdd{width:9px;height:9px;border-radius:50%;flex:none;background:var(--gr)}.td.wk .tdd{background:var(--or)}.td.er .tdd{background:var(--rd)}
+.tdt{flex:1;min-width:0}.tdt b{display:block;font-weight:600;font-size:13.5px}.tdt small{display:block;color:var(--mu);font-size:12px;margin-top:2px}
+.tda{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.jact{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}.jact a.btn{text-decoration:none;display:inline-flex;align-items:center}
+.rpt{position:relative;margin-bottom:14px}.rpt .btn{position:absolute;right:8px;top:8px}
+.rpt pre{margin:0;white-space:pre-wrap;word-break:break-word;font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--hair);border-radius:10px;padding:14px 16px;max-height:480px;overflow:auto}
+@media(max-width:900px){.home{grid-template-columns:1fr}}
+@media(max-width:700px){.tabx{white-space:nowrap;padding:5px 12px}}
 </style>
 </head>
 <body>
@@ -402,7 +422,7 @@ td{border-bottom:.5px solid var(--ln)}
     <button class="btn" id="theme" title="สลับโหมดสี: อัตโนมัติ → สว่าง → มืด" aria-label="สลับโหมดสี"></button>
     <button class="btn" id="exp">Export log</button>
     <div class="tabsx" id="vt">
-      <button class="tabx" data-v="design">ผังงาน</button><button class="tabx" data-v="studio">จัดทีม</button><button class="tabx" data-v="jobs">งานที่แจก</button><button class="tabx" data-v="usage">การใช้ AI</button><button class="tabx" data-v="audit">บันทึก</button>
+      <button class="tabx" data-v="home">หน้าแรก</button><button class="tabx" data-v="design">ผังงาน</button><button class="tabx" data-v="studio">จัดทีม</button><button class="tabx" data-v="jobs">งานที่แจก</button><button class="tabx" data-v="usage">การใช้ AI</button><button class="tabx" data-v="audit">บันทึก</button>
     </div>
   </div>
   <div class="cen" id="cen"></div>
@@ -450,7 +470,7 @@ const isErr=a=>a.blocked!=null&&a.blocked.startsWith('error:');
 const isBlk=a=>a.blocked!=null&&!isErr(a);
 const st=a=>a.blocked!=null?'err':pend(a)?'work':'done';
 const NOJOB='(ไม่ระบุชื่องาน)';
-let S={agents:[],seats:[],catalog:[],roles:[],tasks:[],gateways:[],presets:[],plan:{n:2,mode:'best-of-n'},audit:[],notes:[]}, view='design', rtab='eval', selNode='claude', selJob=null, open=new Set(), pick=null, dragging=false, lastJ='', modal=false, mtab='seq', mjob=null, mev=null, EV=[], mz=1, mpx=0, mpy=0, NBOX=[0,0,990,450];
+let S={agents:[],seats:[],catalog:[],roles:[],tasks:[],gateways:[],presets:[],plan:{n:2,mode:'best-of-n'},audit:[],notes:[]}, view='home', rtab='eval', selNode='claude', selJob=null, open=new Set(), pick=null, dragging=false, lastJ='', modal=false, mtab='seq', mjob=null, mev=null, EV=[], mz=1, mpx=0, mpy=0, NBOX=[0,0,990,450];
 
 function spark(vals,c,w=100,h=26){const m=Math.max(1,...vals),n=vals.length||1;
   const p=vals.map((v,i)=>[i*(w/Math.max(1,n-1)),h-2-(v/m)*(h-4)]);
@@ -557,7 +577,9 @@ function jobsView(){
   const prop=(l,val)=>`<div class="npr"><div class="npl">${l}</div><div class="npv">${val}</div></div>`;
   return `<div class="nt"><a class="nback" data-back="1" role="button" tabindex="0">← งานทั้งหมด</a>
     <h1 class="nh1">${esc(selJob)}</h1>
-    <div class="nprops">${prop('สถานะ',tag(v[0],v[1]))}${prop('เรียก AI',calls.length+' ครั้ง'+(nErr?` · พลาด ${nErr}`:''))}${prop('เวลาตอบรวม',tot>=60?(tot/60).toFixed(1)+' นาที':tot.toFixed(0)+' วินาที')}${prop('ผู้ร่วมงาน',seatTags(selJob))}${prop('ล่าสุด',hm(jb.last))}</div>
+    <div class="nprops">${prop('สถานะ',tag(v[0],v[1]))}${prop('เรียก AI',calls.length+' ครั้ง'+(nErr?` · พลาด ${nErr}`:''))}${prop('เวลาตอบรวม',tot>=60?(tot/60).toFixed(1)+' นาที':tot.toFixed(0)+' วินาที')}${prop('ผู้ร่วมงาน',seatTags(selJob))}${prop('ค่าใช้จ่าย (ประมาณ)',(()=>{const js=(S.jobstats||{})[selJob];return js&&js.priced?'≈ $'+js.cost.toFixed(4)+(js.unpriced?` <span class="nmu">(ไม่นับ ${js.unpriced} ครั้งที่ไม่มีราคา)</span>`:''):'<span class="nmu">โมเดลยังไม่มีราคาในแคตตาล็อก</span>'})())}${prop('ล่าสุด',hm(jb.last))}</div>
+    <div class="jact"><button class="btn" data-rpt="${esc(selJob)}">${RPTO===selJob?'ซ่อนผลลัพธ์':'ดูผลลัพธ์'}</button><a class="btn" href="/api/report?job=${encodeURIComponent(selJob)}" download="${esc(selJob)}.md">ดาวน์โหลดรายงาน (.md)</a>${(()=>{const L=tasksOf(selJob).slice().sort((x,y)=>y.id-x.id)[0];return L&&L.status!=='done'?`<button class="btn pr" data-requeue="${L.id}">รันใหม่</button>`:''})()}</div>
+    ${RPTO===selJob?`<div class="rpt"><button class="btn" data-copy="${esc(selJob)}">คัดลอก</button><pre>${esc(RPT[selJob]||'')}</pre></div>`:''}
     ${jb.n.slice().sort((x,y)=>x.t-y.t).map(n=>`<div class="ncall"><svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="8" cy="8" r="6.3"/><path d="M8 7.2v4M8 4.9v.1"/></svg><div><b>Claude สรุปผล</b> <span class="nmu">${hm(n.t)}</span><br>${esc(n.text)}</div></div>`).join('')}
     ${toggles?`<h2 class="nh2">เส้นทางของงาน</h2>${toggles}`:''}
     <h2 class="nh2">การเรียก AI ทั้งหมด <span class="nmu nsm">กดเพื่อดูข้อความ</span></h2>${callRows}</div>`;
@@ -745,7 +767,7 @@ window.addEventListener('mouseup',()=>{if(pan)pan.el.classList.remove('pan');pan
 function provHtml(){
   const gws=S.gateways||[], byUrl=Object.fromEntries(gws.map(g=>[g.base_url.replace(/\/+$/,''),g]));
   const cards=(S.presets||[]).map(p=>{const g=byUrl[p.base_url];
-    return `<button class="pc ${g?'on':''}" data-prov="${esc(p.id)}"><b>${g?'<span class="dot">●</span> ':''}${esc(p.title)}</b><small>${g?(g.has_key?'เชื่อมแล้ว · ':'ยังไม่มี key · ')+g.models+' โมเดลในแคตตาล็อก':'ยังไม่ได้เชื่อม · คลิกเพื่อเพิ่ม key'}</small></button>`}).join('');
+    return `<button class="pc ${g?'on':''}" data-prov="${esc(p.id)}"><b>${g?'<span class="dot">●</span> ':''}${esc(p.title)}</b><small>${g?(g.has_key?'เชื่อมแล้ว · ':'ยังไม่มี key · ')+g.models+' โมเดล'+(()=>{const ks=S.catalog.filter(k=>k.gateway===g.name),ok=ks.filter(k=>k.status==='ok').length,f=ks.filter(k=>k.status==='fail').length;return ks.length?` · ใช้ได้ ${ok}`+(f?` · เรียกไม่ได้ ${f}`:'')+` · ยังไม่ทดสอบ ${ks.length-ok-f}`:''})():'ยังไม่ได้เชื่อม · คลิกเพื่อเพิ่ม key'}</small></button>`}).join('');
   const known=new Set((S.presets||[]).map(p=>p.base_url));
   const others=gws.filter(g=>!known.has(g.base_url.replace(/\/+$/,''))).map(g=>`<button class="pc on" data-provgw="${esc(g.name)}"><b><span class="dot">●</span> ${esc(g.name)}</b><small>${esc(g.host)} · ${g.models} โมเดล</small></button>`).join('');
   return `<div class="card" style="margin-bottom:14px"><h3>Providers (ผู้ให้บริการ API)</h3><div class="prov">${cards}${others}<button class="pc add" data-prov="custom"><b>+ กำหนดเอง</b><small>URL แบบ OpenAI-compatible</small></button></div></div>`;
@@ -831,7 +853,7 @@ function getTheme(){const q=new URLSearchParams(location.hash.slice(1)).get('the
 function applyTheme(t){const r=document.documentElement;if(t==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',t);const b=document.getElementById('theme');if(b)b.textContent=THL[t]}
 applyTheme(getTheme());
 document.addEventListener('click',e=>{if(e.target.closest('#theme')){const n=THEMES[(THEMES.indexOf(getTheme())+1)%3];try{localStorage.setItem('aiteam-theme',n)}catch(_){}applyTheme(n);if(typeof render==='function')render()}});
-const ABOUT={design:['ผังงาน','ดูว่างานเดินผ่านใครบ้าง: คำสั่งของคุณ → Claude วางแผน → ผู้ทำงาน → ผู้ตรวจ → Claude ตรวจรอบสุดท้าย → รายงานกลับ จุดเรืองแสงที่วิ่งตามเส้นหมายถึงกำลังมีงานทำอยู่'],
+const ABOUT={home:['หน้าแรก','สั่งงานทีมจากที่นี่ได้เลย และดูว่าตอนนี้มีอะไรที่ต้องตัดสินใจหรือแก้ต่อ'],design:['ผังงาน','ดูว่างานเดินผ่านใครบ้าง: คำสั่งของคุณ → Claude วางแผน → ผู้ทำงาน → ผู้ตรวจ → Claude ตรวจรอบสุดท้าย → รายงานกลับ จุดเรืองแสงที่วิ่งตามเส้นหมายถึงกำลังมีงานทำอยู่'],
  studio:['จัดทีม','เลือกโมเดล AI ลงช่องทำงาน กำหนดตำแหน่ง (ผู้ทำ/ผู้ตรวจ) และเพิ่มผู้ให้บริการ API ช่อง (seat) คือที่นั่งของ AI หนึ่งตัว'],
  jobs:['งานที่แจก','รายการงานที่สั่งทีมไว้ แยกตามสถานะ กดดูผลลัพธ์หรือเส้นทางของแต่ละงานได้'],
  usage:['การใช้ AI','ใครถูกเรียกใช้เท่าไร รวม Claude ด้วย ตัวเลขโทเคนของ Claude นับจากเครื่องนี้ ทีมนับเป็นจำนวนครั้ง "ผ่านผู้ตรวจ" บอกคุณภาพจริง ส่วน "API พลาด" แค่เรียกไม่สำเร็จ'],
@@ -858,7 +880,8 @@ function render(){
   document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
   document.querySelectorAll('#rt [data-r]').forEach(b=>b.classList.toggle('on',b.dataset.r===rtab));
   const qn=S.queue||{}, qw=(qn.queued||0)+(qn.running||0), busy=S.audit.some(pend)||qw>0; $('live').textContent=qw?`Queue ${qn.running||0} กำลังทำ · ${qn.queued||0} รอ`:(busy?'Working':'Live'); $('live').classList.toggle('idle',!busy);
-  $('cen').innerHTML=aboutBox()+(view==='design'?summary()+flow()+bottom():view==='studio'?studioView():view==='jobs'?jobsView():view==='usage'?usageView():auditView())+TERMS;
+  if(view==='home'&&document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#hform')&&document.activeElement.matches('textarea,input[type=text],select')){$('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;return}
+  $('cen').innerHTML=aboutBox()+(view==='home'?homeView():view==='design'?summary()+flow()+bottom():view==='studio'?studioView():view==='jobs'?jobsView():view==='usage'?usageView():auditView())+TERMS;
   if(view==='design')applyCtx(CTX.i);
   $('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;
 }
@@ -915,6 +938,58 @@ document.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const o
 
 document.addEventListener('click',e=>{const b=e.target.closest('[data-jv]');if(b){jv=b.dataset.jv;try{localStorage.setItem('aiteam-jobs-view',jv)}catch(_){}render()}});
 document.addEventListener('input',e=>{if(e.target.id==='jq'){jobQ=e.target.value;const pos=e.target.selectionStart;render();const el=document.getElementById('jq');if(el){el.focus();el.setSelectionRange(pos,pos)}}});
+
+/* ---------- home: สั่งงาน + ต้องทำอะไรต่อ ---------- */
+let HD={job:'',brief:'',role:'maker',review:true,rounds:2,msg:'',busy:false}, RPT={}, RPTO=null;
+function todos(){
+  const out=[], q=S.queue||{}, T=(S.tasks||[]), seats=S.seats||[];
+  if((q.queued||0)>0&&!S.worker)out.push({lv:'er',t:`มีงาน ${q.queued} ชิ้นรอคิว แต่ยังไม่มีตัวรัน`,s:'คิวจะไม่ขยับจนกว่าจะเริ่มตัวรัน',a:[['เริ่มรันคิว','data-act="start_worker"',1]]});
+  const byJob={}, fails=[];T.forEach(t=>{const k=t.job||NOJOB;(byJob[k]??=[]).push(t)});
+  const bad={rejected:'ผู้ตรวจตีกลับครบรอบ',error:'เรียก AI ไม่สำเร็จ',blocked:'ถูกด่านตรวจบล็อก',check_failed:'ไม่ผ่านเช็กอัตโนมัติ'};
+  Object.entries(byJob).forEach(([k,ts])=>{ts.sort((x,y)=>y.id-x.id);const last=ts[0];
+    if(bad[last.status]&&!ts.some(x=>x.status==='done')&&!ts.some(x=>x.status==='queued'||x.status==='running'))
+      fails.push({lv:'wk',t:`งาน “${esc(k)}” ยังไม่ผ่าน`,s:bad[last.status]+(last.error?` — ${String(last.error).slice(0,70)}`:''),a:[['รันใหม่',`data-requeue="${last.id}"`,1],['ดูรายละเอียด',`data-open="${esc(k)}"`]]})});
+  out.push(...fails.slice(0,4));if(fails.length>4)out.push({lv:'wk',t:`และอีก ${fails.length-4} งานที่ยังไม่ผ่าน`,s:'งานเก่าที่ถูกตีกลับหรือผิดพลาด ทยอยเปิดดูหรือรันใหม่ได้ในหน้า “งานที่แจก”',a:[['ดูงานทั้งหมด','data-goto="jobs"']]});
+  const empty=seats.filter(x=>!x.model).length;
+  if(empty)out.push({lv:'wk',t:`มี ${empty} ช่องในทีมยังว่าง`,s:'ช่องว่างไม่ถูกใช้ทำงาน',a:[['ไปจัดทีม','data-goto="studio"',1]]});
+  const bad2=seats.filter(x=>x.model&&(S.catalog.find(k=>k.name===x.catalog)||{}).status==='fail');
+  if(bad2.length)out.push({lv:'er',t:`โมเดลของ ${esc(bad2.map(x=>x.name).join(', '))} เรียกไม่ได้`,s:'ผลทดสอบล่าสุดล้มเหลว เปลี่ยนโมเดลหรือเช็ก key',a:[['ไปแก้ที่จัดทีม','data-goto="studio"',1]]});
+  (S.gateways||[]).filter(g=>!g.has_key).forEach(g=>out.push({lv:'wk',t:`ผู้ให้บริการ ${esc(g.name)} ยังไม่มี API key`,s:'ใส่ key ก่อนจึงจะเรียกโมเดลได้',a:[['ไปใส่ key','data-goto="studio"',1]]}));
+  const fin=Object.entries(byJob).filter(([k,ts])=>ts.some(x=>x.status==='done')).sort((a,b)=>Math.max(...b[1].map(x=>x.id))-Math.max(...a[1].map(x=>x.id))).slice(0,3);
+  fin.forEach(([k])=>out.push({lv:'ok',t:`งาน “${esc(k)}” ผ่านการตรวจแล้ว`,s:'เปิดอ่านผลลัพธ์หรือดาวน์โหลดรายงาน',a:[['ดูผลงาน',`data-open="${esc(k)}"`,1]]}));
+  const rk={er:0,wk:1,ok:2};return out.sort((x,y)=>rk[x.lv]-rk[y.lv]);
+}
+function homeView(){
+  const roles=(S.roles||[]).filter(r=>r.kind==='maker'), td=todos(), q=S.queue||{};
+  const todoHtml=td.length?td.map(x=>`<div class="td ${x.lv}"><span class="tdd"></span><div class="tdt"><b>${x.t}</b><small>${esc(x.s)}</small></div><div class="tda">${x.a.map(([l,at,pr])=>`<button class="btn ${pr?'pr':''}" ${at}>${l}</button>`).join('')}</div></div>`).join(''):'<div class="td ok"><span class="tdd"></span><div class="tdt"><b>ไม่มีอะไรค้าง</b><small>ทีมพร้อมรับงานใหม่</small></div></div>';
+  return `${summary()}
+  <div class="home"><section class="card" id="hform"><h3>สั่งงานทีม</h3>
+    <label class="hl">โจทย์ที่อยากให้ทีมทำ<textarea id="hbrief" rows="6" placeholder="เช่น สรุปข้อดีข้อเสียของ 3 แนวทางนี้ แล้วแนะนำข้อที่ควรเลือก พร้อมเหตุผล…">${esc(HD.brief)}</textarea></label>
+    <div class="hr"><label class="hl">ชื่องาน (ไม่ใส่ก็ได้)<input id="hjob" type="text" value="${esc(HD.job)}" placeholder="ตั้งชื่อให้หาง่าย"></label>
+    <label class="hl">ให้ใครทำ<select id="hrole">${roles.map(r=>`<option value="${esc(r.name)}" ${HD.role===r.name?'selected':''}>${esc(r.title)}</option>`).join('')}</select></label></div>
+    <div class="hr"><label class="hck"><input id="hrev" type="checkbox" ${HD.review?'checked':''}> ให้ผู้ตรวจตรวจก่อนส่งผล</label>
+    <label class="hl sm ${HD.review?'':'dim'}">ตีกลับแก้ได้สูงสุด<select id="hrounds" ${HD.review?'':'disabled'}>${[1,2,3].map(n=>`<option ${HD.rounds===n?'selected':''} value="${n}">${n} รอบ</option>`).join('')}</select></label></div>
+    <div class="hr end"><span class="hmsg ${HD.msg.startsWith('✓')?'ok':'er'}">${esc(HD.msg)}</span><button class="btn pr" id="hsub" ${HD.busy?'disabled':''}>${HD.busy?'กำลังส่ง…':'สั่งงาน'}</button></div>
+    <p class="hint">ระบบเลือก AI ที่ถนัดงานนี้ให้เอง ผ่านด่านตรวจความปลอดภัยก่อนส่ง · ตอนนี้คิว ${q.running||0} กำลังทำ · ${q.queued||0} รอ</p></section>
+  <section class="card"><h3>ต้องทำอะไรต่อ <span class="nmu" style="font-weight:400">${td.filter(x=>x.lv!=='ok').length||''}</span></h3><div class="tds">${todoHtml}</div></section></div>`;
+}
+async function hSubmit(){
+  if(HD.busy)return; if(document.activeElement&&document.activeElement.blur)document.activeElement.blur(); HD.busy=true; HD.msg=''; render();
+  const d=await apiRaw('/api/submit',{brief:HD.brief,job:HD.job,role:HD.role,review:HD.review,rounds:HD.rounds}).catch(e=>({error:e.message}));
+  HD.busy=false;
+  if(d.error)HD.msg=d.error; else{HD.msg=`✓ ส่งแล้ว (งาน #${d.id})${d.worker_started?' · เริ่มตัวรันให้แล้ว':''} — ดูความคืบหน้าที่แท็บ “งานที่แจก”`;HD.brief='';HD.job=''}
+  await tick(true);
+}
+document.addEventListener('input',e=>{const i=e.target.id;if(i==='hbrief')HD.brief=e.target.value;else if(i==='hjob')HD.job=e.target.value});
+document.addEventListener('change',e=>{const i=e.target.id;if(i==='hrole')HD.role=e.target.value;else if(i==='hrev'){HD.review=e.target.checked;render()}else if(i==='hrounds')HD.rounds=+e.target.value});
+document.addEventListener('click',async e=>{
+  if(e.target.id==='hsub'){hSubmit();return}
+  const g=e.target.closest('[data-goto]');if(g){view=g.dataset.goto;render();return}
+  const a=e.target.closest('[data-act="start_worker"]');if(a){await post('/api/start_worker',{});return}
+  const r=e.target.closest('[data-requeue]');if(r){r.disabled=true;await post('/api/requeue',{id:+r.dataset.requeue});return}
+  const p=e.target.closest('[data-rpt]');if(p){const k=p.dataset.rpt;if(RPTO===k){RPTO=null;render();return}RPTO=k;if(!RPT[k]){RPT[k]='กำลังโหลด…';render();RPT[k]=await (await fetch('/api/report?job='+encodeURIComponent(k))).text()}render();return}
+  const cp=e.target.closest('[data-copy]');if(cp){try{await navigator.clipboard.writeText(RPT[cp.dataset.copy]||'');cp.textContent='คัดลอกแล้ว'}catch(_){cp.textContent='คัดลอกไม่ได้'}}
+});
 
 async function tick(force){if(dragging)return;try{const n=await (await fetch('/api/state')).json(),j=JSON.stringify(n);const ch=j!==lastJ;if(force===true||ch||view==='design'){lastJ=j;S=n;render();if(modal&&(ch||force===true))renderModal()}}catch(e){}}
 (()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.get('view'))view=h.get('view');if(h.get('rtab'))rtab=h.get('rtab');if(h.get('job'))selJob=h.get('job');if(h.get('jv'))jv=h.get('jv')==='table'?'table':'board';if(h.get('open')){jobPage=true}if(h.get('modal')){modal=true;mtab=h.get('modal')==='net'?'net':'seq';if(h.get('job'))mjob=h.get('job')}if(h.get('zoom'))mz=Math.min(4,Math.max(.4,+h.get('zoom')||1))})();

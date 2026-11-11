@@ -2,10 +2,10 @@
 """แดชบอร์ด: python3 ~/.ai-team/dash.py  แล้วเปิด http://localhost:8790
 อ่าน/เขียนเฉพาะ seats/catalog/plan — ไม่เคย select api_key ออกมา
 POST ป้องกัน CSRF: ต้องมี Host/Origin เป็น localhost:8790 และ header X-Dash"""
-import json, os, re
+import json, os, re, subprocess, sys, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
-from team import db, setting, seat_set, seat_undo, seat_add, catalog_test, set_position, valid_base_url, remote_models, import_models, MODES
+from team import submit, parse_flow, role_skill, db, setting, seat_set, seat_undo, seat_add, catalog_test, set_position, valid_base_url, remote_models, import_models, MODES
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PRESETS = [
@@ -16,6 +16,59 @@ PRESETS = [
 ]
 PORT = int(os.environ.get("AI_TEAM_PORT", 8790))
 OK_HOSTS = {f"localhost:{PORT}", f"127.0.0.1:{PORT}"}
+
+
+def worker_running():
+    try:
+        return subprocess.run(["pgrep", "-f", "team.py worker"], capture_output=True).returncode == 0
+    except Exception:
+        return False
+
+
+def start_worker():
+    """เปิด worker ถ้ายังไม่ทำงาน (ทำงานจนคิวหมดแล้วปิดเอง)"""
+    if worker_running():
+        return False
+    log = open(os.path.join(HERE, "worker.log"), "a")
+    subprocess.Popen([sys.executable, os.path.join(HERE, "team.py"), "worker", "--per-gateway", "3"], cwd=HERE, stdout=log, stderr=log, start_new_session=True)
+    return True
+
+
+def job_stats(c):
+    """สถิติต่องาน: จำนวนครั้งที่เรียก เวลารวม ค่าใช้จ่ายโดยประมาณ (ข้อความ/3 ≈ โทเคน ราคาจากแคตตาล็อก)"""
+    price = {m: (ci, co) for m, ci, co in c.execute("select model,cin,cout from catalog")}
+    out = {}
+    for j, m, b, r, ms, bl in c.execute("select job,model,brief,reply,ms,blocked from audit"):
+        d = out.setdefault(j or "(ไม่ระบุชื่องาน)", dict(calls=0, ms=0, cost=0.0, priced=0, unpriced=0, blocked=0))
+        d["calls"] += 1
+        d["ms"] += ms or 0
+        if bl:
+            d["blocked"] += 1
+            continue
+        pr = price.get(m)
+        if pr and pr[0] is not None and pr[1] is not None:
+            d["cost"] += (len(b or "") / 3 * pr[0] + len(r or "") / 3 * pr[1]) / 1e6
+            d["priced"] += 1
+        else:
+            d["unpriced"] += 1
+    return out
+
+
+def report_md(c, job):
+    st = job_stats(c).get(job, {})
+    ts = c.execute("select id,status,used_seat,result,error,trace,rounds from tasks where job=? order by id", (job,)).fetchall()
+    L = [f"# รายงานงาน: {job}", "", f"- เรียก AI {st.get('calls', 0)} ครั้ง · เวลาตอบรวม {st.get('ms', 0) / 1000:.0f} วินาที",
+         f"- ค่าใช้จ่ายโดยประมาณ: " + (f"${st['cost']:.4f}" if st.get("priced") else "ยังไม่มีราคาโมเดลในแคตตาล็อก") + (f" (ไม่นับ {st['unpriced']} ครั้งที่ไม่มีราคา)" if st.get("unpriced") and st.get("priced") else ""), ""]
+    for i, sx, seat, res, err, tr, rounds in ts:
+        L += [f"## งาน #{i} — {sx}" + (f" (ช่อง {seat})" if seat else ""), ""]
+        if tr:
+            L.append("เส้นทาง: " + " → ".join(f"{x['stage']}({x.get('seat')})" + (f":{x['verdict']}" + (f" {x['score']}/10" if x.get('score') is not None else "") if x.get('verdict') else "") for x in json.loads(tr)))
+            L.append("")
+        if err:
+            L += [f"> ปัญหา: {err}", ""]
+        if res:
+            L += [res, ""]
+    return "\n".join(L)
 
 
 def state():
@@ -40,7 +93,8 @@ def state():
                 for n, u, k in c.execute("select name,base_url,api_key from gateways")]
     queue = dict(c.execute("select status,count(*) from tasks group by status").fetchall())
     return dict(agents=agents, seats=seats, catalog=catalog, plan=plan, queue=queue, gateways=gateways, presets=PRESETS, roles=roles, tasks=tasks, audit=audit, notes=notes,
-                can_undo=bool(c.execute("select 1 from seat_log limit 1").fetchone()))
+                can_undo=bool(c.execute("select 1 from seat_log limit 1").fetchone()), worker=worker_running(), jobstats=job_stats(c),
+                taskinfo={i: dict(created=cr, finished=fi) for i, cr, fi in c.execute("select id,created,finished from tasks order by id desc limit 60")})
 
 
 def act(path, b):
@@ -86,6 +140,28 @@ def act(path, b):
         c.execute("insert or replace into settings values('n',?)", (str(n),))
         c.execute("insert or replace into settings values('mode',?)", (mode,))
         c.commit()
+    elif path == "/api/submit":
+        brief = str(b.get("brief") or "").strip()
+        if len(brief) < 5:
+            raise ValueError("เขียนโจทย์สั้นเกินไป")
+        job = (str(b.get("job") or "").strip() or brief.split("\n")[0][:40])
+        role = str(b.get("role") or "maker")
+        if b.get("review"):
+            rounds = max(1, min(3, int(b.get("rounds") or 2)))
+            tid = submit(c, brief, None, job, None, parse_flow(f"{role}@@auto>reviewer@@auto"), rounds)
+        else:
+            tid = submit(c, brief, "@auto", job, None, None, 0, role)
+        return {"ok": True, "id": tid, "job": job, "worker_started": start_worker()}
+    elif path == "/api/requeue":
+        r = c.execute("select job,pool,brief,chk,flow,rounds,asrole,skill from tasks where id=?", (int(b["id"]),)).fetchone()
+        if not r:
+            raise ValueError("ไม่พบงาน")
+        tid = c.execute("insert into tasks(job,pool,brief,chk,status,created,flow,rounds,asrole,skill) values(?,?,?,?,'queued',?,?,?,?,?)",
+                        (r[0], r[1], r[2], r[3], time.time(), r[4], r[5], r[6], r[7])).lastrowid
+        c.commit()
+        return {"ok": True, "id": tid, "worker_started": start_worker()}
+    elif path == "/api/start_worker":
+        return {"ok": True, "worker_started": start_worker()}
     elif path == "/api/test":
         return {"status": catalog_test(c, b["catalog"])}
     else:
@@ -104,6 +180,10 @@ class H(BaseHTTPRequestHandler):
         if self.path == "/api/usage":
             import usage
             self._send(200, json.dumps(usage.all_usage(db()), ensure_ascii=False).encode())
+        elif self.path.startswith("/api/report"):
+            from urllib.parse import parse_qs
+            job = (parse_qs(urlparse(self.path).query).get("job") or [""])[0]
+            self._send(200, report_md(db(), job).encode(), "text/markdown")
         elif self.path == "/api/state":
             self._send(200, json.dumps(state(), ensure_ascii=False).encode())
         else:
