@@ -657,6 +657,8 @@ def main():
     sp.add_parser("queue")
     k_ = sp.add_parser("skills").add_subparsers(dest="sub", required=True); q = k_.add_parser("ls"); q.add_argument("--seat"); q = k_.add_parser("set"); q.add_argument("seat"); q.add_argument("skill"); q.add_argument("score", type=float)
     p = sp.add_parser("route"); p.add_argument("skill")
+    w = sp.add_parser("web").add_subparsers(dest="sub", required=True); q = w.add_parser("search"); q.add_argument("query"); q.add_argument("--n", type=int, default=6); q.add_argument("--pages", type=int, default=0); q.add_argument("--days", type=int); q.add_argument("--out")
+    q = w.add_parser("fetch"); q.add_argument("url")
     p = sp.add_parser("limit"); p.add_argument("n", nargs="?", type=int); p.add_argument("--chars", type=int)
     p = sp.add_parser("pool"); p.add_argument("action", choices=["set", "ls", "rm"]); p.add_argument("name", nargs="?"); p.add_argument("seats", nargs="*")
     x = ap.parse_args(); c = db()
@@ -741,6 +743,17 @@ def main():
                 submit(c, d["brief"], d.get("pool") or x.pool, d.get("job") or x.job, d.get("check") or x.check,
                        parse_flow(fl) if fl else None, d.get("rounds", x.rounds) if fl else 0, d.get("as") or x.asrole, d.get("needs") or x.needs); n += 1
             print(f"ส่งเข้าคิว {n} งาน")
+        elif x.cmd == "web":
+            import webtools
+            if x.sub == "search":
+                txt = webtools.fact_pack(x.query, x.n, x.pages, recency_days=x.days)
+                if x.out:
+                    open(x.out, "w", encoding="utf-8").write(txt); print(f"บันทึก fact pack → {x.out} ({len(txt)} ตัวอักษร)")
+                else:
+                    print(txt)
+            else:
+                for r in webtools.fetch([x.url], 12000)[0]:
+                    print(f"# {r['title']}\n{r['url']}\n\n{r['text']}")
         elif x.cmd == "worker":
             worker(x.concurrency, x.per_gateway, drain=not x.keep)
         elif x.cmd == "wait":
