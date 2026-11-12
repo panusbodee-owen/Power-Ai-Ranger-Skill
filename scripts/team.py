@@ -38,6 +38,7 @@ BUILTIN_ROLES = [
     ("tester", "ผู้ทดสอบ", "คุณคือผู้ทดสอบซอฟต์แวร์: ออกแบบเคสทดสอบทั้งปกติ เคสขอบ และเคสผิดพลาด ระบุขั้นตอนและผลที่คาดหวังให้ชัดเจน", "maker"),
     ("translator", "ผู้แปล/สรุป", "คุณคือผู้แปลและสรุป: ถ่ายทอดเนื้อหาให้ครบถ้วนไม่เพิ่มข้อมูลเอง ใช้ภาษาไทยที่เป็นธรรมชาติ", "maker"),
     ("cleaner", "ผู้ล้างข้อมูล", "คุณคือผู้ล้างข้อมูล: ตรวจรูปแบบ ชื่อ เบอร์โทร เลขภาษี ที่อยู่ไทย หาค่าที่ซ้ำหรือผิดปกติ และรายงานตามที่พบเท่านั้น ห้ามเดาค่าที่ไม่มีในข้อมูล", "maker"),
+    ("editor", "บรรณาธิการ / ผู้รวมงาน", "คุณคือบรรณาธิการผู้รวมงาน: อ่านบทสรุปของงานหลายชิ้นที่ทำแยกกัน แล้วหาจุดที่ขัดกันข้ามชิ้น (ชื่อ ราคา ขอบเขต ตัวเลข ข้ออ้าง) จุดที่ชิ้นหนึ่งอ้างแต่อีกชิ้นไม่รองรับ และช่องว่างที่ไม่มีชิ้นไหนครอบคลุม แล้วเขียนบทสรุปผู้บริหารที่ซื่อสัตย์ต่อเนื้อหาเดิม ห้ามเพิ่มตัวเลข/ข้อเท็จจริงที่ไม่มีในต้นฉบับ ห้ามอ้างอิงนอกต้นฉบับ ถ้าสองชิ้นขัดกันให้ระบุทั้งสองฝั่งและเสนอทางเลือก ไม่ตัดสินเงียบๆ", "maker"),
     ("analyst", "ผู้วิเคราะห์", "คุณคือผู้วิเคราะห์: สรุปประเด็นสำคัญ ข้อเท็จจริงที่ยืนยันได้ แยกจากข้อสันนิษฐาน และบอกสิ่งที่ยังไม่รู้", "maker"),
 ]
 
@@ -47,7 +48,7 @@ def ensure_roles(c):
         c.execute("insert or ignore into roles(name,title,prompt,kind) values(?,?,?,?)", r)
     c.commit()
 
-ROLE_SKILL = {"reviewer": "review", "tester": "test_design", "senior_tester": "test_design", "translator": "text", "cleaner": "data_clean", "analyst": "analysis"}
+ROLE_SKILL = {"reviewer": "review", "tester": "test_design", "senior_tester": "test_design", "translator": "text", "cleaner": "data_clean", "analyst": "analysis", "editor": "synthesis"}
 SKILL_SEED = [  # (ช่อง, ความถนัด, คะแนน 0-1, หลักฐาน) — มาจากผลวัดจริง 2026-11-10; ค่าที่ยังไม่เคยวัดใช้ 0.5
     ("seat2", "test_design", .9, "ออกแบบเคสเจอบั๊กจริง 7/10"), ("intern", "test_design", .6, "เจอ 5/10 JSON เสถียร"),
     ("seat1", "test_design", .25, "เจอ 2/10 อักษรจีนปน JSON พัง"), ("worker", "test_design", .0, "ส่งผลว่างกับ JSON ยาว"),
@@ -182,6 +183,13 @@ def call(c, seat, brief, job=None, role_ov=None):
     role, model, url, key, _, _, _ = r
     if role_ov is not None:
         role = role_ov
+    elif str(setting(c, "coach_enabled", "0")) == "1":  # คู่มือสั่งงานจาก train.py (เปิดเฉพาะสมาชิกที่วัดแล้วดีขึ้น)
+        try:
+            co = c.execute("select text from seat_coach where seat=? and applied=1", (seat,)).fetchone()
+            if co:
+                role = (role or "") + "\n\n" + co[0]
+        except sqlite3.Error:
+            pass
     why = None
     if PLACEHOLDER.search(url):
         why = "base_url ยังเป็นค่าตัวอย่าง ห้ามส่ง key ไป"
@@ -593,6 +601,45 @@ def worker(concurrency=8, per_gw=3, drain=True):
     print(f"worker เสร็จใน {time.time() - t0:.1f}s · {cnt}")
 
 
+def merge_docs(c, name, files, title, out, rounds=1):
+    """ทีมรวมงานหลายชิ้น: (1) ย่อสาระแต่ละชิ้นแบบขนาน (2) บรรณาธิการอ่านบทย่อทั้งหมด หาจุดขัดกัน+เขียนบทสรุป แล้วผู้ตรวจตรวจ
+    (3) โค้ดประกอบเอกสาร = บทสรุปของทีม + ต้นฉบับทุกชิ้นแบบคำต่อคำ (โมเดลไม่พิมพ์ซ้ำ จึงไม่ตัด/ไม่เพี้ยน)"""
+    cap = int(setting(c, "max_chars", MAX_CHARS)) - 1800
+    parts = []
+    for f in files:
+        parts.append((os.path.basename(f), open(f, encoding="utf-8").read()))
+    dg = []
+    for fn, txt in parts:
+        body = txt if len(txt) <= cap else txt[: cap * 2 // 3] + "\n[...ตัดกลางเอกสารเพราะยาวเกินเพดาน...]\n" + txt[-cap // 3:]
+        brief = (f"งาน (ผู้วิเคราะห์): ย่อสาระของเอกสาร '{fn}' ให้ไม่เกิน 250 คำ เป็นหัวข้อ: (1) ข้อสรุป/การตัดสินใจหลัก (2) ชื่อ ราคา ขอบเขต ตัวเลข ที่เอกสารระบุ คัดลอกค่าให้ตรงเป๊ะ "
+                 f"(3) ข้อเท็จจริงที่อ้างแหล่ง [F#] (4) สิ่งที่เอกสารระบุว่าเป็นสมมติ (5) สิ่งที่ยังขาด ห้ามเพิ่มข้อมูลที่ไม่มีในเอกสาร\n\n===== {fn} =====\n{body}")
+        old = c.execute("select id from tasks where job=? and brief=? and status='done' and result is not null order by id desc limit 1", (f"{name}-digest", brief)).fetchone()
+        dg.append(old[0] if old else submit(c, brief, "@auto", f"{name}-digest", None, None, 0, "analyst"))
+    worker(8, 3, drain=True)
+    digests = []
+    for (fn, _), tid in zip(parts, dg):
+        r = c.execute("select status,result from tasks where id=?", (tid,)).fetchone()
+        if r[0] != "done" or not (r[1] or "").strip():
+            raise ValueError(f"ย่อสาระ {fn} ไม่สำเร็จ ({r[0]}) — รันใหม่ได้ด้วยคำสั่งเดิม")
+        digests.append(f"### {fn}\n{r[1].strip()}")
+    brief = ("บทย่อของเอกสารที่ทีมทำแยกกัน (ข้อมูลอ้างอิง):\n\n" + "\n\n".join(digests) + "\n\n=====\n"
+             "งาน (บรรณาธิการ): จากบทย่อข้างบนเท่านั้น เขียนเป็นภาษาไทยไม่เกิน 700 คำ 3 ส่วน: "
+             "ส่วน A บทสรุปผู้บริหารไม่เกิน 150 คำ ที่ซื่อสัตย์ต่อบทย่อ; "
+             "ส่วน B รายการ 'จุดที่ขัดกันหรือไม่สอดคล้องข้ามเอกสาร' ระบุชื่อเอกสารทั้งสองฝั่งและค่าที่ต่างกัน พร้อมข้อเสนอว่าจะเลือกอย่างไร (ถ้าไม่พบให้เขียนว่าไม่พบ ห้ามแต่งขึ้น); "
+             "ส่วน C ช่องว่างที่ไม่มีเอกสารใดครอบคลุม และสิ่งที่ต้องตรวจสอบกับโลกจริงก่อนใช้. "
+             "เกณฑ์ตรวจ: ครบ 3 ส่วน, ไม่มีตัวเลขหรือข้อเท็จจริงใหม่ที่ไม่อยู่ในบทย่อ, จุดขัดกันต้องชี้ได้ว่ามาจากเอกสารไหน, ไม่ต้องสร้างเอกสารใหม่ทั้งฉบับ")
+    tid = submit(c, brief, None, f"{name}-editor", None, parse_flow("editor@@auto>reviewer@@auto"), rounds)
+    worker(8, 3, drain=True)
+    r = c.execute("select status,result,error,used_seat from tasks where id=?", (tid,)).fetchone()
+    if not r[1]:
+        raise ValueError(f"บรรณาธิการไม่สำเร็จ ({r[0]}): {r[2]}")
+    head = [f"# {title}", "", f"> รวมโดยทีม AI (บรรณาธิการ ช่อง {r[3]}, สถานะตรวจ: {r[0]}) — ส่วนบนคือบทสรุป/จุดขัดกัน ส่วนล่างคือต้นฉบับแต่ละชิ้นคำต่อคำ", "", "## บทสรุปและข้อสังเกตของบรรณาธิการ", "", r[1].strip(), ""]
+    for fn, txt in parts:
+        head += ["", "---", "", f"## ต้นฉบับ: {fn}", "", txt.strip()]
+    open(out, "w", encoding="utf-8").write("\n".join(head))
+    return r[0], tid, out
+
+
 def queue_counts(c, job=None):
     q = "select status,count(*) from tasks" + (" where job=?" if job else "") + " group by status"
     return dict(c.execute(q, (job,) if job else ()).fetchall())
@@ -659,6 +706,8 @@ def main():
     p = sp.add_parser("route"); p.add_argument("skill")
     w = sp.add_parser("web").add_subparsers(dest="sub", required=True); q = w.add_parser("search"); q.add_argument("query"); q.add_argument("--n", type=int, default=6); q.add_argument("--pages", type=int, default=0); q.add_argument("--days", type=int); q.add_argument("--out")
     q = w.add_parser("fetch"); q.add_argument("url")
+    p = sp.add_parser("research"); p.add_argument("topic"); p.add_argument("--out", required=True); p.add_argument("--n", type=int, default=6); p.add_argument("--name"); p.add_argument("--mode", choices=["problem", "ideas"], default="problem")
+    p = sp.add_parser("merge"); p.add_argument("name"); p.add_argument("files", nargs="+"); p.add_argument("--title", default="เอกสารรวม"); p.add_argument("--out", required=True); p.add_argument("--rounds", type=int, default=1)
     p = sp.add_parser("limit"); p.add_argument("n", nargs="?", type=int); p.add_argument("--chars", type=int)
     p = sp.add_parser("pool"); p.add_argument("action", choices=["set", "ls", "rm"]); p.add_argument("name", nargs="?"); p.add_argument("seats", nargs="*")
     x = ap.parse_args(); c = db()
@@ -743,6 +792,11 @@ def main():
                 submit(c, d["brief"], d.get("pool") or x.pool, d.get("job") or x.job, d.get("check") or x.check,
                        parse_flow(fl) if fl else None, d.get("rounds", x.rounds) if fl else 0, d.get("as") or x.asrole, d.get("needs") or x.needs); n += 1
             print(f"ส่งเข้าคิว {n} งาน")
+        elif x.cmd == "research":
+            import researchteam, researchpf
+            stt, nm, o = researchpf.run(x.topic, x.out, x.name) if x.mode == "problem" else researchteam.run(x.topic, x.out, x.n, x.name); print(f"ทีม Research เสร็จ ({nm}, ตรวจ: {stt}) → {o}")
+        elif x.cmd == "merge":
+            stt, tid, o = merge_docs(c, x.name, x.files, x.title, x.out, x.rounds); print(f"รวมเสร็จ (งาน #{tid}, ตรวจ: {stt}) → {o}")
         elif x.cmd == "web":
             import webtools
             if x.sub == "search":

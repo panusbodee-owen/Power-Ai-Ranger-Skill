@@ -136,6 +136,17 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .seat{border:2px dashed var(--ln);border-radius:12px;padding:12px;min-height:108px;background:var(--p);position:relative;transition:.15s}
 .seat.act{border:2px solid var(--bl);background:color-mix(in srgb,var(--bl) 6%,transparent)}
 .seat.stby{opacity:.55}
+.nglow{animation:nglow 1.3s ease-in-out infinite}
+.ndot{animation:blink 1s infinite}
+@keyframes nglow{0%,100%{filter:drop-shadow(0 0 2px var(--gc))}50%{filter:drop-shadow(0 0 14px var(--gc))}}
+@media (prefers-reduced-motion:reduce){.nglow{animation:none;filter:drop-shadow(0 0 8px var(--gc))}.ndot{animation:none}}
+.seat.busy{border:2px solid var(--gr);animation:glow 1.4s ease-in-out infinite;opacity:1}
+.seat .bz{display:none;margin-top:8px;font-size:11px;color:var(--gr);font-weight:600}
+.seat.busy .bz{display:block}
+.seat .bz:before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--gr);margin-right:6px;animation:blink 1s infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 4px 0 color-mix(in srgb,var(--gr) 35%,transparent)}50%{box-shadow:0 0 18px 4px color-mix(in srgb,var(--gr) 70%,transparent)}}
+@keyframes blink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.seat.busy{animation:none;box-shadow:0 0 12px 2px var(--gr)}.seat .bz:before{animation:none}}
 .seat.over{border-color:var(--or);background:color-mix(in srgb,var(--or) 8%,transparent)}
 .seat h5{margin:0 0 6px;font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.06em;display:flex;justify-content:space-between}
 .seat .m{font-weight:700;font-size:13px;word-break:break-all}
@@ -509,7 +520,7 @@ function flow(inModal){
     if(on)for(let k=0;k<2;k++)g+=`<circle r="4" fill="${c}"><animateMotion dur="1.5s" begin="${k*.75}s" repeatCount="indefinite"><mpath href="#${id}"/></animateMotion></circle>`});
   Object.entries(N).forEach(([id,o])=>{const sel=selNode===id;
     if(o.hub){g+=`<g><circle cx="${o.x+9}" cy="${o.y+9}" r="9" fill="var(--p)" stroke="${o.on?'var(--or)':'var(--ln2)'}" stroke-width="1.6"/><text x="${o.x+9}" y="${o.y+13}" text-anchor="middle" font-size="11" fill="var(--mu)">⇢</text></g>`;return}
-    g+=`<g data-n="${esc(id)}" style="cursor:pointer"><title>${esc(o.full||o.t)}</title><rect x="${o.x}" y="${o.y}" width="${W}" height="${H}" rx="10" fill="var(--p)" stroke="${o.on||sel?o.c:'var(--ln)'}" stroke-width="${sel?2:1.4}" style="${o.on?``:''}"/>
+    g+=`<g data-n="${esc(id)}" style="cursor:pointer"><title>${esc(o.full||o.t)}</title><rect x="${o.x}" y="${o.y}" width="${W}" height="${H}" rx="10" fill="var(--p)" stroke="${o.on||sel?o.c:'var(--ln)'}" stroke-width="${o.on?2.6:sel?2:1.4}" ${o.on?`class="nglow" style="--gc:${o.c}"`:''}/>${o.on?`<circle cx="${o.x+W-12}" cy="${o.y+H-12}" r="4" fill="${o.c}" class="ndot"/>`:''}
     <circle cx="${o.x+24}" cy="${o.y+H/2}" r="13" fill="${o.c}"/><text x="${o.x+24}" y="${o.y+H/2+4.5}" text-anchor="middle" font-size="12" font-weight="800" fill="var(--on)">${esc(o.g)}</text>
     <text x="${o.x+46}" y="${o.y+24}" fill="var(--tx)" font-size="12.5" font-weight="700">${esc(o.t)}</text>
     <text x="${o.x+46}" y="${o.y+40}" fill="var(--mu)" font-size="10">${esc(o.s)}</text>
@@ -652,9 +663,9 @@ function studioView(){
   const ic=k=>k.status==='ok'?'<span class="okc">● ใช้ได้</span>':k.status==='fail'?'<span class="failc">● เรียกไม่ได้</span>':'<span>○ ยังไม่ทดสอบ</span>';
   const pr=k=>k.cin!=null&&k.cout!=null?`$${k.cin}/${k.cout} ต่อ 1M`:'ยังไม่ตั้งราคา';
   const chips=S.catalog.map(k=>`<div class="chip ${pick===k.name?'pick':''}" draggable="true" data-cat="${esc(k.name)}"><b>${esc(k.name)}</b><small><span>${esc(k.host)}</span>${ic(k)}</small><small><span>${pr(k)}</span><button class="tst" data-test="${esc(k.name)}">ทดสอบ</button></small></div>`).join('')||'<div class="empty">แคตตาล็อกว่าง — ใช้ team.py catalog import</div>';
-  const seats=S.seats.map(x=>`<div class="seat ${act.has(x.name)?'act':x.model?'stby':''}" data-seat="${esc(x.name)}"><h5><span>${esc(x.name)}</span><span>${act.has(x.name)?'ทำงาน':x.model?'สำรอง':''}</span></h5>
+  const busyBy=Object.fromEntries((S.busy||[]).map(b=>[b.seat,b])), seats=S.seats.map(x=>`<div class="seat ${act.has(x.name)?'act':x.model?'stby':''}${busyBy[x.name]?' busy':''}" data-seat="${esc(x.name)}"><h5><span>${esc(x.name)}</span><span>${act.has(x.name)?'ทำงาน':x.model?'สำรอง':''}</span></h5>
     ${x.model?`<button class="x" data-clear="${esc(x.name)}" title="ล้างช่อง">✕</button><div class="m">${esc(x.catalog)}</div><div class="g">${esc(x.host||'')}</div>`:`<div class="emp">ว่าง — ลากโมเดลมาวาง${pick?' หรือคลิกที่นี่':''}</div>`}
-    <select class="pos" data-pos="${esc(x.name)}" title="ตำแหน่ง (บทบาท) ของช่องนี้"><option value="">— ไม่กำหนดตำแหน่ง —</option>${S.roles.map(r=>`<option value="${esc(r.name)}" ${x.position===r.name?'selected':''}>${esc(r.title)}</option>`).join('')}</select></div>`).join('');
+    <select class="pos" data-pos="${esc(x.name)}" title="ตำแหน่ง (บทบาท) ของช่องนี้"><option value="">— ไม่กำหนดตำแหน่ง —</option>${S.roles.map(r=>`<option value="${esc(r.name)}" ${x.position===r.name?'selected':''}>${esc(r.title)}</option>`).join('')}</select><div class="bz">กำลังทำงาน${busyBy[x.name]&&busyBy[x.name].job?': '+esc(String(busyBy[x.name].job).slice(0,28)):''}</div></div>`).join('');
   const use=filled.filter(x=>act.has(x.name)); let est=0,unk=false; use.forEach(x=>{if(x.cin==null||x.cout==null)unk=true;else est+=(x.cin+x.cout)*1000/1e6});
   const modes={'best-of-n':'ทุกช่องทำงานเดียวกัน Claude เลือกผลที่ดีที่สุด','vote':'ทุกช่องตอบคำถามเดียวกัน ใช้เสียงข้างมาก','split':'Claude แตกงานย่อยให้แต่ละช่องตามจุดแข็ง'};
   return provHtml()+`<div class="stu"><div class="card"><h3>Model Catalog <span style="color:var(--mu);font-weight:400">${S.catalog.length}</span></h3><div class="cat">${chips}</div></div>

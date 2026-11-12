@@ -92,7 +92,8 @@ def state():
     gateways = [dict(name=n, base_url=u, host=host(u), has_key=bool(k), models=sum(1 for x in catalog if x["gateway"] == n))
                 for n, u, k in c.execute("select name,base_url,api_key from gateways")]
     queue = dict(c.execute("select status,count(*) from tasks group by status").fetchall())
-    return dict(agents=agents, seats=seats, catalog=catalog, plan=plan, queue=queue, gateways=gateways, presets=PRESETS, roles=roles, tasks=tasks, audit=audit, notes=notes,
+    busy = [dict(seat=ag, job=jb, since=t) for ag, jb, t in c.execute("select agent,job,t from audit where reply is null and blocked is null and t>? order by t", (time.time() - 300,))]  # เรียกโมเดลค้างอยู่ (เกิน 300 วิ ถือว่าหมดเวลา)
+    return dict(agents=agents, seats=seats, catalog=catalog, plan=plan, queue=queue, busy=busy, gateways=gateways, presets=PRESETS, roles=roles, tasks=tasks, audit=audit, notes=notes,
                 can_undo=bool(c.execute("select 1 from seat_log limit 1").fetchone()), worker=worker_running(), jobstats=job_stats(c),
                 taskinfo={i: dict(created=cr, finished=fi) for i, cr, fi in c.execute("select id,created,finished from tasks order by id desc limit 60")})
 
