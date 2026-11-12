@@ -440,6 +440,23 @@ def parse_flow(spec):
     return out
 
 
+def quality(c, seat):
+    """ฝีมือรวมของช่อง (ใช้เมื่องานไม่ระบุ skill): ผลสอบระดับยากล่าสุด (ถ้ามี) เฉลี่ยกับคะแนนความถนัดทุกด้าน
+    ใช้ก่อนความเร็วเสมอ — ความเร็วเป็นแค่ตัวตัดสินเมื่อฝีมือใกล้กัน"""
+    parts = []
+    try:
+        r = c.execute("select base_ok,base_n,coached_ok,coached_n from train_levels where seat=? and level='hard' order by ts desc limit 1", (seat,)).fetchone()
+        if r and r[1]:
+            ok, n = (r[2], r[3]) if r[3] else (r[0], r[1])
+            parts.append(ok / n)
+    except sqlite3.Error:
+        pass
+    a = c.execute("select avg(score) from seat_skills where seat=?", (seat,)).fetchone()[0]
+    if a is not None:
+        parts.append(a)
+    return sum(parts) / len(parts) if parts else 0.5
+
+
 def avg_ms(c, seat):
     """เวลาตอบเฉลี่ย (ms) ของช่องนี้จาก 40 ครั้งล่าสุดที่สำเร็จ — ใช้ตัดสินเมื่อคะแนนความถนัดเท่ากัน (ช่องที่ยังไม่มีข้อมูลถือว่าช้ากลางๆ)"""
     r = c.execute("select avg(ms) from (select ms from audit where agent=? and ms is not null and blocked is null order by rowid desc limit 40)", (seat,)).fetchone()
@@ -516,7 +533,7 @@ def try_pool(c, pool, brief, job, role_ov, sems, busy, lock, exclude=(), avoid_g
     last = ""
     for rnd in range(2):
         with lock:
-            order = sorted(cands, key=lambda x: (-round(skill_score(c, x, skill), 1) if skill else 0, gw(x) == avoid_gw, busy.get(gw(x), 0), avg_ms(c, x)))
+            order = sorted(cands, key=lambda x: (-round(skill_score(c, x, skill) if skill else quality(c, x), 1), gw(x) == avoid_gw, busy.get(gw(x), 0), avg_ms(c, x)))
         rn = int(setting(c, "race_n", 1))
         if rn >= 2 and len(order) >= 2 and rnd == 0:  # แข่งกัน: ส่งให้หลายช่อง เอาคำตอบแรกที่ใช้ได้
             ok_r, text_r, seat_r = race_call(c, order, rn, brief, job, role_ov, sems, busy, lock, valid, float(setting(c, "race_hedge_s", 6)), gw)
