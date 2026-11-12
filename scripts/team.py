@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """ทีม AI ใต้ Claude (Head): gateways -> catalog (โมเดล) -> seats (ช่องทีม)
   add SEAT --base-url URL --model M [--title T] [--role R]   ทางลัด: สร้าง gateway+catalog+seat (key ถามแบบซ่อน/env AI_TEAM_KEY)
+  connect openai|gemini|xai|groq|openrouter|nvidia [--filter F] [--seat S]   ต่อผู้ให้บริการสำเร็จรูป (key: env AI_TEAM_KEY_<NAME> หรือถามแบบซ่อน)
+  presets                                            รายชื่อผู้ให้บริการสำเร็จรูป
   gateway add|ls | catalog add|ls|import|test|price|remove | seat ls|add|set|clear|remove|undo
   plan [set --n N --mode best-of-n|vote|split]      ค่าที่ผู้ใช้เลือกในแดชบอร์ด
   ask SEAT "brief" [--job J]                         สั่งช่องเดียว
@@ -15,6 +17,17 @@ DB = os.environ.get("AI_TEAM_DB", os.path.expanduser("~/.ai-team/team.db"))
 BLOCK = [r"sk-[A-Za-z0-9]{20,}", r"(?i)api[_-]?key\s*[:=]", r"\b\d{13}\b", r"(?i)password\s*[:=]"]
 MAX_CHARS, MAX_CALLS_PER_HOUR = 8000, 60
 UA = {"User-Agent": "ai-team/1.0"}
+# ผู้ให้บริการสำเร็จรูป (OpenAI-compatible) ใช้ทั้ง CLI `connect` และแดชบอร์ด
+PRESETS = [
+    {"id": "openai", "title": "ChatGPT (OpenAI)", "name": "openai", "base_url": "https://api.openai.com/v1", "filter": "gpt-", "key_url": "https://platform.openai.com/api-keys"},
+    {"id": "gemini", "title": "Gemini (Google)", "name": "gemini", "base_url": "https://generativelanguage.googleapis.com/v1beta/openai", "filter": "gemini", "key_url": "https://aistudio.google.com/apikey"},
+    {"id": "xai", "title": "Grok (xAI)", "name": "xai", "base_url": "https://api.x.ai/v1", "filter": "grok", "key_url": "https://console.x.ai"},
+    {"id": "groq", "title": "Groq", "name": "groq", "base_url": "https://api.groq.com/openai/v1", "filter": "", "key_url": "https://console.groq.com/keys"},
+    {"id": "openrouter", "title": "OpenRouter", "name": "openrouter", "base_url": "https://openrouter.ai/api/v1", "filter": ":free", "key_url": "https://openrouter.ai/keys"},
+    {"id": "nvidia", "title": "NVIDIA NIM", "name": "nvidia", "base_url": "https://integrate.api.nvidia.com/v1", "filter": "nemotron", "key_url": "https://build.nvidia.com"},
+    {"id": "tokenme", "title": "Tokenme", "name": "tokenme", "base_url": "https://api.tokenme.limited/api/v1", "filter": "", "key_url": ""},
+]
+ENV_KEY = lambda gw: "AI_TEAM_KEY_" + re.sub(r"[^A-Z0-9]", "_", gw.upper())
 PLACEHOLDER = re.compile(r"(?i)xxx\.|your-|url-|example\.|<.*>")
 MODES = ("best-of-n", "vote", "split", "race")
 SKIP = ("embed", "safety", "guard", "parse", "reward", "rerank", "vl", "content", "whisper", "tts", "orpheus", "playai", "transcribe", "moderation")
@@ -781,6 +794,8 @@ def main():
     p = sp.add_parser("run"); p.add_argument("brief", nargs="?"); p.add_argument("--seats", required=True); p.add_argument("--mode", default="best-of-n", choices=MODES)
     p.add_argument("--assign", action="append"); p.add_argument("--budget", type=float); p.add_argument("--job")
     p = sp.add_parser("plan"); p.add_argument("action", nargs="?", default="show"); p.add_argument("--n", type=int); p.add_argument("--mode", choices=MODES)
+    p = sp.add_parser("connect"); p.add_argument("preset", choices=[q_["id"] for q_ in PRESETS]); p.add_argument("--filter"); p.add_argument("--seat"); p.add_argument("--name")
+    sp.add_parser("presets")
     g = sp.add_parser("gateway").add_subparsers(dest="sub", required=True); q = g.add_parser("add"); q.add_argument("name"); q.add_argument("--base-url", required=True); g.add_parser("ls")
     k = sp.add_parser("catalog").add_subparsers(dest="sub", required=True); q = k.add_parser("add"); q.add_argument("name"); q.add_argument("--gateway", required=True); q.add_argument("--model", required=True)
     q.add_argument("--in-cost", type=float); q.add_argument("--out-cost", type=float); k.add_parser("ls")
@@ -823,6 +838,26 @@ def main():
         elif x.cmd == "list" or (x.cmd == "seat" and x.sub == "ls"):
             for n, t, k_, m in c.execute("select s.name,s.title,s.catalog,k.model from seats s left join catalog k on k.name=s.catalog"):
                 print(f"{n}\t{t}\t{k_ or '(ว่าง)'}\t{m or ''}")
+        elif x.cmd == "presets":
+            for q_ in PRESETS: print(f"{q_['id']}\t{q_['title']}\t{q_['base_url']}\t{ENV_KEY(q_['name'])}\t{q_['key_url']}")
+        elif x.cmd == "connect":
+            pr = next(q_ for q_ in PRESETS if q_["id"] == x.preset); gw = x.name or pr["name"]
+            k_ = os.environ.get(ENV_KEY(gw)) or os.environ.get("AI_TEAM_KEY") or getpass.getpass(f"API key ของ {pr['title']} (ขอได้ที่ {pr['key_url'] or 'หน้าเว็บผู้ให้บริการ'}) พิมพ์แล้วไม่แสดง: ")
+            if not k_.strip(): sys.exit("ไม่มี key — ยกเลิก")
+            c.execute("insert or replace into gateways values(?,?,?)", (gw, pr["base_url"], k_.strip())); c.commit()
+            print(f"บันทึก gateway {gw} ← {pr['base_url']}")
+            try:
+                new, kept, tot = import_models(c, gw, pr["filter"] if x.filter is None else x.filter)
+            except Exception as e:
+                c.execute("delete from gateways where name=? and not exists(select 1 from catalog where gateway=?)", (gw, gw)); c.commit()
+                sys.exit(f"เชื่อมต่อไม่ได้ (key ผิดหรือหมดเครดิต?): {str(e)[:160]} — ไม่ได้บันทึก gateway")
+            print(f"นำเข้าโมเดล {new} ใหม่ / ตรงตัวกรอง {kept} / ทั้งหมด {tot}")
+            names = [r[0] for r in c.execute("select name from catalog where gateway=? order by name", (gw,))]
+            for n in names[:15]: print("  ", n)
+            if x.seat and names:
+                pick = names[0]; seat_set(c, x.seat, pick)
+                print(f"ใส่ {pick} ลงช่อง {x.seat}")
+            print(f"ต่อไป: python3 team.py catalog test <ชื่อโมเดล>  แล้ว  python3 team.py seat set <ช่อง> <ชื่อโมเดล>")
         elif x.cmd == "gateway":
             if x.sub == "add":
                 c.execute("insert or replace into gateways values(?,?,?)", (x.name, x.base_url, key(x.name))); c.commit(); print("บันทึก gateway", x.name)

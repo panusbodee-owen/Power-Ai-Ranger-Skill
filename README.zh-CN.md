@@ -42,6 +42,30 @@
 | **团队构建器** | **流程检查器** |
 | ![studio](docs/ui-studio.png) | ![flow](docs/ui-flow.png) |
 
+## 使用 ChatGPT、Gemini 或 Grok 作为团队成员
+
+支持任何兼容 OpenAI 的服务商，内置 7 个预设：
+
+```bash
+python3 scripts/team.py presets                      # 列出预设及密钥环境变量名
+python3 scripts/team.py connect gemini               # 隐藏输入密钥，导入 Gemini 模型
+python3 scripts/team.py connect openai --seat seat6  # 导入 ChatGPT 模型，第一个放入 seat6
+AI_TEAM_KEY_XAI=... python3 scripts/team.py connect xai   # Grok，从环境变量读取密钥
+```
+
+| 预设 | 服务商 | 密钥环境变量 |
+|---|---|---|
+| `openai` | ChatGPT (OpenAI) | `AI_TEAM_KEY_OPENAI` |
+| `gemini` | Gemini (Google AI Studio) | `AI_TEAM_KEY_GEMINI` |
+| `xai` | Grok (xAI) | `AI_TEAM_KEY_XAI` |
+| `groq`、`openrouter`、`nvidia`、`tokenme` | 其他 | `AI_TEAM_KEY_<NAME>` |
+
+连接失败的密钥不会被保存。密钥只存于本地 `team.db`，从不打印。
+
+### 用任意 agent CLI 指挥（Antigravity、Gemini CLI、Codex…）
+
+团队就是普通 CLI，任何能运行 shell 命令的 agent 都能担任负责人。让 agent 阅读 [`AGENTS.md`](AGENTS.md)。
+
 ## 快速开始
 ```bash
 # 1. 作为 Claude Code 技能安装

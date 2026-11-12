@@ -5,15 +5,9 @@ POST ป้องกัน CSRF: ต้องมี Host/Origin เป็น loc
 import json, os, re, subprocess, sys, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
-from team import submit, parse_flow, role_skill, db, setting, seat_set, seat_undo, seat_add, catalog_test, set_position, valid_base_url, remote_models, import_models, MODES
+from team import submit, parse_flow, role_skill, db, setting, seat_set, seat_undo, seat_add, catalog_test, set_position, valid_base_url, remote_models, import_models, MODES, PRESETS
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PRESETS = [
-    {"id": "tokenme", "title": "Tokenme", "name": "tokenme", "base_url": "https://api.tokenme.limited/api/v1", "filter": ""},
-    {"id": "openrouter", "title": "OpenRouter", "name": "openrouter", "base_url": "https://openrouter.ai/api/v1", "filter": ":free"},
-    {"id": "nvidia", "title": "NVIDIA NIM", "name": "nvidia", "base_url": "https://integrate.api.nvidia.com/v1", "filter": "nemotron"},
-    {"id": "groq", "title": "Groq", "name": "groq", "base_url": "https://api.groq.com/openai/v1", "filter": ""},
-]
 PORT = int(os.environ.get("AI_TEAM_PORT", 8790))
 OK_HOSTS = {f"localhost:{PORT}", f"127.0.0.1:{PORT}"}
 

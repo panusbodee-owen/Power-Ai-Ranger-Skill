@@ -39,6 +39,30 @@ Skill สำหรับ Claude Code: ให้ Claude เป็นหัวห�
 
 **Flow Inspector (กดปุ่มขยายบนผัง)**: หน้าต่างเต็มจอ ดูว่างานไหลจากใครไปหาใคร แผนภาพลำดับตามเวลา คลิกลูกศรเพื่อดู brief/คำตอบ/ผลตรวจเต็ม สลับเป็นผังเครือข่ายได้ ซูมเข้า/ออกได้ (ปุ่ม − / + / รีเซ็ต / พอดีหน้าจอ, คีย์ `+` `-` `0` `F`, Ctrl/⌘ + ล้อเมาส์ หรือ pinch, ลากเพื่อเลื่อน) กด Esc เพื่อปิด
 
+## ใช้ ChatGPT, Gemini หรือ Grok เป็นลูกทีม
+
+ใช้ได้กับผู้ให้บริการที่รองรับรูปแบบ OpenAI ทุกเจ้า มีแบบสำเร็จรูป 7 เจ้า:
+
+```bash
+python3 scripts/team.py presets                      # รายชื่อและชื่อตัวแปร key
+python3 scripts/team.py connect gemini               # ถาม key แบบซ่อน แล้วนำเข้าโมเดล Gemini
+python3 scripts/team.py connect openai --seat seat6  # โมเดล ChatGPT ใส่ตัวแรกลงช่อง seat6
+AI_TEAM_KEY_XAI=... python3 scripts/team.py connect xai   # Grok อ่าน key จาก env
+```
+
+| ชื่อ | ผู้ให้บริการ | ตัวแปร key |
+|---|---|---|
+| `openai` | ChatGPT (OpenAI) | `AI_TEAM_KEY_OPENAI` |
+| `gemini` | Gemini (Google AI Studio) | `AI_TEAM_KEY_GEMINI` |
+| `xai` | Grok (xAI) | `AI_TEAM_KEY_XAI` |
+| `groq`, `openrouter`, `nvidia`, `tokenme` | อื่นๆ | `AI_TEAM_KEY_<NAME>` |
+
+key ที่เชื่อมต่อไม่ผ่านจะไม่ถูกบันทึก key เก็บใน `team.db` บนเครื่องเท่านั้นและไม่ถูกพิมพ์ออกมา
+
+### สั่งงานผ่าน agent CLI ตัวอื่น (Antigravity, Gemini CLI, Codex…)
+
+ทีมเป็น CLI ธรรมดา agent ตัวไหนที่รันคำสั่ง shell ได้ก็เป็นหัวหน้าทีมได้ ให้ agent อ่าน [`AGENTS.md`](AGENTS.md)
+
 ## ติดตั้ง
 ```bash
 git clone <repo-url> ~/.claude/skills/ai-team

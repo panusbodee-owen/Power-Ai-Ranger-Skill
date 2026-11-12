@@ -42,6 +42,30 @@ Let Claude Code act as the **Head** of an AI team: it plans the work, splits it 
 | **Team builder** | **Flow inspector** |
 | ![studio](docs/ui-studio.png) | ![flow](docs/ui-flow.png) |
 
+## Use ChatGPT, Gemini or Grok as team members
+
+Any OpenAI-compatible provider works. Seven presets are built in:
+
+```bash
+python3 scripts/team.py presets                    # list presets and their key env var names
+python3 scripts/team.py connect gemini             # asks for the key silently, imports Gemini models
+python3 scripts/team.py connect openai --seat seat6  # ChatGPT models, put the first one in seat6
+AI_TEAM_KEY_XAI=... python3 scripts/team.py connect xai   # Grok, key from env (for scripts/CI)
+```
+
+| Preset | Provider | Key env var |
+|---|---|---|
+| `openai` | ChatGPT (OpenAI) | `AI_TEAM_KEY_OPENAI` |
+| `gemini` | Gemini (Google AI Studio) | `AI_TEAM_KEY_GEMINI` |
+| `xai` | Grok (xAI) | `AI_TEAM_KEY_XAI` |
+| `groq`, `openrouter`, `nvidia`, `tokenme` | others | `AI_TEAM_KEY_<NAME>` |
+
+A key that fails is not saved. Keys stay in your local `team.db` and are never printed.
+
+### Drive it from any agent CLI (Antigravity, Gemini CLI, Codex…)
+
+The team is a plain CLI, so any agent that can run shell commands can lead it. Point the agent at [`AGENTS.md`](AGENTS.md).
+
 ## Quick start
 ```bash
 # 1. Install as a Claude Code skill
