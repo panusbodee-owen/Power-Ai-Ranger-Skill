@@ -18,6 +18,7 @@ Let Claude Code act as the **Head** of an AI team: it plans the work, splits it 
 - **Team Builder** — drag models from a catalog into team seats, choose roles (maker, reviewer, tester, editor, Senior PD…), how many AIs per job, and the mode (`best-of-n`, `vote`, `split`). Add providers (Tokenme, OpenRouter, NVIDIA NIM, Groq, or custom) from the web UI.
 - **Parallel queue + maker→reviewer flow** — reviewers sit in a different seat (ideally a different gateway) and can send work back for several rounds, with automatic checks (JSON, regex, code run in a sandbox).
 - **Skill-based routing** — every seat has per-skill scores (`team.py skills ls`); `--pool @auto --needs <skill>` picks the best seat, and scores update from real results.
+- **Race mode (speed)** — `team.py race on --n 2 --hedge 6`: the fastest seat starts first; if it is slow or fails, the next seat starts and the first valid answer wins. Reviewers that return malformed JSON are skipped automatically. Ties in skill score go to the faster seat.
 - **Boundary** — filters keys/passwords, limits length and calls per hour, refuses placeholder URLs, logs everything.
 - **Live dashboard** — flow diagram of who works on what, with a glowing frame on every AI that is working right now; a Notion-style job board; usage and latency; audit log; light/dark mode.
 - **Web search for the team** — `team.py web search|fetch` (TinyFish) feeds sourced facts to the models without exposing your key.

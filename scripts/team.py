@@ -8,7 +8,7 @@
   note "งาน" "ผลตรวจ" | log [N] | models SEAT [คำค้น] | list
 DB: ~/.ai-team/team.db (env AI_TEAM_DB) — ไม่มีคำสั่งใดพิมพ์ key ออกมา
 """
-import argparse, collections, shutil, subprocess, tempfile, threading, concurrent.futures as cf, getpass, json, os, re, sqlite3, sys, time, urllib.error, urllib.request
+import argparse, collections, queue, shutil, subprocess, tempfile, threading, concurrent.futures as cf, getpass, json, os, re, sqlite3, sys, time, urllib.error, urllib.request
 from urllib.parse import urlparse
 
 DB = os.environ.get("AI_TEAM_DB", os.path.expanduser("~/.ai-team/team.db"))
@@ -16,7 +16,7 @@ BLOCK = [r"sk-[A-Za-z0-9]{20,}", r"(?i)api[_-]?key\s*[:=]", r"\b\d{13}\b", r"(?i
 MAX_CHARS, MAX_CALLS_PER_HOUR = 8000, 60
 UA = {"User-Agent": "ai-team/1.0"}
 PLACEHOLDER = re.compile(r"(?i)xxx\.|your-|url-|example\.|<.*>")
-MODES = ("best-of-n", "vote", "split")
+MODES = ("best-of-n", "vote", "split", "race")
 SKIP = ("embed", "safety", "guard", "parse", "reward", "rerank", "vl", "content", "whisper", "tts", "orpheus", "playai", "transcribe", "moderation")
 SCHEMA = """
 create table if not exists agents(name text primary key,title text,base_url text,model text,api_key text,role text);
@@ -317,6 +317,13 @@ def run(c, a):
     if a.budget is not None and est > a.budget:
         sys.exit(f"[BLOCKED] ประเมิน ${est:.4f} เกินงบ ${a.budget}")
 
+    if a.mode == "race":
+        sems, busy, lock = {"_per_gw": 3}, {}, threading.Lock()
+        gw_ = lambda sn: (c.execute("select k.gateway from seats s join catalog k on k.name=s.catalog where s.name=?", (sn,)).fetchone() or ["?"])[0]
+        t0 = time.time()
+        ok_, text_, seat_ = race_call(c, seats, len(seats), a.brief, a.job, None, sems, busy, lock, None, float(setting(c, "race_hedge_s", 6)), gw_)
+        print(f"\n=== ผู้ชนะ: {seat_} ({time.time() - t0:.1f} วินาที) {'ok' if ok_ else 'FAIL'}\n{text_}")
+        return
     def one(s):
         return s, call(db(), s, briefs[s], a.job)
     with cf.ThreadPoolExecutor(max_workers=max(1, len(seats))) as ex:
@@ -433,7 +440,73 @@ def parse_flow(spec):
     return out
 
 
-def try_pool(c, pool, brief, job, role_ov, sems, busy, lock, exclude=(), avoid_gw=None, skill=None):
+def avg_ms(c, seat):
+    """เวลาตอบเฉลี่ย (ms) ของช่องนี้จาก 40 ครั้งล่าสุดที่สำเร็จ — ใช้ตัดสินเมื่อคะแนนความถนัดเท่ากัน (ช่องที่ยังไม่มีข้อมูลถือว่าช้ากลางๆ)"""
+    r = c.execute("select avg(ms) from (select ms from audit where agent=? and ms is not null and blocked is null order by rowid desc limit 40)", (seat,)).fetchone()
+    return r[0] if r and r[0] else 8000
+
+
+def race_call(c, order, n, brief, job, role_ov, sems, busy, lock, valid, hedge, gw):
+    """ส่งงานให้ช่องใน order (สูงสุด n ช่อง) แบบ hedged: เริ่มตัวแรกทันที ตัวถัดไปเริ่มเมื่อเกิน hedge วินาทีหรือเมื่อตัวก่อนหน้าล้ม
+    คืนคำตอบแรกที่ ok และผ่าน valid (ถ้ามี) — ตัวที่ช้ากว่าไม่ถูกรอ (ยังเรียกจนจบเบื้องหลัง นับค่าใช้จ่ายและ audit ปกติ)
+    ถ้าไม่มีตัวไหนผ่าน valid คืนคำตอบ ok ตัวแรกให้ผู้เรียกจัดการต่อ"""
+    cands = order[:n]
+    q = queue.Queue()
+    gws = {s_: gw(s_) for s_ in cands}
+
+    def runner(sname):
+        g = gws[sname]
+        with lock:
+            sems.setdefault(g, threading.Semaphore(sems["_per_gw"]))
+            busy[g] = busy.get(g, 0) + 1
+        try:
+            with sems[g]:
+                cc = db()
+                try:
+                    r = call(cc, sname, brief, job, role_ov)
+                finally:
+                    cc.close()
+        except Exception as e:
+            r = (False, f"[ERROR] {sname}: {type(e).__name__}")
+        finally:
+            with lock:
+                busy[g] -= 1
+        q.put((sname, r[0], r[1]))
+
+    started = got = 0
+    first_ok = None
+    last = ""
+
+    def launch():
+        nonlocal started
+        threading.Thread(target=runner, args=(cands[started],), daemon=True).start()
+        started += 1
+    launch()
+    while got < started or started < len(cands):
+        try:
+            sname, ok, text = q.get(timeout=hedge if started < len(cands) else 600)
+        except queue.Empty:
+            if started < len(cands):
+                launch()
+                continue
+            break
+        got += 1
+        if ok:
+            if valid is None or valid(text):
+                return True, text, sname
+            first_ok = first_ok or (sname, text)
+        else:
+            last = text
+            if text.startswith("[BLOCKED]"):
+                return False, text, sname
+        if started < len(cands):
+            launch()
+    if first_ok:
+        return True, first_ok[1], first_ok[0]
+    return False, last, None
+
+
+def try_pool(c, pool, brief, job, role_ov, sems, busy, lock, exclude=(), avoid_gw=None, skill=None, valid=None):
     """ลองช่องใน pool: เรียงตามความถนัด (skill) ก่อน แล้วตามเกตเวย์ที่ว่าง/ต่างเกตเวย์จาก avoid_gw  คืน (ok, text, seat, err)"""
     gw = lambda sname: (c.execute("select k.gateway from seats s join catalog k on k.name=s.catalog where s.name=?", (sname,)).fetchone() or ["?"])[0]
     cands = [x for x in pool if x not in exclude] or list(pool)
@@ -443,7 +516,16 @@ def try_pool(c, pool, brief, job, role_ov, sems, busy, lock, exclude=(), avoid_g
     last = ""
     for rnd in range(2):
         with lock:
-            order = sorted(cands, key=lambda x: (-round(skill_score(c, x, skill), 1) if skill else 0, gw(x) == avoid_gw, busy.get(gw(x), 0)))
+            order = sorted(cands, key=lambda x: (-round(skill_score(c, x, skill), 1) if skill else 0, gw(x) == avoid_gw, busy.get(gw(x), 0), avg_ms(c, x)))
+        rn = int(setting(c, "race_n", 1))
+        if rn >= 2 and len(order) >= 2 and rnd == 0:  # แข่งกัน: ส่งให้หลายช่อง เอาคำตอบแรกที่ใช้ได้
+            ok_r, text_r, seat_r = race_call(c, order, rn, brief, job, role_ov, sems, busy, lock, valid, float(setting(c, "race_hedge_s", 6)), gw)
+            if ok_r:
+                return True, text_r, seat_r, ""
+            last = text_r
+            if text_r.startswith("[BLOCKED]"):
+                return False, text_r, seat_r, "blocked"
+            continue
         for sname in order:
             g = gw(sname)
             with lock:
@@ -532,7 +614,7 @@ def run_flow(c, t, sems, busy, lock):
         out_part = out if len(out) <= 18000 else out[:18000] + "\n...(ตัดส่วนท้ายเพราะยาวเกินช่องตรวจ: ห้ามนับว่างานขาดหัวข้อท้ายๆ)"
         rprompt = (f"โจทย์:\n{task_part}\n\nงานที่ต้องตรวจ:\n{out_part}\n\nตรวจเทียบโจทย์ทีละข้อ ตอบเป็น JSON เท่านั้น: "
                    '{"verdict":"pass" หรือ "fail","score":0-10,"issues":["ข้อบกพร่อง"],"evidence":["หลักฐานจากตัวงาน"]}')
-        ok2, rtext, rseat, err2 = try_pool(c, rv["pool"], rprompt, job, role_prompt(c, rv["role"]), sems, busy, lock, exclude={mseat}, avoid_gw=mgw, skill=rv.get("skill") or "review")
+        ok2, rtext, rseat, err2 = try_pool(c, rv["pool"], rprompt, job, role_prompt(c, rv["role"]), sems, busy, lock, exclude={mseat}, avoid_gw=mgw, skill=rv.get("skill") or "review", valid=lambda t: parse_verdict(t)[1].get("verdict") != "unparsable")
         if not ok2:
             trace.append({"stage": rv["role"], "round": rnd, "seat": rseat, "ok": False})
             return end("error", out, "ผู้ตรวจล้ม: " + rtext)
@@ -709,6 +791,7 @@ def main():
     p = sp.add_parser("research"); p.add_argument("topic"); p.add_argument("--out", required=True); p.add_argument("--n", type=int, default=6); p.add_argument("--name"); p.add_argument("--mode", choices=["problem", "ideas"], default="problem")
     p = sp.add_parser("merge"); p.add_argument("name"); p.add_argument("files", nargs="+"); p.add_argument("--title", default="เอกสารรวม"); p.add_argument("--out", required=True); p.add_argument("--rounds", type=int, default=1)
     p = sp.add_parser("limit"); p.add_argument("n", nargs="?", type=int); p.add_argument("--chars", type=int)
+    p = sp.add_parser("race"); p.add_argument("state", nargs="?", choices=("on", "off")); p.add_argument("--n", type=int); p.add_argument("--hedge", type=float)
     p = sp.add_parser("pool"); p.add_argument("action", choices=["set", "ls", "rm"]); p.add_argument("name", nargs="?"); p.add_argument("seats", nargs="*")
     x = ap.parse_args(); c = db()
     key = lambda who: os.environ.get("AI_TEAM_KEY") or getpass.getpass(f"API key ของ {who} (พิมพ์แล้วไม่แสดง): ")
@@ -823,6 +906,18 @@ def main():
             print(f"ลำดับที่ระบบจะเลือกสำหรับ '{x.skill}':", " > ".join(f"{se} ({skill_score(c, se, x.skill):.2f})" for se in auto_pool(c, x.skill, 0.0)))
         elif x.cmd == "queue":
             print(queue_counts(c))
+        elif x.cmd == "race":
+            if x.state == "on":
+                c.execute("insert or replace into settings values('race_n',?)", (str(x.n or 2),))
+            elif x.state == "off":
+                c.execute("insert or replace into settings values('race_n','1')")
+            elif x.n:
+                c.execute("insert or replace into settings values('race_n',?)", (str(x.n),))
+            if x.hedge is not None:
+                c.execute("insert or replace into settings values('race_hedge_s',?)", (str(x.hedge),))
+            c.commit()
+            rn = int(setting(c, "race_n", 1))
+            print(f"โหมดแข่งกัน: {'เปิด' if rn >= 2 else 'ปิด'} (ส่งให้ {max(rn, 1)} ช่อง, ช่องถัดไปเริ่มเมื่อช้ากว่า {setting(c, 'race_hedge_s', 6)} วินาทีหรือตัวก่อนล้ม, ใช้คำตอบแรกที่ใช้ได้)")
         elif x.cmd == "limit":
             if x.n:
                 c.execute("insert or replace into settings values('max_calls_per_hour',?)", (str(x.n),)); c.commit()

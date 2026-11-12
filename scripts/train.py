@@ -13,7 +13,7 @@ import team
 DB = team.DB
 CJK = re.compile(r"[぀-ヿ㐀-䶿一-鿿가-힯]")
 THAI = re.compile(r"[฀-๿]")
-PER_HOUR_CAP = 550          # ผู้ใช้อนุญาตให้เพิ่มเพดานชั่วคราว (setting max_calls_per_hour=600; เดิม 200)
+PER_HOUR_CAP = 150          # เพดานต่อชั่วโมงของตัวรัน (เพดานระบบคือ setting max_calls_per_hour)
 GW_SEM = {}
 
 
