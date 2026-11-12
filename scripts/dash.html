@@ -467,6 +467,37 @@ td{border-bottom:.5px solid var(--ln)}
 .rpt pre{margin:0;white-space:pre-wrap;word-break:break-word;font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--hair);border-radius:10px;padding:14px 16px;max-height:480px;overflow:auto}
 @media(max-width:900px){.home{grid-template-columns:1fr}}
 @media(max-width:700px){.tabx{white-space:nowrap;padding:5px 12px}}
+
+/* ===== shell v2: 3 หน้าหลัก ===== */
+html,body{overflow-x:hidden}
+.hd{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 86%,transparent);-webkit-backdrop-filter:blur(18px) saturate(1.5);backdrop-filter:blur(18px) saturate(1.5);display:grid;grid-template-columns:auto 1fr auto auto auto auto;align-items:center;padding:12px 24px;gap:10px 12px}
+.hd h1{font-size:17px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.hd h1 .lg{width:26px;height:26px}
+.hd .sp{display:none}
+.tabsx{order:0;grid-column:2;grid-row:1;justify-self:center;width:auto}
+.tabx{display:inline-flex;align-items:center;gap:7px;padding:6px 18px;font-size:14px}
+.tabx svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
+.tabx svg circle{fill:currentColor;stroke:none}.tabx[data-g=team] svg circle{fill:none;stroke:currentColor}
+.subt{grid-column:1/-1;display:flex;gap:4px;margin:2px 0 -2px;overflow-x:auto;scrollbar-width:none}
+.subt[hidden]{display:none}
+.sbt{border:0;background:none;color:var(--mu);font:inherit;font-size:13.5px;font-weight:500;padding:6px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.sbt:hover{color:var(--tx);background:var(--hair)}
+.sbt.on{color:var(--act);background:var(--acs);font-weight:600}
+.ovh{margin:0 2px -8px;font-size:15px;font-weight:600;color:var(--mu)}
+.cen{max-width:1280px;width:100%;margin:0 auto}
+.now .nhd h2{font-size:19px}
+.btn.pr{background:var(--ac);color:#fff}
+@media(max-width:760px){
+  .hd{grid-template-columns:1fr auto auto auto;padding:10px 14px;gap:8px;-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--bg)}
+  .hd h1{font-size:15px;min-width:0;overflow:hidden}
+  #exp,#rail,#live{display:none}
+  .tabsx{position:fixed;left:0;right:0;bottom:0;z-index:30;justify-self:stretch;display:grid;grid-template-columns:repeat(3,1fr);border-radius:0;padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--p) 92%,transparent);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-top:.5px solid var(--ln)}
+  .tabx{flex-direction:column;gap:2px;font-size:11px;padding:4px 0;background:none!important;box-shadow:none!important;color:var(--mu)}
+  .tabx.on{color:var(--ac)}
+  .tabx svg{width:22px;height:22px}
+  .cen{padding:14px 14px 90px}
+  .cen>.canvas{height:300px}
+}
 </style>
 </head>
 <body>
@@ -478,9 +509,10 @@ td{border-bottom:.5px solid var(--ln)}
     <div class="sp"></div>
     <button class="btn" id="theme" title="สลับโหมดสี: อัตโนมัติ → สว่าง → มืด" aria-label="สลับโหมดสี"></button>
     <button class="btn" id="rail" title="แสดง/ซ่อนแผงด้านขวา (ด่านตรวจ ประวัติ รายละเอียด)">แผงขวา</button><button class="btn" id="exp">Export log</button>
-    <div class="tabsx" id="vt">
-      <button class="tabx" data-v="now">ตอนนี้</button><button class="tabx" data-v="home">สั่งงาน</button><button class="tabx" data-v="design">ผังงาน</button><button class="tabx" data-v="studio">จัดทีม</button><button class="tabx" data-v="jobs">งานที่แจก</button><button class="tabx" data-v="usage">การใช้ AI</button><button class="tabx" data-v="audit">บันทึก</button>
-    </div>
+    <nav class="tabsx" id="vt" aria-label="หน้าหลัก">
+      <button class="tabx" data-g="now" data-v="now"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="5" cy="10" r="2.2"/><circle cx="15" cy="5" r="2.2"/><circle cx="15" cy="15" r="2.2"/><path d="M7 9l6-3M7 11l6 3"/></svg>ภาพรวม</button><button class="tabx" data-g="work" data-v="home"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M7 9h6M7 13h4"/></svg>งาน</button><button class="tabx" data-g="team" data-v="studio"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="7" cy="7" r="2.6"/><circle cx="14" cy="8" r="2.1"/><path d="M2.5 16c.6-3 2.4-4.5 4.5-4.5s3.9 1.5 4.5 4.5M12 12.3c2.6-.4 4.6.9 5.3 3.7"/></svg>ทีม</button>
+    </nav>
+    <div class="subt" id="subt"></div>
   </div>
   <div class="cen" id="cen"></div>
   <aside class="rt">
@@ -998,14 +1030,21 @@ function summary(){
   </section>`;
 }
 
+const GROUPS={now:['now'],work:['home','jobs'],team:['studio','usage','audit']};
+const SUBL={home:'สั่งงาน',jobs:'งานที่แจก',studio:'จัดทีม',usage:'การใช้ AI',audit:'บันทึก'};
+const grpOf=v=>Object.keys(GROUPS).find(g=>GROUPS[g].includes(v))||'now';
 function render(){
-  document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
+  if(view==='now')view='now';
+  const g=grpOf(view);
+  document.querySelectorAll('#vt [data-g]').forEach(b=>{const on=b.dataset.g===g;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')});
+  $('subt').innerHTML=GROUPS[g].length>1?GROUPS[g].map(v=>`<button class="sbt${v===view?' on':''}" data-v="${v}">${SUBL[v]}</button>`).join(''):'';
+  $('subt').hidden=GROUPS[g].length<2;
   document.querySelectorAll('#rt [data-r]').forEach(b=>b.classList.toggle('on',b.dataset.r===rtab));
   const qn=S.queue||{}, qw=(qn.queued||0)+(qn.running||0), busy=S.audit.some(pend)||qw>0; $('live').textContent=qw?`Queue ${qn.running||0} กำลังทำ · ${qn.queued||0} รอ`:(busy?'Working':'Live'); $('live').classList.toggle('idle',!busy);
   const ae=document.activeElement;if((view==='home'&&ae&&ae.closest&&ae.closest('#hform')&&ae.matches('textarea,input[type=text],select'))||(view==='studio'&&ae&&ae.matches&&ae.matches('.stu2 select'))){$('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;return}
   document.querySelector('.main').classList.toggle('norail',!rail);$('rail').classList.toggle('on',rail);
-  $('cen').innerHTML=(view==='now'?'':aboutBox())+(view==='now'?nowView():view==='home'?homeView():view==='design'?flow()+trainPanel()+summary()+bottom():view==='studio'?studioView():view==='jobs'?jobsView():view==='usage'?usageView():auditView())+TERMS;
-  if(view==='design')applyCtx(CTX.i);
+  $('cen').innerHTML=(view==='now'?'':aboutBox())+(view==='now'?'<h2 class="ovh">ผังการทำงานของทีม</h2>'+flow()+nowView()+trainPanel()+summary()+bottom():view==='home'?homeView():view==='studio'?studioView():view==='jobs'?jobsView():view==='usage'?usageView():auditView())+TERMS;
+  if(view==='now')applyCtx(CTX.i);
   $('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;
 }
 document.addEventListener('dragstart',e=>{const c=e.target.closest('[data-cat]');if(c){dragging=true;e.dataTransfer.setData('text/plain',c.dataset.cat)}});
@@ -1115,7 +1154,7 @@ document.addEventListener('click',async e=>{
   const cp=e.target.closest('[data-copy]');if(cp){try{await navigator.clipboard.writeText(RPT[cp.dataset.copy]||'');cp.textContent='คัดลอกแล้ว'}catch(_){cp.textContent='คัดลอกไม่ได้'}}
 });
 
-async function tick(force){if(dragging)return;try{const n=await (await fetch('/api/state')).json(),j=JSON.stringify(n);const ch=j!==lastJ;if(force===true||ch||view==='design'){lastJ=j;S=n;render();if(modal&&(ch||force===true))renderModal()}}catch(e){}}
+async function tick(force){if(dragging)return;try{const n=await (await fetch('/api/state')).json(),j=JSON.stringify(n);const ch=j!==lastJ;if(force===true||ch||view==='now'){lastJ=j;S=n;render();if(modal&&(ch||force===true))renderModal()}}catch(e){}}
 (()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.get('view'))view=h.get('view');if(h.get('rtab'))rtab=h.get('rtab');if(h.get('job'))selJob=h.get('job');if(h.get('jv'))jv=h.get('jv')==='table'?'table':'board';if(h.get('open')){jobPage=true}if(h.get('modal')){modal=true;mtab=h.get('modal')==='net'?'net':'seq';if(h.get('job'))mjob=h.get('job')}if(h.get('zoom'))mz=Math.min(4,Math.max(.4,+h.get('zoom')||1))})();
 tick(); setInterval(tick,2000);
 document.addEventListener('toggle',e=>{if(e.target.classList&&e.target.classList.contains('catd'))catOpen=e.target.open},true);
