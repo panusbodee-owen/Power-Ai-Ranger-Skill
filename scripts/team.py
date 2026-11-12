@@ -202,7 +202,7 @@ def cli_argv(tool, model, outfile, prompt):
     if tool == "claude":
         return ["claude", "-p", "--permission-mode", "plan", "--output-format", "text"] + ([] if dflt else ["--model", model]), prompt
     if tool == "agy":
-        return ["agy", "--mode", "plan", "--sandbox", "--disable-slash-commands", "--print-timeout", "280s"] + ([] if dflt else ["--model", model]) + ["-p=" + prompt], None
+        return ["agy", "--mode", "plan", "--sandbox", "--print-timeout", "280s"] + ([] if dflt else ["--model", model]) + ["-p=" + prompt], None
     raise RuntimeError(f"ไม่รู้จัก CLI '{tool}'")
 
 
