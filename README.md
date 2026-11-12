@@ -4,6 +4,10 @@
 
 Let Claude Code act as the **Head** of an AI team: it plans the work, splits it into briefs, sends them to other models (DeepSeek, NVIDIA Nemotron, Qwen, gpt-oss, or any **OpenAI-compatible API**), reviews the results, and reports back. A safety boundary filters what leaves your machine, and a live dashboard shows who is doing what.
 
+**▶ Launch video (21s):** click the image to play
+
+[![Power AI Ranger launch video](docs/video/power-ai-ranger.jpg)](docs/video/power-ai-ranger.mp4)
+
 ![demo](docs/demo.gif)
 
 > Screenshots and the GIF are generated from made-up demo data (`scripts/demo_seed.py`). No real keys or gateways are shown. Regenerate with `scripts/capture_demo.sh docs`.
