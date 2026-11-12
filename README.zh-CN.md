@@ -8,6 +8,15 @@
 
 > 截图和 GIF 由虚构的演示数据生成（`scripts/demo_seed.py`），不含任何真实密钥或网关。可用 `scripts/capture_demo.sh docs` 重新生成。
 
+## 截图
+
+![总览：团队实时流程图，谁把任务交给谁、每对的通过率](docs/images/overview.jpg)
+*总览：团队实时流程图，谁把任务交给谁、每对的通过率*
+
+<p><img src="docs/images/team.jpg" alt="团队页：通过下拉菜单为每个席位选择模型和角色" width="66%"> <img src="docs/images/mobile.jpg" alt="移动端" width="28%"></p>
+
+*团队页：通过下拉菜单为每个席位选择模型和角色 · 移动端*
+
 ## 适合谁
 - 你有多个模型的访问权限（免费额度、API 网关、本地服务），但一次只能用一个。
 - 你想要 **执行者 → 审核者** 的工作流、并行任务和审计记录，又不想自己写一套编排框架。

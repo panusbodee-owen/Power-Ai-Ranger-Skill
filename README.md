@@ -8,6 +8,15 @@ Let Claude Code act as the **Head** of an AI team: it plans the work, splits it 
 
 > Screenshots and the GIF are generated from made-up demo data (`scripts/demo_seed.py`). No real keys or gateways are shown. Regenerate with `scripts/capture_demo.sh docs`.
 
+## Screenshots
+
+![Overview: live team flow map — who sent work to whom, pass rate per pair](docs/images/overview.jpg)
+*Overview: live team flow map — who sent work to whom, pass rate per pair*
+
+<p><img src="docs/images/team.jpg" alt="Team page: pick a model and role per seat from dropdowns" width="66%"> <img src="docs/images/mobile.jpg" alt="Mobile" width="28%"></p>
+
+*Team page: pick a model and role per seat from dropdowns · Mobile*
+
 ## Why use it
 - You already pay for or have access to several models (free tiers, API gateways, local servers) but run them one at a time.
 - You want a **maker → reviewer** workflow, parallel jobs, and an audit trail without writing an orchestration framework.
