@@ -133,3 +133,23 @@ def all_usage(c):
     v = dict(team=team_usage(c), claude=claude_usage(), plan=json.loads(plan[0]) if plan else None, at=time.time())
     _mem.update(t=time.time(), v=v)
     return v
+
+
+def set_plan(plan_json):
+    """บันทึกโควตาแผน Claude (รูปแบบเดียวกับผลของ get_usage -> plan) ลง team.db ให้แดชบอร์ดแสดง
+    ใช้: python3 usage.py setplan '<json>'  (แดชบอร์ดอ่านโควตาเองไม่ได้ ต้องให้ Claude/สคริปต์นอกส่งมา)"""
+    import sqlite3
+    p = json.loads(plan_json) if isinstance(plan_json, str) else plan_json
+    if isinstance(p.get("plan"), dict):
+        p = p["plan"]
+    out = dict(at=time.time(), plan=p.get("plan", "?"), windows=[dict(label=w["label"], pct=w.get("percentUsed", w.get("pct")), resets=w.get("resetsIn", w.get("resets", ""))) for w in p.get("windows", [])])
+    c = sqlite3.connect(os.path.join(HOME, ".ai-team", "team.db"), timeout=30)
+    c.execute("insert or replace into settings values('claude_plan',?)", (json.dumps(out, ensure_ascii=False),)); c.commit()
+    _mem.update(t=0, v=None)
+    return out
+
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 2 and sys.argv[1] == "setplan":
+        print(json.dumps(set_plan(sys.argv[2]), ensure_ascii=False))
