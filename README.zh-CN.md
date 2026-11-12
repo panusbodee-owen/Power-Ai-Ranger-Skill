@@ -4,6 +4,10 @@
 
 让 Claude Code 担任 AI 团队的 **负责人（Head）**：Claude 负责规划任务、拆分成工作说明（brief）、分发给其他模型（DeepSeek、NVIDIA Nemotron、Qwen、gpt-oss，或任何 **兼容 OpenAI 的 API**），再审核结果并向你汇报。内置安全边界（boundary）过滤离开本机的内容，并提供实时仪表盘，显示每个 AI 正在做什么。
 
+**▶ 介绍视频（21 秒）：** 点击图片播放
+
+[![Power AI Ranger 介绍视频](docs/video/power-ai-ranger.jpg)](docs/video/power-ai-ranger.mp4)
+
 ![demo](docs/demo.gif)
 
 > 截图和 GIF 由虚构的演示数据生成（`scripts/demo_seed.py`），不含任何真实密钥或网关。可用 `scripts/capture_demo.sh docs` 重新生成。

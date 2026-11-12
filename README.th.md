@@ -4,6 +4,10 @@
 
 Skill สำหรับ Claude Code: ให้ Claude เป็นหัวหน้าที่สั่งงาน AI ตัวอื่น (DeepSeek, Nemotron หรืออะไรก็ได้ที่เป็น API แบบ OpenAI-compatible) พร้อม boundary และแดชบอร์ดดูการแจกงานสด
 
+**▶ วิดีโอแนะนำ (21 วิ):** กดที่ภาพเพื่อเล่น
+
+[![วิดีโอแนะนำ Power AI Ranger](docs/video/power-ai-ranger.jpg)](docs/video/power-ai-ranger.mp4)
+
 ![demo](docs/demo.gif)
 
 > ภาพและ GIF สร้างจากข้อมูลเดโมที่สมมติขึ้น (`scripts/demo_seed.py`) ไม่มี key หรือเกตเวย์จริง สร้างใหม่ได้ด้วย `scripts/capture_demo.sh docs`
