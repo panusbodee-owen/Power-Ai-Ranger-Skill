@@ -2,6 +2,7 @@
 """ทีม AI ใต้ Claude (Head): gateways -> catalog (โมเดล) -> seats (ช่องทีม)
   add SEAT --base-url URL --model M [--title T] [--role R]   ทางลัด: สร้าง gateway+catalog+seat (key ถามแบบซ่อน/env AI_TEAM_KEY)
   connect openai|gemini|xai|groq|openrouter|nvidia [--filter F] [--seat S]   ต่อผู้ให้บริการสำเร็จรูป (key: env AI_TEAM_KEY_<NAME> หรือถามแบบซ่อน)
+  connect codex-cli|agy-cli|claude-cli|gemini-cli [--model M] [--seat S]   ใช้ CLI ที่ล็อกอินแพ็กเกจไว้แล้วเป็นลูกทีม (ไม่ใช้ API key)
   presets                                            รายชื่อผู้ให้บริการสำเร็จรูป
   gateway add|ls | catalog add|ls|import|test|price|remove | seat ls|add|set|clear|remove|undo
   plan [set --n N --mode best-of-n|vote|split]      ค่าที่ผู้ใช้เลือกในแดชบอร์ด
@@ -171,7 +172,63 @@ def setting(c, k, d=None):
     return r[0] if r else d
 
 
+# ลูกทีมผ่าน CLI บนเครื่อง (ใช้โควตาแพ็กเกจที่ผู้ใช้ล็อกอินไว้ ไม่ใช้ API key)
+# ทุกตัวรันในโฟลเดอร์ว่างชั่วคราว โหมดอ่านอย่างเดียว/ไม่อนุมัติเครื่องมือ และไม่เก็บ session
+CLI_TOOLS = {
+    "codex":  {"title": "Codex CLI (บัญชี ChatGPT)", "bin": "codex", "login": "codex login"},
+    "gemini": {"title": "Gemini CLI (บัญชี Google)", "bin": "gemini", "login": "gemini (ล็อกอินครั้งแรกในเทอร์มินัล)"},
+    "claude": {"title": "Claude Code (บัญชี Claude)", "bin": "claude", "login": "claude (ล็อกอินครั้งแรกในเทอร์มินัล)"},
+    "agy":    {"title": "Antigravity CLI (บัญชี Google)", "bin": "agy", "login": "agy (ล็อกอินครั้งแรกในเทอร์มินัล)"},
+}
+
+
+def codex_models():
+    """โมเดลที่บัญชี ChatGPT ใช้ได้ จากแคชของ Codex (ไม่เรียกเน็ต)"""
+    try:
+        d = json.load(open(os.path.expanduser("~/.codex/models_cache.json")))
+        ms = d.get("models", d) if isinstance(d, dict) else d
+        return [m.get("slug") or m.get("id") for m in ms if (m.get("slug") or m.get("id") or "").startswith("gpt")]
+    except Exception:
+        return []
+
+
+def cli_argv(tool, model, outfile, prompt):
+    dflt = model in ("", "default", None)
+    if tool == "codex":  # บังคับใช้บัญชี ChatGPT ไม่ใช้ provider อื่นใน config ของผู้ใช้
+        return ["codex", "exec", "--ephemeral", "--skip-git-repo-check", "-s", "read-only", "-c", "model_provider=openai",
+                "-o", outfile] + ([] if dflt else ["-m", model]) + ["-"], prompt
+    if tool == "gemini":
+        return ["gemini", "--approval-mode", "plan", "-o", "text"] + ([] if dflt else ["-m", model]) + ["-p", ""], prompt
+    if tool == "claude":
+        return ["claude", "-p", "--permission-mode", "plan", "--output-format", "text"] + ([] if dflt else ["--model", model]), prompt
+    if tool == "agy":
+        return ["agy", "--mode", "plan", "--sandbox", "--disable-slash-commands", "--print-timeout", "280s"] + ([] if dflt else ["--model", model]) + ["-p=" + prompt], None
+    raise RuntimeError(f"ไม่รู้จัก CLI '{tool}'")
+
+
+def chat_cli(tool, model, role, brief, timeout=300):
+    if tool not in CLI_TOOLS or not shutil.which(CLI_TOOLS[tool]["bin"]):
+        raise RuntimeError(f"ไม่พบโปรแกรม {tool} บนเครื่อง")
+    prompt = (f"[บทบาท]\n{role}\n\n" if role else "") + "ตอบเป็นข้อความเท่านั้น ห้ามแก้ไฟล์หรือรันคำสั่ง\n\n" + brief
+    with tempfile.TemporaryDirectory(prefix="aiteam-cli-") as d:
+        out = os.path.join(d, ".last.txt")
+        try:
+            argv, stdin = cli_argv(tool, model, out, prompt)
+            p = subprocess.run(argv, input=stdin, cwd=d, capture_output=True, text=True, timeout=timeout,
+                               env={**os.environ, "NO_COLOR": "1", "GEMINI_CLI_TRUST_WORKSPACE": "true"})
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(f"{tool} ไม่ตอบใน {timeout} วิ")
+        if p.returncode != 0 or (tool == "codex" and not os.path.exists(out)):
+            lines = [l for l in (p.stderr + "\n" + p.stdout).splitlines() if l.strip() and not l.lstrip().startswith("at ") and "figma" not in l]
+            key = [l for l in lines if re.search(r"(?i)error|not supported|not set|ineligible", l)]
+            raise RuntimeError(f"{tool} exit {p.returncode}: " + ((key or lines or [""])[-1].strip()[:200]))
+        text = open(out, encoding="utf-8").read() if os.path.exists(out) else p.stdout
+        return text.strip()
+
+
 def chat(url, key, model, role, brief, timeout=180):
+    if url.startswith("cli://"):
+        return chat_cli(url[6:], model, role, brief, max(timeout, 300))
     body = json.dumps({"model": model, "messages": [{"role": "system", "content": role or ""}, {"role": "user", "content": brief}]}).encode()
     req = urllib.request.Request(url.rstrip("/") + "/chat/completions", body, {"Authorization": f"Bearer {key}", "Content-Type": "application/json", **UA})
     try:
@@ -271,6 +328,8 @@ def remote_models(c, gw):
     r = c.execute("select base_url,api_key from gateways where name=?", (gw,)).fetchone()
     if not r:
         raise ValueError(f"ไม่พบ gateway '{gw}'")
+    if r[0].startswith("cli://"):
+        return ["default"]
     rq = urllib.request.Request(r[0].rstrip("/") + "/models", headers={"Authorization": f"Bearer {r[1]}", **UA})
     try:
         data = json.load(urllib.request.urlopen(rq, timeout=40))["data"]
@@ -794,7 +853,7 @@ def main():
     p = sp.add_parser("run"); p.add_argument("brief", nargs="?"); p.add_argument("--seats", required=True); p.add_argument("--mode", default="best-of-n", choices=MODES)
     p.add_argument("--assign", action="append"); p.add_argument("--budget", type=float); p.add_argument("--job")
     p = sp.add_parser("plan"); p.add_argument("action", nargs="?", default="show"); p.add_argument("--n", type=int); p.add_argument("--mode", choices=MODES)
-    p = sp.add_parser("connect"); p.add_argument("preset", choices=[q_["id"] for q_ in PRESETS]); p.add_argument("--filter"); p.add_argument("--seat"); p.add_argument("--name")
+    p = sp.add_parser("connect"); p.add_argument("preset", choices=[q_["id"] for q_ in PRESETS] + [t + "-cli" for t in CLI_TOOLS]); p.add_argument("--model"); p.add_argument("--filter"); p.add_argument("--seat"); p.add_argument("--name")
     sp.add_parser("presets")
     g = sp.add_parser("gateway").add_subparsers(dest="sub", required=True); q = g.add_parser("add"); q.add_argument("name"); q.add_argument("--base-url", required=True); g.add_parser("ls")
     k = sp.add_parser("catalog").add_subparsers(dest="sub", required=True); q = k.add_parser("add"); q.add_argument("name"); q.add_argument("--gateway", required=True); q.add_argument("--model", required=True)
@@ -840,6 +899,19 @@ def main():
                 print(f"{n}\t{t}\t{k_ or '(ว่าง)'}\t{m or ''}")
         elif x.cmd == "presets":
             for q_ in PRESETS: print(f"{q_['id']}\t{q_['title']}\t{q_['base_url']}\t{ENV_KEY(q_['name'])}\t{q_['key_url']}")
+        elif x.cmd == "connect" and x.preset.endswith("-cli"):
+            tool = x.preset[:-4]; info = CLI_TOOLS[tool]; gw = x.name or x.preset
+            if not shutil.which(info["bin"]): sys.exit(f"ไม่พบ {info['bin']} — ติดตั้งก่อน แล้วล็อกอินด้วย: {info['login']}")
+            model = x.model or ((codex_models() or ["default"])[0] if tool == "codex" else "default"); cat = f"{tool}-{model}".replace("/", "-")
+            print(f"ทดสอบ {info['title']} ...", flush=True)
+            try:
+                rep = chat_cli(tool, model, "", "ตอบคำเดียวว่า OK", 180)
+            except Exception as e:
+                sys.exit(f"เรียกไม่ได้: {e}\nลองล็อกอินด้วย: {info['login']}")
+            c.execute("insert or replace into gateways values(?,?,?)", (gw, "cli://" + tool, "-"))
+            c.execute("insert or replace into catalog(name,gateway,model,status) values(?,?,?,?)", (cat, gw, model, "ok"))
+            c.commit(); print(f"ใช้ได้ (ตอบ: {rep[:40]!r}) บันทึกโมเดล {cat}")
+            if x.seat: seat_set(c, x.seat, cat); print(f"ใส่ {cat} ลงช่อง {x.seat}")
         elif x.cmd == "connect":
             pr = next(q_ for q_ in PRESETS if q_["id"] == x.preset); gw = x.name or pr["name"]
             k_ = os.environ.get(ENV_KEY(gw)) or os.environ.get("AI_TEAM_KEY") or getpass.getpass(f"API key ของ {pr['title']} (ขอได้ที่ {pr['key_url'] or 'หน้าเว็บผู้ให้บริการ'}) พิมพ์แล้วไม่แสดง: ")

@@ -62,6 +62,19 @@ AI_TEAM_KEY_XAI=... python3 scripts/team.py connect xai   # Grok，从环境变�
 
 连接失败的密钥不会被保存。密钥只存于本地 `team.db`，从不打印。
 
+### 使用电脑上已登录的 AI 订阅（无需 API 密钥）
+
+如果你已登录 AI 编程 CLI，团队可以直接把它当作成员使用，费用计入月度订阅额度，而不是按 token 计费。
+
+```bash
+python3 scripts/team.py connect codex-cli --seat seat6     # 通过 Codex CLI 使用 ChatGPT 订阅
+python3 scripts/team.py connect agy-cli                    # Antigravity CLI (agy)
+python3 scripts/team.py connect claude-cli                 # Claude Code
+python3 scripts/team.py connect gemini-cli                 # Gemini CLI
+```
+
+每次调用都在空的临时目录中以只读/计划模式运行，不保存会话，成员只能返回文本，不能修改文件。每次一个短任务比共用一个长会话更省，因为会话每轮都会重发全部历史。已知限制：Google 已不再允许个人账号使用 Gemini CLI，建议改用 Antigravity；若 `agy` 设置了自定义 `modelProvider`，需设置该服务商要求的环境变量。
+
 ### 用任意 agent CLI 指挥（Antigravity、Gemini CLI、Codex…）
 
 团队就是普通 CLI，任何能运行 shell 命令的 agent 都能担任负责人。让 agent 阅读 [`AGENTS.md`](AGENTS.md)。

@@ -62,6 +62,19 @@ AI_TEAM_KEY_XAI=... python3 scripts/team.py connect xai   # Grok, key from env (
 
 A key that fails is not saved. Keys stay in your local `team.db` and are never printed.
 
+### Use the AI subscriptions already on your computer (no API key)
+
+If you're logged in to an AI coding CLI, the team can use that login as a seat. Calls count against your monthly plan instead of per-token API billing.
+
+```bash
+python3 scripts/team.py connect codex-cli --seat seat6     # ChatGPT plan via Codex CLI (models from your Codex cache)
+python3 scripts/team.py connect agy-cli                    # Antigravity CLI (agy)
+python3 scripts/team.py connect claude-cli                 # Claude Code
+python3 scripts/team.py connect gemini-cli                 # Gemini CLI
+```
+
+Each call runs in an empty temp folder in plan/read-only mode with no saved session, so a seat can only return text and can't edit files. A short task per call is cheaper than one long shared session, because a session re-sends its whole history every turn. Known limits: Google no longer lets personal accounts use Gemini CLI and points them to Antigravity. If your `agy` uses a custom `modelProvider`, set the env var that provider needs.
+
 ### Drive it from any agent CLI (Antigravity, Gemini CLI, Codex…)
 
 The team is a plain CLI, so any agent that can run shell commands can lead it. Point the agent at [`AGENTS.md`](AGENTS.md).

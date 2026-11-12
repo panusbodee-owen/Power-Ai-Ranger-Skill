@@ -6,6 +6,7 @@ For Antigravity, Gemini CLI, Codex CLI, Cursor, or any agent that can run shell 
 ```bash
 python3 scripts/team.py presets
 python3 scripts/team.py connect gemini     # or openai / xai / groq / openrouter / nvidia
+python3 scripts/team.py connect codex-cli  # or agy-cli / claude-cli: use a logged-in subscription, no key
 python3 scripts/team.py list               # seats and their models
 ```
 

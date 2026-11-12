@@ -59,6 +59,19 @@ AI_TEAM_KEY_XAI=... python3 scripts/team.py connect xai   # Grok อ่าน ke
 
 key ที่เชื่อมต่อไม่ผ่านจะไม่ถูกบันทึก key เก็บใน `team.db` บนเครื่องเท่านั้นและไม่ถูกพิมพ์ออกมา
 
+### ใช้แพ็กเกจ AI ที่ล็อกอินไว้บนเครื่อง (ไม่ต้องใช้ API key)
+
+ถ้าล็อกอิน CLI ของ AI ไว้แล้ว ทีมใช้บัญชีนั้นเป็นลูกทีมได้เลย ค่าใช้จ่ายนับจากโควตาแพ็กเกจรายเดือน ไม่ได้เสียค่า token แยก
+
+```bash
+python3 scripts/team.py connect codex-cli --seat seat6     # แพ็กเกจ ChatGPT ผ่าน Codex CLI
+python3 scripts/team.py connect agy-cli                    # Antigravity CLI (agy)
+python3 scripts/team.py connect claude-cli                 # Claude Code
+python3 scripts/team.py connect gemini-cli                 # Gemini CLI
+```
+
+ทุกครั้งที่เรียก ระบบรันในโฟลเดอร์ว่างชั่วคราว โหมดอ่านอย่างเดียว และไม่เก็บ session ลูกทีมจึงตอบได้แค่ข้อความ แก้ไฟล์ไม่ได้ การส่งงานสั้นทีละชิ้นถูกกว่าคุยต่อใน session ยาว เพราะ session จะส่งประวัติทั้งหมดซ้ำทุกครั้ง ข้อจำกัดที่รู้แล้ว: Google ไม่ให้บัญชีส่วนตัวใช้ Gemini CLI แล้วและแนะนำให้ย้ายไป Antigravity ส่วน `agy` ที่ตั้ง `modelProvider` เองต้องใส่ตัวแปร env ของผู้ให้บริการนั้น
+
 ### สั่งงานผ่าน agent CLI ตัวอื่น (Antigravity, Gemini CLI, Codex…)
 
 ทีมเป็น CLI ธรรมดา agent ตัวไหนที่รันคำสั่ง shell ได้ก็เป็นหัวหน้าทีมได้ ให้ agent อ่าน [`AGENTS.md`](AGENTS.md)
