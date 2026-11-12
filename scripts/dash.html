@@ -530,23 +530,30 @@ function flow(inModal){
     claude:{x:160,y:MID,c:COL.claude,g:'C',t:'Claude (Head)',s:'วางแผน · แตกงาน',on:anyBusy,b:S.notes.length},
     policy:{x:312,y:MID,c:'var(--or)',g:'⛨',t:'Policy Check',s:'Boundary · กรอง brief',on:anyBusy},
     blocked:{x:312,y:MID+130,c:'var(--rd)',g:'!',t:'Blocked',s:'ถูกบล็อก / ผิดพลาด',on:blk,b:A.filter(a=>a.blocked!=null).length},
-    review:{x:842,y:MID-50,c:'var(--or)',g:'✓',t:'Review',s:'Claude ตรวจผล',on:noteFresh,b:S.notes.length},
-    response:{x:842,y:MID+50,c:'var(--gr)',g:'↩',t:'Response',s:'รายงานผู้ใช้',on:noteFresh}};
-  const place=(a,x,y)=>{N['a:'+a.name]={x,y,c:col(a.name),g:a.name[0].toUpperCase(),t:a.title.length>19?a.title.slice(0,18)+'…':a.title,full:a.title+' · '+a.model,s:a.model.split('/').pop().slice(0,24),on:busy.has(a.name),b:A.filter(z=>z.agent===a.name&&z.blocked==null).length}};
-  mks.forEach((a,i)=>place(a,478,colY(mks.length,i))); rvs.forEach((a,i)=>place(a,660,colY(rvs.length,i)));
-  N.hub={x:628,y:MID+H/2-9,w:18,h:18,hub:1,c:'var(--mu)',g:'',t:'',s:'',on:anyBusy};
+    review:{x:912,y:MID-50,c:'var(--or)',g:'✓',t:'Review',s:'Claude ตรวจผล',on:noteFresh,b:S.notes.length},
+    response:{x:912,y:MID+50,c:'var(--gr)',g:'↩',t:'Response',s:'รายงานผู้ใช้',on:noteFresh}};
+  const place=(a,x,y)=>{N['a:'+a.name]={x,y,c:col(a.name),g:a.name[0].toUpperCase(),t:a.title.length>19?a.title.slice(0,18)+'…':a.title,full:a.title+' · '+a.model+' · เรียก '+A.filter(z=>z.agent===a.name&&z.blocked==null).length+' ครั้งใน 150 รายการล่าสุด',s:busy.has(a.name)?'ทำ: '+String((A.find(z=>z.agent===a.name&&pend(z))||{}).job||NOJOB).slice(0,20):a.model.split('/').pop().slice(0,24),on:busy.has(a.name),b:A.filter(z=>z.agent===a.name&&z.blocked==null).length}};
+  mks.forEach((a,i)=>place(a,478,colY(mks.length,i))); rvs.forEach((a,i)=>place(a,730,colY(rvs.length,i)));
+  N.hub={x:665,y:MID+H/2-9,w:18,h:18,hub:1,c:'var(--mu)',g:'',t:'',s:'',on:anyBusy};
   const vs=Object.values(N); NBOX=[Math.min(...vs.map(o=>o.x)),Math.min(...vs.map(o=>o.y))-12,Math.max(...vs.map(o=>o.x))+W,Math.max(...vs.map(o=>o.y))+H];
   const E=[['trigger','claude',N.trigger.on],['claude','policy',anyBusy]];
   mks.forEach(a=>{E.push(['policy','a:'+a.name,busy.has(a.name)]);E.push(['a:'+a.name,'hub',busy.has(a.name)])}); rvs.forEach(a=>{E.push(['hub','a:'+a.name,busy.has(a.name)]);E.push(['a:'+a.name,'review',busy.has(a.name)||noteFresh])}); if(!rvs.length)E.push(['hub','review',noteFresh]);
+  const PR={};(S.tasks||[]).forEach(t=>{let m=null;(t.trace||[]).forEach(x=>{if(!x.verdict&&x.stage!=='check'){m=x.seat}else if(x.verdict&&x.verdict!=='unparsable'&&m&&x.seat&&x.seat!==m){const k=m+'>'+x.seat;PR[k]=PR[k]||{n:0,p:0};PR[k].n++;if(x.verdict==='pass')PR[k].p++}})});
+  const pmax=Math.max(1,...Object.values(PR).map(v=>v.n)), top=new Set(Object.entries(PR).sort((a,b)=>b[1].n-a[1].n).slice(0,4).map(x=>x[0]));
+  Object.entries(PR).forEach(([k,v])=>{const [m,r]=k.split('>');if(N['a:'+m]&&N['a:'+r])E.push(['a:'+m,'a:'+r,busy.has(m)&&busy.has(r),'pair',{...v,k,top:top.has(k)}])});
   E.push(['review','response',noteFresh],['policy','blocked',blk,'down']);
   let g=`<defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="var(--ln2)"/></marker></defs>`;
   let ids=0;
-  E.forEach(([f,t,on,dir])=>{const a=N[f],b=N[t];let x1,y1,x2,y2,d;
+  const pairs=[], lblN={};E.forEach(([f,t,on,dir,meta])=>{const a=N[f],b=N[t];let x1,y1,x2,y2,d;
+    if(dir==='pair'){x1=a.x+W;y1=a.y+H/2;x2=b.x;y2=b.y+H/2;const dx=(x2-x1)/2;d=`M${x1} ${y1} C${x1+dx} ${y1} ${x2-dx} ${y2} ${x2} ${y2}`;
+      const rate=meta.p/meta.n, c=rate>=.7?'var(--gr)':rate>=.4?'var(--or)':'var(--rd)';
+      pairs.push(`<path d="${d}" fill="none" stroke="${c}" stroke-opacity="${on?.95:.55}" stroke-width="${(1.4+4*meta.n/pmax).toFixed(1)}" stroke-linecap="round"><title>${esc(meta.k.replace('>',' → '))}: ส่งตรวจ ${meta.n} ครั้ง · ผ่าน ${meta.p} (${Math.round(rate*100)}%)</title></path>`+(()=>{const j=lblN[f]=(lblN[f]||0)+1;if(j>2)return '';const ly=y1-16+(j-1)*30;return `<g><rect x="${x1+6}" y="${ly-10}" width="50" height="15" rx="7.5" fill="var(--p)" stroke="${c}" stroke-opacity=".7"/><text x="${x1+31}" y="${ly+1}" text-anchor="middle" font-size="9.5" font-weight="700" fill="${c}">${meta.n}× ${Math.round(rate*100)}%</text><title>${esc(meta.k.replace('>',' → '))}</title></g>`})());return}
     if(dir==='down'){x1=a.x+W/2;y1=a.y+H;x2=b.x+W/2;y2=b.y;d=`M${x1} ${y1} C${x1} ${y1+40} ${x2} ${y2-40} ${x2} ${y2}`}
     else{x1=a.x+(a.w||W);y1=a.y+(a.h||H)/2;x2=b.x;y2=b.y+(b.h||H)/2;const dx=(x2-x1)/2;d=`M${x1} ${y1} C${x1+dx} ${y1} ${x2-dx} ${y2} ${x2} ${y2}`}
     const id='e'+(ids++), c=dir==='down'?'var(--rd)':(b.c||'var(--bl)');
     g+=`<path id="${id}" d="${d}" fill="none" stroke="${on?c:'var(--ln)'}" stroke-width="${on?2.2:1.6}" ${on?'stroke-dasharray="6 6" style="animation:fl .7s linear infinite"':''} marker-end="url(#ar)"/>`;
     if(on)for(let k=0;k<2;k++)g+=`<circle r="4" fill="${c}"><animateMotion dur="1.5s" begin="${k*.75}s" repeatCount="indefinite"><mpath href="#${id}"/></animateMotion></circle>`});
+  g+=`<g class="pairs">${pairs.join('')}</g>`;
   Object.entries(N).forEach(([id,o])=>{const sel=selNode===id;
     if(o.hub){g+=`<g><circle cx="${o.x+9}" cy="${o.y+9}" r="9" fill="var(--p)" stroke="${o.on?'var(--or)':'var(--ln2)'}" stroke-width="1.6"/><text x="${o.x+9}" y="${o.y+13}" text-anchor="middle" font-size="11" fill="var(--mu)">⇢</text></g>`;return}
     g+=`<g data-n="${esc(id)}" style="cursor:pointer"><title>${esc(o.full||o.t)}</title><rect x="${o.x}" y="${o.y}" width="${W}" height="${H}" rx="10" fill="var(--p)" stroke="${o.on||sel?o.c:'var(--ln)'}" stroke-width="${o.on?2.6:sel?2:1.4}" ${o.on?`class="nglow" style="--gc:${o.c}"`:''}/>${o.on?`<circle cx="${o.x+W-12}" cy="${o.y+H-12}" r="4" fill="${o.c}" class="ndot"/>`:''}
@@ -554,8 +561,8 @@ function flow(inModal){
     <text x="${o.x+46}" y="${o.y+24}" fill="var(--tx)" font-size="12.5" font-weight="700">${esc(o.t)}</text>
     <text x="${o.x+46}" y="${o.y+40}" fill="var(--mu)" font-size="10">${esc(o.s)}</text>
     ${o.b?`<g><rect x="${o.x+W-30}" y="${o.y-8}" width="26" height="16" rx="8" fill="${o.c}"/><text x="${o.x+W-17}" y="${o.y+3.5}" text-anchor="middle" font-size="10" font-weight="800" fill="var(--on)">${o.b}</text></g>`:''}</g>`});
-  g+=`<g font-size="11" font-weight="700" fill="var(--mu)"><text x="478" y="${colY(mks.length,0)-14}">① ผู้ทำงาน (${mks.length})</text><text x="660" y="${colY(rvs.length||1,0)-14}">② ผู้ตรวจ (${rvs.length})</text><text x="842" y="${MID-64}">③ Claude ตรวจรอบสุดท้าย</text></g>`;
-  return `${inModal?'':trainPanel()}<div class="canvas">${inModal?'':ZCI}<svg viewBox="0 0 990 ${HH}"><g class="zg">${g}</g></svg><div class="zoom">คลิกโหนดเพื่อดูรายละเอียดใน Inspector · ${anyBusy?'● กำลังทำงาน':'○ ว่าง'}</div></div>`;
+  g+=`<g font-size="11" font-weight="700" fill="var(--mu)"><text x="478" y="${colY(mks.length,0)-14}">① ผู้ทำงาน (${mks.length})</text><text x="730" y="${colY(rvs.length||1,0)-14}">② ผู้ตรวจ (${rvs.length})</text><text x="912" y="${MID-64}">③ Claude ตรวจรอบสุดท้าย</text></g>`;
+  return `${inModal?'':trainPanel()}<div class="canvas">${inModal?'':ZCI}<svg viewBox="0 0 1060 ${HH}"><g class="zg">${g}</g></svg><div class="zoom">เส้นสี = ผู้ทำส่งให้ผู้ตรวจ (หนา = บ่อย · เขียว/ส้ม/แดง = ผ่านมาก/กลาง/น้อย) · ${anyBusy?'กำลังทำงาน':'ว่าง'}</div></div>`;
 }
 
 
@@ -819,8 +826,8 @@ function applyCtx(c){
   const g=r&&r.querySelector('.zg'); if(g&&isNet(c))g.setAttribute('transform',`translate(${495+c.x},${225+c.y}) scale(${c.z}) translate(-495,-225)`);
 }
 const applyNet=()=>applyCtx(CTX.m);
-function netView(c,cx,cy){const svg=c.root()&&c.root().querySelector('svg'); if(!svg)return null;const b=svg.getBoundingClientRect(),s=Math.min(b.width/990,b.height/450)||1;
-  return {s,pt:cx==null?[495,225]:[(cx-b.left-(b.width-990*s)/2)/s,(cy-b.top-(b.height-450*s)/2)/s]}}
+function netView(c,cx,cy){const svg=c.root()&&c.root().querySelector('svg'); if(!svg)return null;const b=svg.getBoundingClientRect(),s=Math.min(b.width/1060,b.height/450)||1;
+  return {s,pt:cx==null?[530,225]:[(cx-b.left-(b.width-1060*s)/2)/s,(cy-b.top-(b.height-450*s)/2)/s]}}
 function setZoom(z,cx,cy,c){
   c=c||CTX.m; z=clampZ(z); const k=z/c.z; if(k===1)return;
   if(isNet(c)){const v=netView(c,cx,cy); if(!v)return; c.x=(v.pt[0]-495)-k*(v.pt[0]-495-c.x); c.y=(v.pt[1]-225)-k*(v.pt[1]-225-c.y); c.z=z; applyCtx(c); return}
@@ -830,7 +837,7 @@ function setZoom(z,cx,cy,c){
 function zoomReset(c){c=c||CTX.m;c.z=1;c.x=0;c.y=0;if(c===CTX.m&&modal)renderModal();else applyCtx(c)}
 function zoomFit(c){
   c=c||CTX.m;
-  if(isNet(c)){const [x0,y0,x1,y1]=NBOX,bw=x1-x0,bh=y1-y0; c.z=clampZ(Math.min(990*.92/bw,450*.92/bh)); c.x=-c.z*((x0+x1)/2-495); c.y=-c.z*((y0+y1)/2-225); applyCtx(c)}
+  if(isNet(c)){const [x0,y0,x1,y1]=NBOX,bw=x1-x0,bh=y1-y0; c.z=clampZ(Math.min(1060*.92/bw,450*.92/bh)); c.x=-c.z*((x0+x1)/2-530); c.y=-c.z*((y0+y1)/2-225); applyCtx(c)}
   else{zoomReset(c); $('mmain').scrollTop=0; $('mmain').scrollLeft=0}
 }
 document.addEventListener('wheel',e=>{
