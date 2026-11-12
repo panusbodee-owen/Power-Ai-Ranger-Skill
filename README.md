@@ -1,51 +1,68 @@
-# ai-team
+# Power AI Ranger — a Claude Code skill that turns Claude into the Head of a multi-AI team
 
-Skill สำหรับ Claude Code: ให้ Claude เป็นหัวหน้าที่สั่งงาน AI ตัวอื่น (DeepSeek, Nemotron หรืออะไรก็ได้ที่เป็น API แบบ OpenAI-compatible) พร้อม boundary และแดชบอร์ดดูการแจกงานสด
+**English** · [ไทย](README.th.md) · [简体中文](README.zh-CN.md)
+
+Let Claude Code act as the **Head** of an AI team: it plans the work, splits it into briefs, sends them to other models (DeepSeek, NVIDIA Nemotron, Qwen, gpt-oss, or any **OpenAI-compatible API**), reviews the results, and reports back. A safety boundary filters what leaves your machine, and a live dashboard shows who is doing what.
 
 ![demo](docs/demo.gif)
 
-> ภาพและ GIF สร้างจากข้อมูลเดโมที่สมมติขึ้น (`scripts/demo_seed.py`) ไม่มี key หรือเกตเวย์จริง สร้างใหม่ได้ด้วย `scripts/capture_demo.sh docs`
+> Screenshots and the GIF are generated from made-up demo data (`scripts/demo_seed.py`). No real keys or gateways are shown. Regenerate with `scripts/capture_demo.sh docs`.
 
-## ฟีเจอร์
-- **Claude เป็น Head**: คุณสั่งในแชท Claude แตกงาน เขียน brief ส่งลูกทีม ตรวจผล และรายงาน
-- **Team Builder (แท็บ "จัดทีม")**: ลากโมเดลจากแคตตาล็อกไปวางในช่องทีม เลือกตำแหน่ง (ผู้ทำ/ผู้ตรวจ/ผู้ทดสอบ/Senior PD ฯลฯ) จำนวน AI ต่องาน และโหมด (`best-of-n`, `vote`, `split`) เพิ่มผู้ให้บริการ API (Tokenme, OpenRouter, NVIDIA, Groq หรือกำหนดเอง) ได้จากหน้าเว็บ
-- **คิวงานขนาน + flow ผู้ทำ→ผู้ตรวจ**: ส่งงานเป็นชุดพร้อมกัน ผู้ตรวจต้องเป็นคนละช่อง (ถ้าเป็นไปได้ต่างเกตเวย์) ตีกลับให้แก้ได้หลายรอบ และมีตัวเช็กอัตโนมัติ (json, regex, โค้ดรันใน sandbox)
-- **จัดคนตามความถนัด**: ทุกช่องมีคะแนนความถนัดต่อประเภทงาน (`team.py skills ls`) ใช้ `--pool @auto --needs <skill>` ให้ระบบเลือกช่องเอง และคะแนนปรับตามผลจริง
-- **Boundary**: กรอง key/รหัสผ่าน, จำกัดความยาว/จำนวนครั้ง, กันส่ง key ไป URL ตัวอย่าง, บันทึกทุกครั้ง
-- **แดชบอร์ด**: ผังงานตามลำดับจริง (ผู้ทำ → ผู้ตรวจ → Claude), **งานที่แจก** แบบ Notion (บอร์ด/ตาราง/หน้ารายละเอียด), **การใช้ AI** (จำนวนครั้ง เวลาตอบ อัตราผ่านการตรวจ และโทเคนของ Claude นับจากไฟล์บนเครื่อง), Audit log
-- **โหมดสี**: อัตโนมัติ (ตามเครื่อง) / สว่าง / มืด สไตล์ระบบของ Apple
+## Why use it
+- You already pay for or have access to several models (free tiers, API gateways, local servers) but run them one at a time.
+- You want a **maker → reviewer** workflow, parallel jobs, and an audit trail without writing an orchestration framework.
+- You want guardrails: no API keys or ID numbers in prompts, call limits, and a log of every request.
 
-| ผังงาน (สว่าง) | ผังงาน (มืด) |
+## Features
+- **Claude as Head** — you talk to Claude in chat; it breaks the task down, writes briefs, checks results, and reports.
+- **Team Builder** — drag models from a catalog into team seats, choose roles (maker, reviewer, tester, editor, Senior PD…), how many AIs per job, and the mode (`best-of-n`, `vote`, `split`). Add providers (Tokenme, OpenRouter, NVIDIA NIM, Groq, or custom) from the web UI.
+- **Parallel queue + maker→reviewer flow** — reviewers sit in a different seat (ideally a different gateway) and can send work back for several rounds, with automatic checks (JSON, regex, code run in a sandbox).
+- **Skill-based routing** — every seat has per-skill scores (`team.py skills ls`); `--pool @auto --needs <skill>` picks the best seat, and scores update from real results.
+- **Boundary** — filters keys/passwords, limits length and calls per hour, refuses placeholder URLs, logs everything.
+- **Live dashboard** — flow diagram of who works on what, with a glowing frame on every AI that is working right now; a Notion-style job board; usage and latency; audit log; light/dark mode.
+- **Web search for the team** — `team.py web search|fetch` (TinyFish) feeds sourced facts to the models without exposing your key.
+- **Merge + research pipelines** — an `editor` role merges multi-part work; `team.py research` runs a problem-first research flow.
+- **Training and per-member guides** — `scripts/train.py` measures each member on held-out tasks, writes coaching prompts, and generates portable per-member instruction files (`docs/team/`) you can reuse in other projects or sessions. See `docs/TEAM-GUIDE.md`.
+
+| Flow (light) | Flow (dark) |
 |---|---|
 | ![design](docs/ui-design-working.png) | ![dark](docs/ui-design-dark.png) |
-| **งานที่แจก: บอร์ด** | **งานที่แจก: หน้ารายละเอียด** |
+| **Job board** | **Job page** |
 | ![board](docs/ui-jobs-board.png) | ![job](docs/ui-job-page.png) |
-| **จัดทีม** | **Flow Inspector** |
+| **Team builder** | **Flow inspector** |
 | ![studio](docs/ui-studio.png) | ![flow](docs/ui-flow.png) |
 
-> ภาพและ GIF สร้างจากข้อมูลเดโมที่สมมติขึ้น (`scripts/demo_seed.py`) ไม่มี key หรือเกตเวย์จริง สร้างใหม่ได้ด้วย `scripts/capture_demo.sh docs` หน้า "การใช้ AI" ไม่ได้ถ่ายภาพ เพราะแสดงตัวเลขโทเคนจริงจากเครื่อง
-
-**Flow Inspector (กดปุ่มขยายบนผัง)**: หน้าต่างเต็มจอ ดูว่างานไหลจากใครไปหาใคร แผนภาพลำดับตามเวลา คลิกลูกศรเพื่อดู brief/คำตอบ/ผลตรวจเต็ม สลับเป็นผังเครือข่ายได้ ซูมเข้า/ออกได้ (ปุ่ม − / + / รีเซ็ต / พอดีหน้าจอ, คีย์ `+` `-` `0` `F`, Ctrl/⌘ + ล้อเมาส์ หรือ pinch, ลากเพื่อเลื่อน) กด Esc เพื่อปิด
-
-## ติดตั้ง
+## Quick start
 ```bash
-git clone <repo-url> ~/.claude/skills/ai-team
+# 1. Install as a Claude Code skill
+git clone https://github.com/panusbodee-owen/Power-Ai-Ranger-Skill.git ~/.claude/skills/ai-team
+
+# 2. Register team members (you type the key in your own terminal; it is asked silently)
+python3 ~/.claude/skills/ai-team/scripts/team.py add worker --base-url https://GATEWAY/v1 --model MODEL --role "Diligent worker"
+python3 ~/.claude/skills/ai-team/scripts/team.py add intern --base-url https://GATEWAY/v1 --model MODEL --role "Intern"
+
+# 3. Open the dashboard
+python3 ~/.claude/skills/ai-team/scripts/dash.py   # http://localhost:8790
 ```
+Then open Claude Code and just ask, e.g. "have worker write tests for this function". Claude plans, briefs the team, reviews, and reports.
 
-## ตั้งค่าลูกทีม (ทำเองในเทอร์มินัล)
-API key ถูกถามแบบซ่อน และเก็บใน `~/.ai-team/team.db` (ไม่อยู่ใน repo นี้ และ `.gitignore` กัน `*.db` ไว้)
-```bash
-python3 ~/.claude/skills/ai-team/scripts/team.py add worker --base-url https://GATEWAY/v1 --model MODEL --role "พนักงานที่แข็งขัน"
-python3 ~/.claude/skills/ai-team/scripts/team.py add intern --base-url https://GATEWAY/v1 --model MODEL --role "เด็กฝึกงาน"
-```
+API keys are stored in `~/.ai-team/team.db` on your machine only (not in this repo; `*.db` is git-ignored).
 
-## ใช้งาน
-เปิด Claude Code แล้วสั่งตามปกติ เช่น "ให้ worker เขียนเทสต์ให้ฟังก์ชันนี้" Claude จะแตกงาน ส่ง brief ตรวจผล และรายงาน
+## Per-member guides and training
+- `docs/TEAM-GUIDE.md` and `docs/team/<name>.md` — system prompt, coaching text, example briefs and a runnable `curl`/Python call for each member. No API keys.
+- `docs/performance-*.md` — before/after results with their limits. The models are hosted, so nothing is fine-tuned: "training" here means a coaching prompt plus measurement.
+- Rebuild: `python3 scripts/train.py run && python3 scripts/train.py apply && python3 scripts/train.py report docs/performance-<date>.md && python3 scripts/train.py guide docs/team`
 
-แดชบอร์ด: `python3 ~/.claude/skills/ai-team/scripts/dash.py` แล้วเปิด http://localhost:8790
+## Security
+- Claude never reads or prints your API keys; they are used by the scripts only.
+- Briefs are filtered for keys, passwords and 13-digit numbers; length and hourly call counts are limited; every call is logged.
+- The dashboard binds to 127.0.0.1 only and never reads the key column. It can edit seats and submit jobs, so do not expose that port to a network.
+- Briefs and keys are sent to the gateways you configure. Pick providers you trust.
 
-## ความปลอดภัย
-- Claude ไม่อ่านหรือพิมพ์ API key ใช้ผ่านสคริปต์เท่านั้น
-- brief ถูกกรอง key/รหัสผ่าน/เลข 13 หลัก จำกัดความยาวและจำนวนครั้ง และบันทึกทุกครั้ง
-- แดชบอร์ดเปิดที่ 127.0.0.1 อ่านอย่างเดียว และไม่เคยอ่านคอลัมน์ key
-- brief และ key ถูกส่งไปยังเกตเวย์ที่คุณตั้งค่า เลือกผู้ให้บริการที่ไว้ใจได้
+## Status
+Early-stage and used daily by its author. Issues and pull requests are welcome.
+
+If it is useful to you, a ⭐ on the repo helps others find it.
+
+## Keywords
+Claude Code skill · multi-agent orchestration · LLM team · maker/reviewer workflow · OpenAI-compatible API · DeepSeek · NVIDIA Nemotron · Qwen · Groq · OpenRouter · AI dashboard · prompt boundary

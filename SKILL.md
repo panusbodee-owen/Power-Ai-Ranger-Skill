@@ -1,6 +1,6 @@
 ---
 name: ai-team
-description: ใช้เมื่อผู้ใช้ให้ Claude เป็นหัวหน้า (Head) ที่สั่งงานและแจกจ่ายให้ AI ตัวอื่น (เช่น DeepSeek พนักงาน, Nemotron เด็กฝึกงาน) ผ่าน API ที่เก็บใน SQLite พร้อม boundary และแดชบอร์ดดูการแจกงาน ใช้เมื่อพูดว่า "สั่งทีม", "ให้ worker/intern ทำ", "แจกงาน", "ai team", "เปิดแดชบอร์ดทีม"
+description: ใช้เมื่อผู้ใช้ให้ Claude เป็นหัวหน้า (Head) ที่สั่งงานและแจกจ่ายให้ AI ตัวอื่น (เช่น DeepSeek พนักงาน, Nemotron เด็กฝึกงาน) ผ่าน API ที่เก็บใน SQLite พร้อม boundary และแดชบอร์ดดูการแจกงาน ใช้เมื่อพูดว่า "สั่งทีม", "ให้ worker/intern ทำ", "แจกงาน", "ai team", "เปิดแดชบอร์ดทีม" | Use when the user asks Claude to act as Head of a multi-AI team, delegate or dispatch work to other models (DeepSeek, Nemotron, any OpenAI-compatible API), run a maker/reviewer flow, open the team dashboard, or read the per-member guides in docs/TEAM-GUIDE.md (English: "ai team", "delegate to worker", "team dashboard"; 中文: "AI 团队", "分发任务")
 ---
 
 # AI Team: Claude เป็น Head สั่ง AI ตัวอื่น

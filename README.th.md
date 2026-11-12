@@ -1,0 +1,61 @@
+# ai-team (Power AI Ranger)
+
+[English](README.md) · **ไทย** · [简体中文](README.zh-CN.md)
+
+Skill สำหรับ Claude Code: ให้ Claude เป็นหัวหน้าที่สั่งงาน AI ตัวอื่น (DeepSeek, Nemotron หรืออะไรก็ได้ที่เป็น API แบบ OpenAI-compatible) พร้อม boundary และแดชบอร์ดดูการแจกงานสด
+
+![demo](docs/demo.gif)
+
+> ภาพและ GIF สร้างจากข้อมูลเดโมที่สมมติขึ้น (`scripts/demo_seed.py`) ไม่มี key หรือเกตเวย์จริง สร้างใหม่ได้ด้วย `scripts/capture_demo.sh docs`
+
+## ฟีเจอร์
+- **Claude เป็น Head**: คุณสั่งในแชท Claude แตกงาน เขียน brief ส่งลูกทีม ตรวจผล และรายงาน
+- **Team Builder (แท็บ "จัดทีม")**: ลากโมเดลจากแคตตาล็อกไปวางในช่องทีม เลือกตำแหน่ง (ผู้ทำ/ผู้ตรวจ/ผู้ทดสอบ/Senior PD ฯลฯ) จำนวน AI ต่องาน และโหมด (`best-of-n`, `vote`, `split`) เพิ่มผู้ให้บริการ API (Tokenme, OpenRouter, NVIDIA, Groq หรือกำหนดเอง) ได้จากหน้าเว็บ
+- **คิวงานขนาน + flow ผู้ทำ→ผู้ตรวจ**: ส่งงานเป็นชุดพร้อมกัน ผู้ตรวจต้องเป็นคนละช่อง (ถ้าเป็นไปได้ต่างเกตเวย์) ตีกลับให้แก้ได้หลายรอบ และมีตัวเช็กอัตโนมัติ (json, regex, โค้ดรันใน sandbox)
+- **จัดคนตามความถนัด**: ทุกช่องมีคะแนนความถนัดต่อประเภทงาน (`team.py skills ls`) ใช้ `--pool @auto --needs <skill>` ให้ระบบเลือกช่องเอง และคะแนนปรับตามผลจริง
+- **Boundary**: กรอง key/รหัสผ่าน, จำกัดความยาว/จำนวนครั้ง, กันส่ง key ไป URL ตัวอย่าง, บันทึกทุกครั้ง
+- **แดชบอร์ด**: ผังงานตามลำดับจริง (ผู้ทำ → ผู้ตรวจ → Claude), **งานที่แจก** แบบ Notion (บอร์ด/ตาราง/หน้ารายละเอียด), **การใช้ AI** (จำนวนครั้ง เวลาตอบ อัตราผ่านการตรวจ และโทเคนของ Claude นับจากไฟล์บนเครื่อง), Audit log
+- **โหมดสี**: อัตโนมัติ (ตามเครื่อง) / สว่าง / มืด สไตล์ระบบของ Apple
+
+| ผังงาน (สว่าง) | ผังงาน (มืด) |
+|---|---|
+| ![design](docs/ui-design-working.png) | ![dark](docs/ui-design-dark.png) |
+| **งานที่แจก: บอร์ด** | **งานที่แจก: หน้ารายละเอียด** |
+| ![board](docs/ui-jobs-board.png) | ![job](docs/ui-job-page.png) |
+| **จัดทีม** | **Flow Inspector** |
+| ![studio](docs/ui-studio.png) | ![flow](docs/ui-flow.png) |
+
+> ภาพและ GIF สร้างจากข้อมูลเดโมที่สมมติขึ้น (`scripts/demo_seed.py`) ไม่มี key หรือเกตเวย์จริง สร้างใหม่ได้ด้วย `scripts/capture_demo.sh docs` หน้า "การใช้ AI" ไม่ได้ถ่ายภาพ เพราะแสดงตัวเลขโทเคนจริงจากเครื่อง
+
+**Flow Inspector (กดปุ่มขยายบนผัง)**: หน้าต่างเต็มจอ ดูว่างานไหลจากใครไปหาใคร แผนภาพลำดับตามเวลา คลิกลูกศรเพื่อดู brief/คำตอบ/ผลตรวจเต็ม สลับเป็นผังเครือข่ายได้ ซูมเข้า/ออกได้ (ปุ่ม − / + / รีเซ็ต / พอดีหน้าจอ, คีย์ `+` `-` `0` `F`, Ctrl/⌘ + ล้อเมาส์ หรือ pinch, ลากเพื่อเลื่อน) กด Esc เพื่อปิด
+
+## ติดตั้ง
+```bash
+git clone <repo-url> ~/.claude/skills/ai-team
+```
+
+## ตั้งค่าลูกทีม (ทำเองในเทอร์มินัล)
+API key ถูกถามแบบซ่อน และเก็บใน `~/.ai-team/team.db` (ไม่อยู่ใน repo นี้ และ `.gitignore` กัน `*.db` ไว้)
+```bash
+python3 ~/.claude/skills/ai-team/scripts/team.py add worker --base-url https://GATEWAY/v1 --model MODEL --role "พนักงานที่แข็งขัน"
+python3 ~/.claude/skills/ai-team/scripts/team.py add intern --base-url https://GATEWAY/v1 --model MODEL --role "เด็กฝึกงาน"
+```
+
+## ใช้งาน
+เปิด Claude Code แล้วสั่งตามปกติ เช่น "ให้ worker เขียนเทสต์ให้ฟังก์ชันนี้" Claude จะแตกงาน ส่ง brief ตรวจผล และรายงาน
+
+แดชบอร์ด: `python3 ~/.claude/skills/ai-team/scripts/dash.py` แล้วเปิด http://localhost:8790
+
+## ความปลอดภัย
+- Claude ไม่อ่านหรือพิมพ์ API key ใช้ผ่านสคริปต์เท่านั้น
+- brief ถูกกรอง key/รหัสผ่าน/เลข 13 หลัก จำกัดความยาวและจำนวนครั้ง และบันทึกทุกครั้ง
+- แดชบอร์ดเปิดที่ 127.0.0.1 เท่านั้น และไม่เคยอ่านคอลัมน์ key แต่แก้ช่องทีมและส่งงานได้ ห้ามเปิดพอร์ตนี้ให้เครือข่ายภายนอก
+- brief และ key ถูกส่งไปยังเกตเวย์ที่คุณตั้งค่า เลือกผู้ให้บริการที่ไว้ใจได้
+
+## คู่มือสั่งงานรายคน และผลเทรน
+- `docs/TEAM-GUIDE.md` และ `docs/team/<ชื่อ>.md`: system prompt, คู่มือ (coaching), ตัวอย่างคำสั่ง และ curl/Python ของสมาชิกแต่ละคน (ไม่มี API key) ใช้ต่อในโปรเจกต์หรือเซสชันอื่นได้
+- `docs/performance-*.md`: รายงานผลเทรนก่อน/หลัง พร้อมข้อจำกัด (โมเดลเป็นบริการโฮสต์ ไม่มีการ fine-tune "เทรน" = คู่มือในพรอมต์ + การวัดผล)
+- สร้างใหม่: `python3 scripts/train.py run && python3 scripts/train.py apply && python3 scripts/train.py report docs/performance-<วันที่>.md && python3 scripts/train.py guide docs/team`
+
+## สนับสนุนโปรเจกต์
+ถ้ามีประโยชน์ กดดาว ⭐ ให้ได้ที่มุมขวาบนของหน้า repo และเปิด Issue ได้เลยถ้าเจอปัญหาหรืออยากได้ฟีเจอร์
