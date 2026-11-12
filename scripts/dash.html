@@ -167,6 +167,21 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 @media (prefers-reduced-motion:reduce){.nw.work .nav{animation:none}}
 .lg2{display:inline-flex;align-items:center;gap:5px;margin-right:10px}.lg2 i{width:14px;height:3px;border-radius:2px;display:inline-block}
 .cen>.canvas{height:min(66vh,680px)}.cen>.canvas>svg{position:absolute;inset:0;width:100%;height:calc(100% - 34px)}
+.stu2{display:flex;flex-direction:column;gap:14px;max-width:1100px;width:100%;margin:0 auto}
+.stu2 .card h3{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.stu2 .card h3 .btn{margin-left:auto}
+.slist{list-style:none;margin:6px 0 0;padding:0;border:1px solid var(--ln);border-radius:10px;overflow:hidden}
+.srow{display:grid;grid-template-columns:36px 170px minmax(200px,1.4fr) minmax(160px,1fr) 84px;gap:14px;align-items:center;padding:12px 14px;border-top:1px solid var(--ln)}
+.srow:first-child{border-top:0}.srow.over{background:color-mix(in srgb,var(--or) 10%,transparent)}
+.srow.work{background:color-mix(in srgb,var(--gr) 7%,transparent)}.srow.work .nav{box-shadow:0 0 0 3px color-mix(in srgb,var(--gr) 35%,transparent)}
+.srow.empty .nav,.srow.spare .nav{opacity:.5}
+.sname{display:flex;flex-direction:column;gap:4px;min-width:0}.sname b{font-size:14px}
+.spill{align-self:flex-start;width:fit-content;font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;background:color-mix(in srgb,var(--mu) 14%,transparent);color:var(--mu);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.spill.main{background:color-mix(in srgb,var(--ac) 15%,transparent);color:var(--ac)}.spill.work{background:color-mix(in srgb,var(--gr) 16%,transparent);color:var(--gr)}
+.sf{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:12px}.sf>span{color:var(--mu);font-size:11px}.sf small{color:var(--mu);font-size:11px}
+.sf select{width:100%;min-width:0}.sclr{justify-self:end;font-size:12px}
+.catd summary{cursor:pointer;list-style:none}.catd summary::-webkit-details-marker{display:none}.catd summary:before{content:'';display:inline-block;width:7px;height:7px;border-right:2px solid var(--mu);border-bottom:2px solid var(--mu);transform:rotate(-45deg);margin-right:10px;transition:transform .2s}
+.catd[open] summary:before{transform:rotate(45deg)}.catd .cat{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));max-height:50vh;margin-top:12px}
+@media(max-width:820px){.srow{grid-template-columns:32px minmax(0,1fr) auto;grid-template-areas:'av nm bt' 'm m m' 'p p p';row-gap:10px;column-gap:12px}.srow>.nav{grid-area:av}.srow>.sname{grid-area:nm}.srow>.sclr,.srow>span:last-child{grid-area:bt}.srow>.sf:nth-of-type(1){grid-area:m}.srow>.sf:nth-of-type(2){grid-area:p}}
 .nglow{animation:nglow 1.3s ease-in-out infinite}
 .ndot{animation:blink 1s infinite}
 @keyframes nglow{0%,100%{filter:drop-shadow(0 0 2px var(--gc))}50%{filter:drop-shadow(0 0 14px var(--gc))}}
@@ -512,7 +527,7 @@ const isErr=a=>a.blocked!=null&&a.blocked.startsWith('error:');
 const isBlk=a=>a.blocked!=null&&!isErr(a);
 const st=a=>a.blocked!=null?'err':pend(a)?'work':'done';
 const NOJOB='(ไม่ระบุชื่องาน)';
-let S={agents:[],seats:[],catalog:[],roles:[],tasks:[],gateways:[],presets:[],plan:{n:2,mode:'best-of-n'},audit:[],notes:[]}, view='now', rail=false, rtab='eval', selNode='claude', selJob=null, open=new Set(), pick=null, dragging=false, lastJ='', modal=false, mtab='seq', mjob=null, mev=null, EV=[], mz=1, mpx=0, mpy=0, NBOX=[0,0,990,450];
+let S={agents:[],seats:[],catalog:[],roles:[],tasks:[],gateways:[],presets:[],plan:{n:2,mode:'best-of-n'},audit:[],notes:[]}, view='now', rail=false, catOpen=false, rtab='eval', selNode='claude', selJob=null, open=new Set(), pick=null, dragging=false, lastJ='', modal=false, mtab='seq', mjob=null, mev=null, EV=[], mz=1, mpx=0, mpy=0, NBOX=[0,0,990,450];
 
 function spark(vals,c,w=100,h=26){const m=Math.max(1,...vals),n=vals.length||1;
   const p=vals.map((v,i)=>[i*(w/Math.max(1,n-1)),h-2-(v/m)*(h-4)]);
@@ -748,19 +763,30 @@ function studioView(){
   const ic=k=>k.status==='ok'?'<span class="okc">● ใช้ได้</span>':k.status==='fail'?'<span class="failc">● เรียกไม่ได้</span>':'<span>○ ยังไม่ทดสอบ</span>';
   const pr=k=>k.cin!=null&&k.cout!=null?`$${k.cin}/${k.cout} ต่อ 1M`:'ยังไม่ตั้งราคา';
   const chips=S.catalog.map(k=>`<div class="chip ${pick===k.name?'pick':''}" draggable="true" data-cat="${esc(k.name)}"><b>${esc(k.name)}</b><small><span>${esc(k.host)}</span>${ic(k)}</small><small><span>${pr(k)}</span><button class="tst" data-test="${esc(k.name)}">ทดสอบ</button></small></div>`).join('')||'<div class="empty">แคตตาล็อกว่าง — ใช้ team.py catalog import</div>';
-  const busyBy=Object.fromEntries((S.busy||[]).map(b=>[b.seat,b])), seats=S.seats.map(x=>`<div class="seat ${act.has(x.name)?'act':x.model?'stby':''}${busyBy[x.name]?' busy':''}" data-seat="${esc(x.name)}"><h5><span>${esc(x.name)}</span><span>${act.has(x.name)?'ทำงาน':x.model?'สำรอง':''}</span></h5>
-    ${x.model?`<button class="x" data-clear="${esc(x.name)}" title="ล้างช่อง">✕</button><div class="m">${esc(x.catalog)}</div><div class="g">${esc(x.host||'')}</div>`:`<div class="emp">ว่าง — ลากโมเดลมาวาง${pick?' หรือคลิกที่นี่':''}</div>`}
-    <select class="pos" data-pos="${esc(x.name)}" title="ตำแหน่ง (บทบาท) ของช่องนี้"><option value="">— ไม่กำหนดตำแหน่ง —</option>${S.roles.map(r=>`<option value="${esc(r.name)}" ${x.position===r.name?'selected':''}>${esc(r.title)}</option>`).join('')}</select><div class="bz">กำลังทำงาน${busyBy[x.name]&&busyBy[x.name].job?': '+esc(String(busyBy[x.name].job).slice(0,28)):''}</div></div>`).join('');
+  const busyBy=Object.fromEntries((S.busy||[]).map(b=>[b.seat,b]));
+  const okFirst=[...S.catalog].sort((p,q)=>(p.status==='ok'?0:p.status==='fail'?2:1)-(q.status==='ok'?0:q.status==='fail'?2:1));
+  const mopts=cur=>`<option value="">— ว่าง (ไม่ใส่โมเดล) —</option>`+[...new Set(okFirst.map(k=>k.host))].map(hh=>`<optgroup label="${esc(hh)}">${okFirst.filter(k=>k.host===hh).map(k=>`<option value="${esc(k.name)}" ${cur===k.name?'selected':''}>${esc(k.name)}${k.status==='ok'?'':k.status==='fail'?' (เรียกไม่ได้)':' (ยังไม่ทดสอบ)'}</option>`).join('')}</optgroup>`).join('');
+  const seats=S.seats.map((x,i)=>{const on=act.has(x.name),bz=busyBy[x.name];
+    const state=bz?['work','กำลังทำงาน'+(bz.job?': '+String(bz.job).slice(0,24):'')]:!x.model?['empty','ว่าง ยังไม่มีโมเดล']:on?['main','ทีมหลัก']:['spare','สำรอง'];
+    return `<li class="srow ${state[0]}" data-seat="${esc(x.name)}">
+      <span class="nav" style="--c:${col(x.name)}">${esc(x.name[0].toUpperCase())}</span>
+      <div class="sname"><b>${esc(x.name)}</b><span class="spill ${state[0]}">${esc(state[1])}</span></div>
+      <label class="sf"><span>โมเดล</span><select class="msel" data-mseat="${esc(x.name)}">${mopts(x.catalog)}</select>${x.host?`<small>${esc(x.host)}</small>`:''}</label>
+      <label class="sf"><span>ตำแหน่ง</span><select class="pos" data-pos="${esc(x.name)}"><option value="">— ไม่กำหนด —</option>${S.roles.map(r=>`<option value="${esc(r.name)}" ${x.position===r.name?'selected':''}>${esc(r.title)}</option>`).join('')}</select></label>
+      ${x.model?`<button class="btn sclr" data-clear="${esc(x.name)}" title="เอาโมเดลออกจากช่องนี้">เอาออก</button>`:'<span></span>'}</li>`}).join('');
   const use=filled.filter(x=>act.has(x.name)); let est=0,unk=false; use.forEach(x=>{if(x.cin==null||x.cout==null)unk=true;else est+=(x.cin+x.cout)*1000/1e6});
-  const modes={'best-of-n':'ทุกช่องทำงานเดียวกัน Claude เลือกผลที่ดีที่สุด','vote':'ทุกช่องตอบคำถามเดียวกัน ใช้เสียงข้างมาก','split':'Claude แตกงานย่อยให้แต่ละช่องตามจุดแข็ง'};
-  return provHtml()+`<div class="stu"><div class="card"><h3>Model Catalog <span style="color:var(--mu);font-weight:400">${S.catalog.length}</span></h3><div class="cat">${chips}</div></div>
-   ${trainPanel()}<div class="card"><h3>Team Seats <button class="btn" data-addseat="1">+ เพิ่มช่อง</button></h3><div class="seats">${seats}</div>
+  const modes={'best-of-n':'ทุกช่องทำงานเดียวกัน Claude เลือกผลที่ดีที่สุด','race':'ส่งให้หลายช่อง ใช้คำตอบแรกที่ใช้ได้ (เร็วที่สุด)','vote':'ทุกช่องตอบคำถามเดียวกัน ใช้เสียงข้างมาก','split':'Claude แตกงานย่อยให้แต่ละช่องตามจุดแข็ง'};
+  return `<div class="stu2"><div class="card"><h3>สมาชิกทีม <span class="nmu" style="font-weight:400;font-size:12px">ระบบใช้ ${P.n} ช่องแรกที่มีโมเดลเป็นทีมหลัก ที่เหลือเป็นสำรอง</span><button class="btn" data-addseat="1">+ เพิ่มช่อง</button></h3>
+   <ul class="slist">${seats}</ul>
    <div class="ctl"><div><div class="hint" style="margin:0 0 4px">จำนวน AI ที่ใช้ในงาน</div><div class="stepper"><button data-n="-1">−</button><b>${P.n}</b><button data-n="1">+</button></div></div>
     <div><div class="hint" style="margin:0 0 4px">โหมด</div><div class="seg">${Object.keys(modes).map(m=>`<button data-mode="${m}" class="${P.mode===m?'on':''}">${m}</button>`).join('')}</div></div>
     <div><div class="hint" style="margin:0 0 4px">ค่าใช้จ่ายโดยประมาณ</div><b>${use.length} AI · ${est?'≈ $'+est.toFixed(4):'—'}</b><div class="hint" style="margin:0">${unk?'บางโมเดลยังไม่ตั้งราคา · ':''}สมมติ 1k token เข้า+ออก ต่อ AI</div></div>
     <button class="btn" data-undo="1" ${S.can_undo?'':'disabled style="opacity:.4"'}>↶ Undo</button></div>
    <div class="hint">${modes[P.mode]}. เลือกที่นี่แล้วบอก Claude ว่า "ทำงานนี้" — Claude จะอ่านค่าจาก <code>team.py plan</code> และใช้ ${P.n} ช่องแรกที่มีโมเดล</div>
-   ${filled.length<P.n?`<div class="hint" style="color:var(--or)">⚠ เลือก ${P.n} AI แต่มีโมเดลในช่องแค่ ${filled.length}</div>`:''}</div></div>`;
+   ${filled.length<P.n?`<div class="hint" style="color:var(--or)">เลือก ${P.n} AI แต่มีโมเดลในช่องแค่ ${filled.length}</div>`:''}</div>
+   ${provHtml()}
+   <details class="card catd" ${catOpen?'open':''}><summary><h3 style="display:inline">แคตตาล็อกโมเดล <span class="nmu" style="font-weight:400">${S.catalog.length} รุ่น · ทดสอบ/ดูราคา · ลากไปวางที่สมาชิกก็ได้</span></h3></summary><div class="cat">${chips}</div></details>
+   ${trainPanel()}</div>`;
 }
 async function post(path,body){const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-Dash':'1'},body:JSON.stringify(body)});const d=await r.json();if(d.error)alert(d.error);await tick(true);return d}
 
@@ -976,7 +1002,7 @@ function render(){
   document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
   document.querySelectorAll('#rt [data-r]').forEach(b=>b.classList.toggle('on',b.dataset.r===rtab));
   const qn=S.queue||{}, qw=(qn.queued||0)+(qn.running||0), busy=S.audit.some(pend)||qw>0; $('live').textContent=qw?`Queue ${qn.running||0} กำลังทำ · ${qn.queued||0} รอ`:(busy?'Working':'Live'); $('live').classList.toggle('idle',!busy);
-  if(view==='home'&&document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#hform')&&document.activeElement.matches('textarea,input[type=text],select')){$('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;return}
+  const ae=document.activeElement;if((view==='home'&&ae&&ae.closest&&ae.closest('#hform')&&ae.matches('textarea,input[type=text],select'))||(view==='studio'&&ae&&ae.matches&&ae.matches('.stu2 select'))){$('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;return}
   document.querySelector('.main').classList.toggle('norail',!rail);$('rail').classList.toggle('on',rail);
   $('cen').innerHTML=(view==='now'?'':aboutBox())+(view==='now'?nowView():view==='home'?homeView():view==='design'?flow()+trainPanel()+summary()+bottom():view==='studio'?studioView():view==='jobs'?jobsView():view==='usage'?usageView():auditView())+TERMS;
   if(view==='design')applyCtx(CTX.i);
@@ -986,7 +1012,7 @@ document.addEventListener('dragstart',e=>{const c=e.target.closest('[data-cat]')
 document.addEventListener('dragend',()=>{dragging=false;document.querySelectorAll('.seat.over').forEach(x=>x.classList.remove('over'))});
 document.addEventListener('dragover',e=>{const t=e.target.closest('[data-seat]');if(t){e.preventDefault();document.querySelectorAll('.seat.over').forEach(x=>x!==t&&x.classList.remove('over'));t.classList.add('over')}});
 document.addEventListener('drop',e=>{const t=e.target.closest('[data-seat]');if(t){e.preventDefault();dragging=false;post('/api/seat',{seat:t.dataset.seat,catalog:e.dataTransfer.getData('text/plain')})}});
-document.addEventListener('change',e=>{const s=e.target.closest('[data-pos]'); if(s)post('/api/position',{seat:s.dataset.pos,role:s.value||null})});
+document.addEventListener('change',e=>{const s=e.target.closest('[data-pos]'); if(s)post('/api/position',{seat:s.dataset.pos,role:s.value||null});const m=e.target.closest('[data-mseat]');if(m)post('/api/seat',{seat:m.dataset.mseat,catalog:m.value||null})});
 document.addEventListener('keydown',e=>{
   if(!modal)return;
   if(e.key==='Escape'){modal=false;renderModal()}
@@ -1092,6 +1118,7 @@ document.addEventListener('click',async e=>{
 async function tick(force){if(dragging)return;try{const n=await (await fetch('/api/state')).json(),j=JSON.stringify(n);const ch=j!==lastJ;if(force===true||ch||view==='design'){lastJ=j;S=n;render();if(modal&&(ch||force===true))renderModal()}}catch(e){}}
 (()=>{const h=new URLSearchParams(location.hash.slice(1));if(h.get('view'))view=h.get('view');if(h.get('rtab'))rtab=h.get('rtab');if(h.get('job'))selJob=h.get('job');if(h.get('jv'))jv=h.get('jv')==='table'?'table':'board';if(h.get('open')){jobPage=true}if(h.get('modal')){modal=true;mtab=h.get('modal')==='net'?'net':'seq';if(h.get('job'))mjob=h.get('job')}if(h.get('zoom'))mz=Math.min(4,Math.max(.4,+h.get('zoom')||1))})();
 tick(); setInterval(tick,2000);
+document.addEventListener('toggle',e=>{if(e.target.classList&&e.target.classList.contains('catd'))catOpen=e.target.open},true);
 </script>
 </body>
 </html>
