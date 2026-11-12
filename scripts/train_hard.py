@@ -285,7 +285,7 @@ def cmd_apply():
 
 def cmd_report(out):
     c = conn(); c.row_factory = sqlite3.Row
-    seats = c.execute("select s.name,s.title,k.model from seats s join catalog k on k.name=s.catalog order by s.rowid").fetchall()
+    seats = c.execute("select s.name,s.title,k.model,s.catalog as cat from seats s join catalog k on k.name=s.catalog order by s.rowid").fetchall()
     lv = {r["seat"]: r for r in c.execute("select * from train_levels where level='hard'")}
     L = ["# รายงานเทรนระดับยาก (Hard) แบบไล่ระดับ", "", f"วันที่: {time.strftime('%Y-%m-%d')}", "",
          "## วิธีทำ", "",
@@ -306,7 +306,7 @@ def cmd_report(out):
         cells = []
         for t in ids:
             def cnt(ph):
-                rr = c.execute("select ok,err from train_runs where seat=? and model=? and phase=? and task=? and setname='HB'", (s["name"], s["model"], ph, t)).fetchall()
+                rr = c.execute("select ok,err from train_runs where seat=? and model=? and phase=? and task=? and setname='HB'", (s["name"], s["cat"], ph, t)).fetchall()
                 v = [x for x in rr if x["err"] == 0]
                 return f"{sum(x['ok'] for x in v)}/{len(v)}" if v else "-"
             cells.append(f"{cnt('H_B_base')}→{cnt('H_B_coached')}" if c.execute("select 1 from train_runs where seat=? and phase='H_B_coached' limit 1", (s["name"],)).fetchone() else cnt("H_B_base"))

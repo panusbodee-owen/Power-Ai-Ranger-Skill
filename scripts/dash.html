@@ -136,6 +136,10 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .seat{border:2px dashed var(--ln);border-radius:12px;padding:12px;min-height:108px;background:var(--p);position:relative;transition:.15s}
 .seat.act{border:2px solid var(--bl);background:color-mix(in srgb,var(--bl) 6%,transparent)}
 .seat.stby{opacity:.55}
+.tcard{margin-bottom:12px}.trow{display:grid;grid-template-columns:12px 70px 170px 1fr 120px 44px 80px;gap:8px;align-items:center;padding:7px 4px;border-top:1px solid var(--ln);font-size:12px}
+.trow.tw{animation:nglow 1.3s ease-in-out infinite;--gc:var(--gr);border-radius:8px}.tdot{width:10px;height:10px;border-radius:50%}.tph{color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tbar{height:6px;background:var(--ln);border-radius:3px;overflow:hidden}.tbar i{display:block;height:100%}.tn{color:var(--mu);font-size:11px;text-align:right}
+@media(max-width:760px){.trow{grid-template-columns:12px 60px 1fr 60px}.trow .tph,.trow .tbar{display:none}}
 .nglow{animation:nglow 1.3s ease-in-out infinite}
 .ndot{animation:blink 1s infinite}
 @keyframes nglow{0%,100%{filter:drop-shadow(0 0 2px var(--gc))}50%{filter:drop-shadow(0 0 14px var(--gc))}}
@@ -526,9 +530,24 @@ function flow(inModal){
     <text x="${o.x+46}" y="${o.y+40}" fill="var(--mu)" font-size="10">${esc(o.s)}</text>
     ${o.b?`<g><rect x="${o.x+W-30}" y="${o.y-8}" width="26" height="16" rx="8" fill="${o.c}"/><text x="${o.x+W-17}" y="${o.y+3.5}" text-anchor="middle" font-size="10" font-weight="800" fill="var(--on)">${o.b}</text></g>`:''}</g>`});
   g+=`<g font-size="11" font-weight="700" fill="var(--mu)"><text x="478" y="${colY(mks.length,0)-14}">① ผู้ทำงาน (${mks.length})</text><text x="660" y="${colY(rvs.length||1,0)-14}">② ผู้ตรวจ (${rvs.length})</text><text x="842" y="${MID-64}">③ Claude ตรวจรอบสุดท้าย</text></g>`;
-  return `<div class="canvas">${inModal?'':ZCI}<svg viewBox="0 0 990 ${HH}"><g class="zg">${g}</g></svg><div class="zoom">คลิกโหนดเพื่อดูรายละเอียดใน Inspector · ${anyBusy?'● กำลังทำงาน':'○ ว่าง'}</div></div>`;
+  return `${inModal?'':trainPanel()}<div class="canvas">${inModal?'':ZCI}<svg viewBox="0 0 990 ${HH}"><g class="zg">${g}</g></svg><div class="zoom">คลิกโหนดเพื่อดูรายละเอียดใน Inspector · ${anyBusy?'● กำลังทำงาน':'○ ว่าง'}</div></div>`;
 }
 
+
+function trainPanel(){
+  const T=S.training; if(!T||!T.seats||!Object.keys(T.seats).length)return '';
+  const any=Object.values(T.seats).some(x=>x.phase); if(!T.running&&!any)return '';
+  const PH={H_A_base:['ยาก · ชุดฝึก (หาจุดพลาด)',9],H_B_base:['ยาก · วัดก่อนเทรน',18],H_B_coached:['ยาก · วัดหลังใส่คู่มือ',18],M_coached_hard:['ถอยมาฝึกระดับกลาง',20],A_base:['กลาง · ชุดฝึก',10],B_base:['กลาง · วัดก่อน',20],B_coached:['กลาง · วัดหลัง',20]};
+  const STL={working:['กำลังทำข้อสอบ','var(--gr)'],waiting:['รอคิว / รอโควตาต่อชั่วโมง','var(--or)'],done:['เสร็จแล้ว','var(--bl)'],idle:['ไม่ได้รัน','var(--mu)']};
+  const ago=s=>s==null?'':s<60?s+' วิ':s<3600?Math.round(s/60)+' นาที':Math.round(s/3600)+' ชม.';
+  const rows=Object.entries(T.seats).map(([n,x])=>{const p=PH[x.phase]||[x.phase||'-',0],c=(x.counts||{})[x.phase]||0,pct=p[1]?Math.min(100,Math.round(c/p[1]*100)):0,st=STL[x.state]||STL.idle;
+    return `<div class="trow ${x.state==='working'?'tw':''}"><span class="tdot" style="background:${col(n)}"></span><b>${esc(n)}</b>
+      <span class="tst" style="color:${st[1]}">● ${st[0]}</span>
+      <span class="tph">${esc(x.state==='done'?(x.result||''):p[0])}${x.task&&x.state!=='done'?` · ข้อล่าสุด <code>${esc(x.task)}</code> ${x.ok?'✓':'✗'}`:''}</span>
+      ${x.state!=='done'&&p[1]?`<span class="tbar"><i style="width:${pct}%;background:${col(n)}"></i></span><span class="tn">${c}/${p[1]}</span>`:'<span></span><span></span>'}
+      <span class="tn">${x.ago!=null?ago(x.ago)+'ที่แล้ว':''}</span></div>`}).join('');
+  return `<div class="card tcard"><h3>การเทรนทีม <span style="font-weight:400;font-size:12px;color:var(--mu)">${T.running?'● กำลังรัน ('+(T.level==='hard'?'ระดับยาก':'ระดับกลาง')+')':'○ หยุดแล้ว (ผลล่าสุด 6 ชม.)'}</span></h3>${rows}</div>`;
+}
 /* ---------- bottom cards ---------- */
 function bottom(){
   const A=S.audit, ok=A.filter(a=>st(a)==='done'), er=A.filter(a=>st(a)==='err');
@@ -669,7 +688,7 @@ function studioView(){
   const use=filled.filter(x=>act.has(x.name)); let est=0,unk=false; use.forEach(x=>{if(x.cin==null||x.cout==null)unk=true;else est+=(x.cin+x.cout)*1000/1e6});
   const modes={'best-of-n':'ทุกช่องทำงานเดียวกัน Claude เลือกผลที่ดีที่สุด','vote':'ทุกช่องตอบคำถามเดียวกัน ใช้เสียงข้างมาก','split':'Claude แตกงานย่อยให้แต่ละช่องตามจุดแข็ง'};
   return provHtml()+`<div class="stu"><div class="card"><h3>Model Catalog <span style="color:var(--mu);font-weight:400">${S.catalog.length}</span></h3><div class="cat">${chips}</div></div>
-   <div class="card"><h3>Team Seats <button class="btn" data-addseat="1">+ เพิ่มช่อง</button></h3><div class="seats">${seats}</div>
+   ${trainPanel()}<div class="card"><h3>Team Seats <button class="btn" data-addseat="1">+ เพิ่มช่อง</button></h3><div class="seats">${seats}</div>
    <div class="ctl"><div><div class="hint" style="margin:0 0 4px">จำนวน AI ที่ใช้ในงาน</div><div class="stepper"><button data-n="-1">−</button><b>${P.n}</b><button data-n="1">+</button></div></div>
     <div><div class="hint" style="margin:0 0 4px">โหมด</div><div class="seg">${Object.keys(modes).map(m=>`<button data-mode="${m}" class="${P.mode===m?'on':''}">${m}</button>`).join('')}</div></div>
     <div><div class="hint" style="margin:0 0 4px">ค่าใช้จ่ายโดยประมาณ</div><b>${use.length} AI · ${est?'≈ $'+est.toFixed(4):'—'}</b><div class="hint" style="margin:0">${unk?'บางโมเดลยังไม่ตั้งราคา · ':''}สมมติ 1k token เข้า+ออก ต่อ AI</div></div>

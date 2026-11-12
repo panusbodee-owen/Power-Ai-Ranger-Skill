@@ -71,6 +71,26 @@ def report_md(c, job):
     return "\n".join(L)
 
 
+def training_state(c):
+    """สถานะการเทรน: ใครกำลังถูกทดสอบ อยู่ขั้นไหน ทำไปกี่ข้อ (อ่านจาก train_runs / train_levels / audit)"""
+    try:
+        alive = subprocess.run(["pgrep", "-f", "train(_hard)?[.]py run"], capture_output=True).returncode == 0
+        since = time.time() - 6 * 3600
+        out = {}
+        hard = bool(c.execute("select 1 from train_runs where phase like 'H_%' and ts>? limit 1", (since,)).fetchone())
+        done = {r[0]: r[1] for r in c.execute("select seat,result from train_levels where level='hard' and ts>?", (since,))} if hard else {}
+        inflight = {r[0]: r[1] for r in c.execute("select agent,substr(brief,1,60) from audit where job='train' and reply is null and blocked is null and t>?", (time.time() - 300,))}
+        for seat, in c.execute("select name from seats where catalog is not null order by rowid"):
+            last = c.execute("select phase,task,ok,err,ts from train_runs where seat=? and ts>? order by ts desc limit 1", (seat, since)).fetchone()
+            cnt = dict(c.execute("select phase,count(*) from train_runs where seat=? and ts>? group by phase", (seat, since)).fetchall())
+            st = "done" if seat in done else "working" if seat in inflight else ("waiting" if alive else "idle")
+            out[seat] = dict(state=st, phase=last[0] if last else None, task=last[1] if last else None, ok=last[2] if last else None,
+                             ago=int(time.time() - last[4]) if last else None, counts=cnt, result=done.get(seat), brief=inflight.get(seat))
+        return dict(running=alive, level="hard" if hard else "medium", seats=out)
+    except Exception as e:
+        return dict(running=False, error=type(e).__name__, seats={})
+
+
 def state():
     c = db()
     host = lambda u: urlparse(u).netloc
@@ -93,7 +113,7 @@ def state():
                 for n, u, k in c.execute("select name,base_url,api_key from gateways")]
     queue = dict(c.execute("select status,count(*) from tasks group by status").fetchall())
     busy = [dict(seat=ag, job=jb, since=t) for ag, jb, t in c.execute("select agent,job,t from audit where reply is null and blocked is null and t>? order by t", (time.time() - 300,))]  # เรียกโมเดลค้างอยู่ (เกิน 300 วิ ถือว่าหมดเวลา)
-    return dict(agents=agents, seats=seats, catalog=catalog, plan=plan, queue=queue, busy=busy, gateways=gateways, presets=PRESETS, roles=roles, tasks=tasks, audit=audit, notes=notes,
+    return dict(agents=agents, seats=seats, catalog=catalog, plan=plan, queue=queue, busy=busy, training=training_state(c), gateways=gateways, presets=PRESETS, roles=roles, tasks=tasks, audit=audit, notes=notes,
                 can_undo=bool(c.execute("select 1 from seat_log limit 1").fetchone()), worker=worker_running(), jobstats=job_stats(c),
                 taskinfo={i: dict(created=cr, finished=fi) for i, cr, fi in c.execute("select id,created,finished from tasks order by id desc limit 60")})
 

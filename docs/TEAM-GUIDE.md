@@ -13,10 +13,10 @@
 
 | ชื่อ | บทบาท | โมเดล | ถนัด | ผลเทรน (ก่อน→หลัง) |
 |---|---|---|---|---|
-| [worker](team/worker.md) | ผู้ตรวจสำรอง / งานสั้น | `deepseek-ai/deepseek-v4-flash-0731` | ตอบสั้น/คำนวณ, ทำตามรูปแบบที่สั่ง, ผลลัพธ์ JSON ยาว | 20/20 → 20/20 |
-| [intern](team/intern.md) | ผู้ทดสอบ | `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` | ตอบสั้น/คำนวณ, ทำตามรูปแบบที่สั่ง, ผลลัพธ์ JSON ยาว | 20/20 → 20/20 |
-| [seat3](team/seat3.md) | ผู้ช่วย Senior PD (Groq 120B) | `openai/gpt-oss-120b` | ตอบสั้น/คำนวณ, ทำตามรูปแบบที่สั่ง, ผลลัพธ์ JSON ยาว | 17/20 → 20/20 |
-| [seat4](team/seat4.md) | สำรอง (Groq) | `qwen/qwen3.8-27b` | ตอบสั้น/คำนวณ, ทำตามรูปแบบที่สั่ง, ผลลัพธ์ JSON ยาว | 18/20 → 18/20 |
-| [seat1](team/seat1.md) | เด็กฝึกงาน | `nvidia/nemotron-3.5-lightning-30b-a3b` | ทำตามรูปแบบที่สั่ง, ผลลัพธ์ JSON ยาว, ตรวจงาน (ตัดสิน pass/fail) | 19/20 → 18/20 |
-| [seat2](team/seat2.md) | Senior Product Designer (หลัก) | `nvidia/nemotron-3-ultra-550b-a55b` | ตอบสั้น/คำนวณ, ทำตามรูปแบบที่สั่ง, ผลลัพธ์ JSON ยาว | 18/20 → 20/20 |
-| [seat5](team/seat5.md) | ผู้ตรวจหลัก | `unsloth/qwen3.8-27b-nvfp4` | ตอบสั้น/คำนวณ, ทำตามรูปแบบที่สั่ง, ผลลัพธ์ JSON ยาว | 19/20 → 20/20 |
+| [worker](team/worker.md) | ผู้ตรวจสำรอง / งานสั้น | `deepseek-ai/deepseek-v4-flash-0731` | ดึงข้อมูลเป็น JSON, ตอบสั้น/คำนวณ, รวม/สรุปงาน | 20/20 → 20/20 |
+| [intern](team/intern.md) | ผู้ทดสอบ | `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` | ดึงข้อมูลเป็น JSON, ตอบสั้น/คำนวณ, รวม/สรุปงาน | 20/20 → 20/20 |
+| [seat3](team/seat3.md) | ผู้ช่วย Senior PD (Groq 120B) | `openai/gpt-oss-120b` | ดึงข้อมูลเป็น JSON, ตอบสั้น/คำนวณ, รวม/สรุปงาน | 17/20 → 20/20 |
+| [seat4](team/seat4.md) | สำรอง (Groq) | `qwen/qwen3.8-27b` | ตอบสั้น/คำนวณ, รวม/สรุปงาน, ทำตามรูปแบบที่สั่ง | 18/20 → 18/20 |
+| [seat1](team/seat1.md) | เด็กฝึกงาน | `nvidia/nemotron-3.5-lightning-30b-a3b` | รวม/สรุปงาน, ทำตามรูปแบบที่สั่ง, ตรวจงาน (ตัดสิน pass/fail) | 19/20 → 18/20 |
+| [seat2](team/seat2.md) | Senior Product Designer (หลัก) | `nvidia/nemotron-3-ultra-550b-a55b` | ดึงข้อมูลเป็น JSON, ตอบสั้น/คำนวณ, รวม/สรุปงาน | 18/20 → 20/20 |
+| [seat5](team/seat5.md) | ผู้ตรวจหลัก | `unsloth/qwen3.8-27b-nvfp4` | ดึงข้อมูลเป็น JSON, ตอบสั้น/คำนวณ, รวม/สรุปงาน | 19/20 → 20/20 |
