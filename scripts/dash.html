@@ -31,6 +31,7 @@ body{margin:0;background:var(--vig),var(--bg);background-repeat:no-repeat;color:
 :focus-visible{outline:2px solid var(--ac);outline-offset:2px}
 html{scrollbar-color:var(--ln2) transparent}
 button,select,input{font-family:inherit}
+.main.norail{grid-template-columns:1fr}.main.norail .rt{display:none}
 .app{display:grid;grid-template-columns:1fr;height:100vh}
 /* sidebar */
 .sb{background:var(--sb);border-right:1px solid var(--ln);padding:14px 12px;display:flex;flex-direction:column;gap:6px;overflow:auto}
@@ -140,6 +141,30 @@ td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .trow.tw{animation:nglow 1.3s ease-in-out infinite;--gc:var(--gr);border-radius:8px}.tdot{width:10px;height:10px;border-radius:50%}.tph{color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tbar{height:6px;background:var(--ln);border-radius:3px;overflow:hidden}.tbar i{display:block;height:100%}.tn{color:var(--mu);font-size:11px;text-align:right}
 @media(max-width:760px){.trow{grid-template-columns:12px 60px 1fr 60px}.trow .tph,.trow .tbar{display:none}}
+
+.now{max-width:1040px;width:100%;min-width:0;box-sizing:border-box;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.nhd{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:4px 2px 6px}
+.nhd h2{margin:0;font-size:24px;letter-spacing:-.01em;text-wrap:balance}.nhd p{margin:0;color:var(--mu);font-size:13px;flex:1;min-width:0}.nhd .btn{white-space:nowrap;margin-left:auto}
+.nlist,.njobs{list-style:none;margin:0;padding:0;background:var(--p);border:1px solid var(--ln);border-radius:12px;overflow:hidden}
+.nw{display:grid;grid-template-columns:36px minmax(150px,200px) 104px 1fr auto;gap:14px;align-items:center;padding:12px 16px;border-top:1px solid var(--ln)}
+.nw:first-child,.nj:first-child{border-top:0}
+.nav{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;background:var(--c)}
+.nw.idle .nav{opacity:.55}
+.nw.work{background:color-mix(in srgb,var(--gr) 7%,transparent)}
+.nw.work .nav{box-shadow:0 0 0 3px color-mix(in srgb,var(--gr) 35%,transparent);animation:npulse 1.6s cubic-bezier(.16,1,.3,1) infinite}
+@keyframes npulse{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--gr) 12%,transparent)}}
+.nwho{display:flex;flex-direction:column;min-width:0}.nwho b{font-size:14px}.nwho small{color:var(--mu);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nmod{font-variant-numeric:tabular-nums}
+.npill{justify-self:start;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap;background:color-mix(in srgb,var(--mu) 14%,transparent);color:var(--mu)}
+.npill.work{background:color-mix(in srgb,var(--gr) 16%,transparent);color:var(--gr)}.npill.wait{background:color-mix(in srgb,var(--or) 16%,transparent);color:var(--or)}.npill.err{background:color-mix(in srgb,var(--rd) 14%,transparent);color:var(--rd)}
+.nwhat{font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nw.idle .nwhat{color:var(--mu)}
+.nerr{color:var(--rd)}.nmeta{color:var(--mu);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.nsub{margin:10px 2px 0;font-size:14px;display:flex;align-items:center;gap:10px}.lnk{background:none;border:0;color:var(--ac);cursor:pointer;font:inherit;font-size:12px;padding:0}
+.nj{display:flex;gap:12px;align-items:center;padding:10px 16px;border-top:1px solid var(--ln);cursor:pointer;font-size:13px}.nj:hover{background:color-mix(in srgb,var(--ac) 6%,transparent)}
+.nj b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nj .nmu{margin-left:auto;white-space:nowrap}
+.nempty{padding:18px;color:var(--mu)}
+#rail.on{background:color-mix(in srgb,var(--ac) 14%,transparent)}
+@media(max-width:760px){.nw{grid-template-columns:32px 1fr auto;row-gap:4px}.nw .nwhat{grid-column:2/4;white-space:normal}.nw .nmeta{grid-column:2/4}.nwho small.nmod{display:none}}
+@media (prefers-reduced-motion:reduce){.nw.work .nav{animation:none}}
 .nglow{animation:nglow 1.3s ease-in-out infinite}
 .ndot{animation:blink 1s infinite}
 @keyframes nglow{0%,100%{filter:drop-shadow(0 0 2px var(--gc))}50%{filter:drop-shadow(0 0 14px var(--gc))}}
@@ -435,9 +460,9 @@ td{border-bottom:.5px solid var(--ln)}
     <h1><svg class="lg" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="7" fill="var(--ac)"/><circle cx="9" cy="14" r="2.4" fill="#fff"/><circle cx="19" cy="8.5" r="2.4" fill="#fff"/><circle cx="19" cy="19.5" r="2.4" fill="#fff"/><path d="M11.2 13l5.6-3.4M11.2 15l5.6 3.4" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>ศูนย์ควบคุมทีม AI <span class="draft" id="live">Live</span></h1>
     <div class="sp"></div>
     <button class="btn" id="theme" title="สลับโหมดสี: อัตโนมัติ → สว่าง → มืด" aria-label="สลับโหมดสี"></button>
-    <button class="btn" id="exp">Export log</button>
+    <button class="btn" id="rail" title="แสดง/ซ่อนแผงด้านขวา (ด่านตรวจ ประวัติ รายละเอียด)">แผงขวา</button><button class="btn" id="exp">Export log</button>
     <div class="tabsx" id="vt">
-      <button class="tabx" data-v="home">หน้าแรก</button><button class="tabx" data-v="design">ผังงาน</button><button class="tabx" data-v="studio">จัดทีม</button><button class="tabx" data-v="jobs">งานที่แจก</button><button class="tabx" data-v="usage">การใช้ AI</button><button class="tabx" data-v="audit">บันทึก</button>
+      <button class="tabx" data-v="now">ตอนนี้</button><button class="tabx" data-v="home">สั่งงาน</button><button class="tabx" data-v="design">ผังงาน</button><button class="tabx" data-v="studio">จัดทีม</button><button class="tabx" data-v="jobs">งานที่แจก</button><button class="tabx" data-v="usage">การใช้ AI</button><button class="tabx" data-v="audit">บันทึก</button>
     </div>
   </div>
   <div class="cen" id="cen"></div>
@@ -485,7 +510,7 @@ const isErr=a=>a.blocked!=null&&a.blocked.startsWith('error:');
 const isBlk=a=>a.blocked!=null&&!isErr(a);
 const st=a=>a.blocked!=null?'err':pend(a)?'work':'done';
 const NOJOB='(ไม่ระบุชื่องาน)';
-let S={agents:[],seats:[],catalog:[],roles:[],tasks:[],gateways:[],presets:[],plan:{n:2,mode:'best-of-n'},audit:[],notes:[]}, view='home', rtab='eval', selNode='claude', selJob=null, open=new Set(), pick=null, dragging=false, lastJ='', modal=false, mtab='seq', mjob=null, mev=null, EV=[], mz=1, mpx=0, mpy=0, NBOX=[0,0,990,450];
+let S={agents:[],seats:[],catalog:[],roles:[],tasks:[],gateways:[],presets:[],plan:{n:2,mode:'best-of-n'},audit:[],notes:[]}, view='now', rail=false, rtab='eval', selNode='claude', selJob=null, open=new Set(), pick=null, dragging=false, lastJ='', modal=false, mtab='seq', mjob=null, mev=null, EV=[], mz=1, mpx=0, mpy=0, NBOX=[0,0,990,450];
 
 function spark(vals,c,w=100,h=26){const m=Math.max(1,...vals),n=vals.length||1;
   const p=vals.map((v,i)=>[i*(w/Math.max(1,n-1)),h-2-(v/m)*(h-4)]);
@@ -547,6 +572,38 @@ function trainPanel(){
       ${x.state!=='done'&&p[1]?`<span class="tbar"><i style="width:${pct}%;background:${col(n)}"></i></span><span class="tn">${c}/${p[1]}</span>`:'<span></span><span></span>'}
       <span class="tn">${x.ago!=null?ago(x.ago)+'ที่แล้ว':''}</span></div>`}).join('');
   return `<div class="card tcard"><h3>การเทรนทีม <span style="font-weight:400;font-size:12px;color:var(--mu)">${T.running?'● กำลังรัน ('+(T.level==='hard'?'ระดับยาก':'ระดับกลาง')+')':'○ หยุดแล้ว (ผลล่าสุด 6 ชม.)'}</span></h3>${rows}</div>`;
+}
+
+/* ---------- ตอนนี้: ใครทำอะไรอยู่ ---------- */
+function errShort(b){b=String(b);const m=b.match(/HTTP (\d{3})/);if(m)return m[1]==='429'?'เกินโควตาผู้ให้บริการ (429)':'ผู้ให้บริการตอบ '+m[1];if(/BLOCK|เกิน|ห้าม/.test(b))return 'ถูกด่านตรวจบล็อก';return b.replace(/^error:\s*/,'').slice(0,50)}
+function nowView(){
+  const A=S.audit||[], T=(S.training&&S.training.seats)||{}, q=S.queue||{};
+  const dur=s=>s<60?Math.round(s)+' วิ':s<3600?Math.round(s/60)+' นาที':Math.round(s/3600)+' ชม.';
+  const PH={H_A_base:'ข้อสอบระดับยาก (ชุดฝึก)',H_B_base:'ข้อสอบระดับยาก',H_B_coached:'ข้อสอบระดับยาก หลังใส่คู่มือ',M_coached_hard:'ฝึกระดับกลาง',A_base:'ข้อสอบระดับกลาง (ชุดฝึก)',B_base:'ข้อสอบระดับกลาง',B_coached:'ข้อสอบระดับกลาง หลังใส่คู่มือ'};
+  const seats=(S.seats||[]).filter(x=>x.model);
+  const rows=seats.map(x=>{
+    const mine=A.filter(a=>a.agent===x.name), cur=mine.find(pend), last=mine.find(a=>!pend(a)), tr=T[x.name];
+    let k,label,what,meta='';
+    if(cur){const isTrain=cur.job==='train';k='work';label=isTrain?'กำลังสอบ':'กำลังทำงาน';
+      what=isTrain?(PH[tr&&tr.phase]||'ข้อสอบ'):`<b>${esc(cur.job||NOJOB)}</b> — ${esc(cur.brief.replace(/\s+/g,' ').slice(0,90))}`;meta='เริ่ม '+dur(now()-cur.t)+'ที่แล้ว'}
+    else if(tr&&tr.state==='waiting'){k='wait';label='รอคิวสอบ';what=PH[tr.phase]||'รอทำข้อสอบต่อ';meta='รอโควตาต่อชั่วโมง'}
+    else{k=last&&last.blocked!=null&&now()-last.t<900?'err':'idle';label=k==='err'?'ล้มล่าสุด':'ว่าง';
+      what=last?`ล่าสุด: <b>${esc(last.job||NOJOB)}</b>${last.blocked!=null?` <span class="nerr">${esc(errShort(last.blocked))}</span>`:''}`:'ยังไม่เคยได้งาน';
+      meta=last?dur(now()-last.t)+'ที่แล้ว'+(last.ms?` · ใช้ ${(last.ms/1000).toFixed(1)} วิ`:''):''}
+    const pos=(S.roles||[]).find(r=>r.name===x.position);
+    return {k,html:`<li class="nw ${k}"><span class="nav" style="--c:${col(x.name)}">${esc(x.name[0].toUpperCase())}</span>
+      <div class="nwho"><b>${esc(x.name)}</b><small>${esc(pos?pos.title:x.title||'')}</small><small class="nmod">${esc((x.model||'').split('/').pop())}</small></div>
+      <span class="npill ${k}">${label}</span><div class="nwhat">${what}</div><div class="nmeta">${meta}</div></li>`};
+  });
+  const ord={work:0,wait:1,err:2,idle:3}; rows.sort((a,b)=>ord[a.k]-ord[b.k]);
+  const nw=rows.filter(r=>r.k==='work').length, nwait=rows.filter(r=>r.k==='wait').length;
+  const head=nw?`${nw} ตัวกำลังทำงาน`:'ตอนนี้ไม่มีใครทำงาน';
+  const sub=[q.queued?`งานรอคิว ${q.queued}`:'',nwait?`${nwait} ตัวรอคิวสอบ`:'',S.worker?'':'ตัวรันงานไม่ได้เปิด'].filter(Boolean).join(' · ');
+  const jobs=jobNames().slice(0,5).map(k=>{const a=A.filter(z=>(z.job||NOJOB)===k),w=a.some(pend),e=a.some(z=>z.blocked!=null),who=[...new Set(a.map(z=>z.agent))];
+    return `<li class="nj" data-open="${esc(k)}" role="button" tabindex="0"><span class="npill ${w?'work':e?'err':'idle'}">${w?'กำลังทำ':e?'มีปัญหา':'เสร็จ'}</span><b>${esc(k)}</b><span class="nmu">${who.map(esc).join(', ')}</span></li>`}).join('');
+  return `<section class="now"><header class="nhd"><h2>${head}</h2>${sub?`<p>${sub}</p>`:''}<button class="btn pr" data-goto="home">สั่งงานใหม่</button></header>
+    <ul class="nlist">${rows.map(r=>r.html).join('')||'<li class="nempty">ยังไม่มีสมาชิกในทีม ไปที่แท็บ “จัดทีม” เพื่อใส่โมเดล</li>'}</ul>
+    ${jobs?`<h3 class="nsub">งานล่าสุด <button class="lnk" data-goto="jobs">ดูทั้งหมด</button></h3><ul class="njobs">${jobs}</ul>`:''}</section>`;
 }
 /* ---------- bottom cards ---------- */
 function bottom(){
@@ -911,7 +968,8 @@ function render(){
   document.querySelectorAll('#rt [data-r]').forEach(b=>b.classList.toggle('on',b.dataset.r===rtab));
   const qn=S.queue||{}, qw=(qn.queued||0)+(qn.running||0), busy=S.audit.some(pend)||qw>0; $('live').textContent=qw?`Queue ${qn.running||0} กำลังทำ · ${qn.queued||0} รอ`:(busy?'Working':'Live'); $('live').classList.toggle('idle',!busy);
   if(view==='home'&&document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#hform')&&document.activeElement.matches('textarea,input[type=text],select')){$('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;return}
-  $('cen').innerHTML=aboutBox()+(view==='home'?homeView():view==='design'?summary()+flow()+bottom():view==='studio'?studioView():view==='jobs'?jobsView():view==='usage'?usageView():auditView())+TERMS;
+  document.querySelector('.main').classList.toggle('norail',!(rail||view==='design'));$('rail').classList.toggle('on',rail);
+  $('cen').innerHTML=(view==='now'?'':aboutBox())+(view==='now'?nowView():view==='home'?homeView():view==='design'?summary()+flow()+bottom():view==='studio'?studioView():view==='jobs'?jobsView():view==='usage'?usageView():auditView())+TERMS;
   if(view==='design')applyCtx(CTX.i);
   $('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;
 }
@@ -949,6 +1007,7 @@ document.addEventListener('click',e=>{
   const ch=e.target.closest('[data-cat]'); if(ch){pick=pick===ch.dataset.cat?null:ch.dataset.cat;render();return}
   if(e.target.closest('select'))return;
   const sd=e.target.closest('[data-seat]'); if(sd&&pick){const p=pick;pick=null;post('/api/seat',{seat:sd.dataset.seat,catalog:p});return}
+  if(e.target.id==='rail'){rail=!rail;render();return}
   const v=e.target.closest('[data-v]'); if(v){view=v.dataset.v;render();if(view==='usage')loadUsage();return}
   const r=e.target.closest('[data-r]'); if(r){rtab=r.dataset.r;render();return}
   if(e.target.closest('[data-s]')){view='design';render();$('mon')?.scrollIntoView({behavior:'smooth'});return}
@@ -960,7 +1019,7 @@ document.addEventListener('click',e=>{
 $('exp').onclick=()=>{const b=new Blob([JSON.stringify({audit:S.audit,notes:S.notes},null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ai-team-log.json';a.click()};
 (async()=>{try{if(typeof loadUsage==='function'){U=await (await fetch('/api/usage')).json();uAt=Date.now()}}catch(e){}})();
 document.addEventListener('click',e=>{
-  const o=e.target.closest('[data-open]');if(o){selJob=o.dataset.open;jobPage=true;render();window.scrollTo(0,0);return}
+  const o=e.target.closest('[data-open]');if(o){selJob=o.dataset.open;jobPage=true;view='jobs';render();window.scrollTo(0,0);return}
   if(e.target.closest('[data-back]')){jobPage=false;render();return}
   const tg=e.target.closest('[data-tg]');if(tg){const k=tg.dataset.tg;open.has(k)?open.delete(k):open.add(k);render();return}
 });
