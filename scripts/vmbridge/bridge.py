@@ -8,7 +8,7 @@ import argparse, json, os, re, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TM = os.path.expanduser("~/.local/bin/terminal-mac")
-TEAM = os.path.join(HERE, "..", "team.py")  # scripts/team.py
+TEAM = os.path.join(HERE, "..", "team.py")
 OUT = os.path.join(HERE, "runs")
 ALLOWED = {"click", "double", "right", "type", "key", "scroll", "wait", "done"}
 BLOCK = re.compile(r"password|passwd|รหัสผ่าน|sudo|api[_-]?key|token", re.I)
@@ -21,6 +21,11 @@ Previous actions and results:
 {history}
 CURRENT SCREEN (step {step}/{steps}):
 {screen}
+Lessons from earlier runs (follow them):
+- After an action, check the CURRENT SCREEN text to see if it worked. If the same field still shows the old value after 2 tries, the app is not accepting that input: do NOT retry the same way. Use another way (a dropdown, a calendar/picker button, a menu) or finish with done and result "blocked: <field> does not accept typing".
+- Never repeat the same action more than 2 times in a row.
+- Some apps (Windows apps under Wine, like MetaTrader) may ignore typed text and arrow keys; prefer clicking list items and picker buttons there.
+- Finish early with done as soon as the goal is reached or clearly blocked; every step costs quota.
 Reply with exactly ONE JSON object and nothing else, one of:
 {{"action":"click","x":N,"y":N}} | {{"action":"double","x":N,"y":N}} | {{"action":"right","x":N,"y":N}}
 {{"action":"type","text":"..."}} (types into the focused field) | {{"action":"key","keys":"cmd+l"}} (e.g. return, tab, cmd+a, cmd+space)
@@ -95,6 +100,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     run = time.strftime("%Y%m%d-%H%M%S"); rdir = os.path.join(OUT, run); os.makedirs(rdir)
     job = f"VM {a.seat} {run}"
+    recent = []
     hist, log = [], {"seat": a.seat, "goal": a.goal, "steps": []}
     for i in range(1, a.steps + 1):
         shot = os.path.join(rdir, f"{i:02d}.png")
@@ -112,6 +118,11 @@ def main():
         elif act["action"] == "done":
             log["result"] = act.get("result", ""); log["steps"].append({"step": i, "action": act}); print(i, "DONE:", act.get("result")); break
         else:
+            key = json.dumps({k: v for k, v in act.items() if k != "why"}, sort_keys=True)
+            recent.append(key)
+            if len(recent) >= 3 and len(set(recent[-3:])) == 1:
+                res = "stopped: same action 3 times (stuck)"
+                log["steps"].append({"step": i, "action": act, "result": res}); print(i, res); break
             res = run_action(act); time.sleep(1.5)
         hist.append(f"{i}. {json.dumps(act, ensure_ascii=False) if act else reply.strip()[:120]} -> {res}")
         log["steps"].append({"step": i, "action": act, "result": res}); print(i, act, "->", res, flush=True)
