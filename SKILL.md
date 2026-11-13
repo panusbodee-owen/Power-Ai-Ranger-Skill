@@ -117,3 +117,7 @@ python3 ~/.claude/skills/ai-team/scripts/dash.py   # แล้วเปิด ht
 - ตำแหน่ง `senior_pd` (ทักษะ `product_strategy`) สำหรับงานออกแบบผลิตภัณฑ์/กลยุทธ์ ใช้โมเดลที่แรงที่สุดในทีม (เช่น Nemotron Ultra) ส่วน `reviewer` ควรเป็นอีกช่องหนึ่ง
 - ผู้ตรวจเห็นงานได้ไม่เกิน ~18,000 ตัวอักษร และเห็นส่วนท้ายของ brief (ตัวโจทย์และกติกา) ถ้างานยาวกว่านั้นให้แบ่งเป็นหลายงาน ไม่เช่นนั้นผู้ตรวจอาจรายงานว่า "ขาดหัวข้อท้ายๆ" ทั้งที่ครบ
 - ผู้ให้บริการที่เป็น MCP หรือ API สถิติ (เช่น `…/mcp`, `…/stats/v1`) ใส่เป็นช่อง AI ไม่ได้ ระบบต้องการ API แบบ OpenAI-compatible ที่มีทั้ง `/models` และ `/chat/completions`
+
+## ให้ลูกทีมใช้ Mac เสมือน (vmbridge)
+- ใช้ `scripts/vmbridge/bridge.py SEAT "เป้าหมาย"` คู่กับ [terminal-mac](https://github.com/govijr/terminal-mac): ลูกทีมอ่านจอเป็นข้อความ OCR แล้วสั่ง click/type/key/scroll ทีละขั้น (ดู `scripts/vmbridge/README.md`)
+- 1 ขั้น = 1 call ในโควตา; หัวหน้าต้องดูภาพใน `runs/` ก่อนรายงานว่าผ่าน
