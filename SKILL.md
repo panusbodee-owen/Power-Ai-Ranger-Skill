@@ -9,7 +9,7 @@ Claude คือหัวหน้า คิด แตกงาน เขีย�
 ติดตั้ง: คัดลอกโฟลเดอร์นี้ไปที่ `~/.claude/skills/ai-team/` (คำสั่งด้านล่างใช้ path นั้น) ค่า API เก็บใน `~/.ai-team/team.db`
 
 ## คู่มือสั่งงานรายคน (อ่านก่อนสั่งงานลูกทีม)
-อ่าน `docs/TEAM-GUIDE.md` และ `docs/team/<ชื่อ>.md` ก่อนส่ง brief: ระบุโมเดล, system prompt + คู่มือ (coaching) ที่ต้องใช้, งานที่ถนัด/ไม่ควรใช้, ตัวอย่างคำสั่ง และ curl/Python ที่เรียกได้ทันที (ไม่มี key) รายงานผลเทรนอยู่ที่ `docs/performance-*.md` สร้างใหม่หลังเทรนซ้ำด้วย `python3 scripts/train.py run && python3 scripts/train.py apply && python3 scripts/train.py report docs/performance-<วันที่>.md && python3 scripts/train.py guide docs/team`
+Playbooks งานที่ใช้บ่อยอยู่ `docs/playbooks/` อ่าน `docs/TEAM-GUIDE.md` และ `docs/team/<ชื่อ>.md` ก่อนส่ง brief: ระบุโมเดล, system prompt + คู่มือ (coaching) ที่ต้องใช้, งานที่ถนัด/ไม่ควรใช้, ตัวอย่างคำสั่ง และ curl/Python ที่เรียกได้ทันที (ไม่มี key) รายงานผลเทรนอยู่ที่ `docs/performance-*.md` สร้างใหม่หลังเทรนซ้ำด้วย `python3 scripts/train.py run && python3 scripts/train.py apply && python3 scripts/train.py report docs/performance-<วันที่>.md && python3 scripts/train.py guide docs/team`
 
 ## ลงทะเบียนลูกทีม (ผู้ใช้ทำเองในเทอร์มินัล)
 ```bash

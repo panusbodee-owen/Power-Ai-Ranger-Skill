@@ -5,7 +5,7 @@
       python3 train.py report OUT.md        สร้างรายงาน Performance
 ผลเก็บในตาราง train_runs / seat_coach (ไม่แตะ seat_skills โดยตรง)
 """
-import json, os, re, sqlite3, subprocess, sys, tempfile, threading, time
+import os, json, os, re, sqlite3, subprocess, sys, tempfile, threading, time
 from concurrent.futures import ThreadPoolExecutor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import team
@@ -272,6 +272,8 @@ def worker(seat, repeats):
 def cmd_run(repeats):
     c = conn()
     seats = [r[0] for r in c.execute("select name from seats where catalog is not null order by rowid")]
+    only = [x for x in os.environ.get("TRAIN_SEATS", "").split(",") if x]
+    if only: seats = [x for x in seats if x in only]
     c.close()
     with ThreadPoolExecutor(len(seats)) as ex:
         list(ex.map(lambda s: worker(s, repeats), seats))

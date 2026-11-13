@@ -1,22 +1,23 @@
 # seat4 — สำรอง (Groq)
 
-- โมเดล: `qwen/qwen3.8-27b`
-- Gateway: `groq` — base URL `https://api.groq.com/openai/v1`
-- ตัวแปร key (ตั้งเองในเครื่อง ห้ามใส่ในไฟล์): `AI_TEAM_KEY_GROQ`
-- ผลเทรน (ชุดทดสอบ B): ก่อนใส่คู่มือ 18/20 → หลัง 18/20 (ข้อผิดพลาดระบบ 0 ครั้ง ไม่นับคะแนน) — ดูรายงานฉบับเต็มใน docs/performance-*.md
+- โมเดล: `gpt-6-luna`
+- Gateway: `codex-cli` — base URL `cli://codex`
+- ตัวแปร key (ตั้งเองในเครื่อง ห้ามใส่ในไฟล์): `AI_TEAM_KEY_CODEX_CLI`
+- ผลเทรน (ชุดทดสอบ B): ก่อนใส่คู่มือ 19/20 → หลัง 20/20 (ข้อผิดพลาดระบบ 0 ครั้ง ไม่นับคะแนน) — ดูรายงานฉบับเต็มใน docs/performance-*.md
 
 ## ใช้กับงานแบบไหน
 
-- ตอบสั้น/คำนวณ
-- รวม/สรุปงาน
 - ทำตามรูปแบบที่สั่ง
-- ตรวจงาน (ตัดสิน pass/fail)
 - ผลลัพธ์ JSON ยาว
+- ดึงข้อมูลเป็น JSON
+- ตรวจงาน (ตัดสิน pass/fail)
+- รวม/สรุปงาน
 - เขียนโค้ดสั้น
+- ตอบสั้น/คำนวณ
 
 ## อย่าใช้กับงานแบบไหน
 
-- ดึงข้อมูลเป็น JSON
+- (ไม่พบทักษะที่ต่ำกว่า 50%)
 
 คะแนนทักษะจากงานจริงสะสม (ใช้จัดงานอัตโนมัติ): synthesis 0.50 (n=0), analysis 0.36 (n=2)
 
@@ -28,68 +29,67 @@
 คุณคือผู้ทำงาน: ทำตามโจทย์ให้ครบทุกข้อ ถูกต้อง กระชับ ถ้าได้รับข้อบกพร่องจากผู้ตรวจให้แก้ทุกข้อและตอบเป็นงานฉบับแก้ไขเต็ม
 ```
 
-คู่มือสั่งงานที่ได้จากการเทรน (ยังไม่เปิดใช้ในระบบ) — ต่อท้าย system prompt:
+คู่มือสั่งงานที่ได้จากการเทรน (เปิดใช้ในระบบแล้ว) — ต่อท้าย system prompt:
 
 ```
 คำแนะนำการทำงาน (เรียนรู้จากข้อผิดพลาดที่ผ่านมาของคุณ):
 - ตอบตรงตามรูปแบบที่สั่งเท่านั้น: ไม่มีคำนำ ไม่มีคำลงท้าย ไม่อธิบายเพิ่มเมื่อไม่ได้ขอ
-- คิดทีละขั้นให้ถูกก่อน (คำนวณตัวเลข แปลง พ.ศ.→ค.ศ. นับวันตามปฏิทินจริง) แล้วตอบเฉพาะผลสุดท้าย
-- ผู้ตรวจ: เทียบงานกับโจทย์ทีละข้อ (ตัวเลขถูกไหม ภาษาถูกไหม ความยาว/จำนวนข้อตรงไหม) ให้ pass=false เมื่อพบข้อผิดจริงเท่านั้น และ pass=true เมื่อถูกครบ
+- งานโค้ด: เขียน test ครบทุก route และต้องรองรับ Python 3.9 (ใส่ from __future__ import annotations)
 ```
 
-ที่มา: จากข้อผิดพลาด: wrong_value, review_wrong | ปิดใช้: ดึง JSON ถอยหลังในชุดวัด (2/2→0/2)
+ที่มา: lessons 2026-11-13 real work
 
 ## ตัวอย่างการสั่งงาน
 
-**ตอบสั้น/คำนวณ**
+**ทำตามรูปแบบที่สั่ง**
 
 คำสั่ง:
 
 ```
-คำนวณ 19*29 ตอบเฉพาะตัวเลขอย่างเดียว
+เขียนข้อดี 3 ข้อ เป็นรายการ 3 บรรทัดพอดี ขึ้นต้นด้วย '- ' ห้ามมีข้อความอื่น
 ```
 
 รูปแบบผลลัพธ์ที่คาดหวัง:
 
 ```
-551
+- ข้อ 1
+- ข้อ 2
+- ข้อ 3
 ```
 
-**รวม/สรุปงาน**
+**ผลลัพธ์ JSON ยาว**
 
 คำสั่ง:
 
 ```
-งานย่อย 1) ... 2) ... 3) ...
-
-รวมเป็นสรุปเดียวไม่เกิน 150 ตัวอักษร ต้องมีคำว่า ... (วางคำสั่งไว้ท้ายสุดเสมอ)
+สร้าง JSON array 12 รายการ คีย์ id, name ตอบ JSON ล้วน
 ```
 
 รูปแบบผลลัพธ์ที่คาดหวัง:
 
 ```
-สรุปหนึ่งย่อหน้า
+[{"id":1,"name":"..."}, ...]
 ```
 
 ## ข้อผิดพลาดที่ยังพบ (หลังใส่คู่มือ)
 
-- คำตอบผิด x2
+- ไม่พบในชุดทดสอบ
 
 ข้อควรรู้ทั่วไป: ตัดข้อความระหว่าง `<think>...</think>` ออกก่อนใช้ผลลัพธ์ และตรวจรูปแบบ (JSON) ด้วยโปรแกรมทุกครั้ง อย่าเชื่อว่าโมเดลทำตามรูปแบบเสมอ
 
 ## เรียกใช้ทันที
 
 ```bash
-export AI_TEAM_KEY_GROQ=...   # ใส่ key ของคุณเอง
-curl -s https://api.groq.com/openai/v1/chat/completions \
-  -H "Authorization: Bearer $AI_TEAM_KEY_GROQ" -H 'Content-Type: application/json' \
-  -d '{"model": "qwen/qwen3.8-27b", "messages": [{"role":"system","content":"<system prompt จากด้านบน>"},{"role":"user","content":"<คำสั่ง>"}]}'
+export AI_TEAM_KEY_CODEX_CLI=...   # ใส่ key ของคุณเอง
+curl -s cli://codex/chat/completions \
+  -H "Authorization: Bearer $AI_TEAM_KEY_CODEX_CLI" -H 'Content-Type: application/json' \
+  -d '{"model": "gpt-6-luna", "messages": [{"role":"system","content":"<system prompt จากด้านบน>"},{"role":"user","content":"<คำสั่ง>"}]}'
 ```
 
 ```python
 import os, json, urllib.request
-req = urllib.request.Request('https://api.groq.com/openai/v1/chat/completions',
-    json.dumps({'model': 'qwen/qwen3.8-27b', 'messages': [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': BRIEF}]}).encode(),
-    {'Authorization': 'Bearer ' + os.environ['AI_TEAM_KEY_GROQ'], 'Content-Type': 'application/json'})
+req = urllib.request.Request('cli://codex/chat/completions',
+    json.dumps({'model': 'gpt-6-luna', 'messages': [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': BRIEF}]}).encode(),
+    {'Authorization': 'Bearer ' + os.environ['AI_TEAM_KEY_CODEX_CLI'], 'Content-Type': 'application/json'})
 print(json.load(urllib.request.urlopen(req, timeout=120))['choices'][0]['message']['content'])
 ```
