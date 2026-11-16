@@ -463,6 +463,9 @@ def _up(c, model):
     return chain[chain.index(model) + 1] if model in chain[:-1] else None
 
 
+CODE_EDIT = re.compile(r"(?i)refactor|แก้บั๊ก|แก้\s*bug|fix\s+(?:the\s+)?bug|เพิ่มฟีเจอร์|implement|เปลี่ยนลายเซ็น|ลบฟังก์ชัน|แก้ไขฟังก์ชัน|แก้ฟังก์ชัน|แก้ไฟล์|ปรับโค้ด|เขียนโค้ดเพิ่ม|migrate|เปลี่ยน(?:ชื่อ|พารามิเตอร์)")
+
+
 def lane_stats(c, lane):
     """ผลจริงของทีมฟรีในเลนนี้จาก decide-result: (จำนวนงานที่รายงานผลแล้ว, อัตราผ่าน) หรือ None ถ้ายังไม่มี"""
     n, p = c.execute("select count(*), coalesce(sum(outcome='pass'),0) from decisions where lane=? and executor='team' and outcome is not null and coalesce(job,'')!='shadow'", (lane,)).fetchone()  # job 'shadow' = โจทย์สังเคราะห์ ไม่นับเป็นผลงานจริงของเลน
@@ -527,14 +530,25 @@ def decide(c, brief, chk=None, skill=None, tools=None, job=None, failed=0, prev=
         if row[0] >= 4 and (row[1] + 1) / (row[0] + 1.0) > float(get(c, "route:opus_share") or 0.3):
             d = claude("sonnet"); why.append(f"สัดส่วน Opus ของงาน '{job}' เกิน {float(get(c, 'route:opus_share')):.0%} → ใช้ Sonnet (Opus เก็บไว้ที่จุดตัดสินใจจริง)")
 
+    if CODE_EDIT.search(brief or "") and d["executor"] != "ask-user":
+        d["use_skill"] = "reasoning-structure"
+        why.append("เป็นงานแก้โค้ด → ทำ Reasoning Brief ก่อนลงมือ (skill reasoning-structure: blast.py + pre-mortem + convention + atomic plan แล้วรัน brief_check.py ให้ผ่าน)")
     did = c.execute("insert into decisions(t,job,lane,tier,executor,stakes,needs_tools,reason) values(?,?,?,?,?,?,?,?)",
                     (time.time(), job, lane, tier, d["executor"], int(pr["stakes"]), int(pr["needs_tools"]), "; ".join(why))).lastrowid
     c.commit()
     d.update({"id": did, "lane": lane, "tier": tier, "stakes": pr["stakes"], "needs_tools": pr["needs_tools"], "reason": why})
     if d["executor"] == "team":
+        try:  # จัดทีมให้เหมาะกับงาน (ผู้ทำ+ผู้ตรวจ ถ้างานต้องการ) — ล้มเหลวต้องไม่ทำให้ decide พัง
+            import crew
+            cr = crew.assemble(c, brief, chk, d.get("skill") or skill, d["tier"], False)
+            d["crew"] = cr
+        except Exception:
+            cr = None
         if skill and not d.get("skill"):
             d["skill"] = skill
         d["how"] = f'team.py submit "<brief>" --pool {d["pool"]} --tier {tier}' + (f' --needs {d["skill"]}' if d.get("skill") else "") + (f' --check {chk}' if chk else "") + (f' --job {job}' if job else "")
+        if d.get("crew") and d["crew"]["mode"] == "maker+reviewer":
+            d["how"] = d["crew"]["how"] + (f" --job {job}" if job else "")  # ทีมผู้ทำ+ผู้ตรวจที่จัดให้งานนี้
     elif d.get("model"):
         d["how"] = f'Agent(subagent_type="general-purpose", model="{d["model"]}")'
         if d.get("pre_draft"):

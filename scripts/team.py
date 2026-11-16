@@ -977,6 +977,8 @@ def main():
     p = sp.add_parser("tier"); p.add_argument("brief"); p.add_argument("--check"); p.add_argument("--skill"); p.add_argument("--pool", default="@auto"); p.add_argument("--tier", default="auto")
     p = sp.add_parser("decide"); p.add_argument("brief"); p.add_argument("--check"); p.add_argument("--skill"); p.add_argument("--tools", default="auto", choices=["auto", "yes", "no"])
     p.add_argument("--job"); p.add_argument("--failed", type=int, default=0); p.add_argument("--prev"); p.add_argument("--json", action="store_true")
+    p = sp.add_parser("crew"); p.add_argument("brief"); p.add_argument("--check"); p.add_argument("--skill"); p.add_argument("--tier", default="auto", choices=["auto", "light", "standard", "heavy"])
+    p.add_argument("--stakes", action="store_true"); p.add_argument("--role"); p.add_argument("--solo", action="store_true", help="ไม่ตั้งผู้ตรวจ"); p.add_argument("--job"); p.add_argument("--run", action="store_true", help="ส่งงานด้วยทีมที่จัดไว้ทันที"); p.add_argument("--json", action="store_true")
     p = sp.add_parser("decide-result"); p.add_argument("id", type=int); p.add_argument("outcome", choices=["pass", "fail"])
     p = sp.add_parser("lanes"); p.add_argument("args", nargs="*")
     p = sp.add_parser("limit"); p.add_argument("n", nargs="?", type=int); p.add_argument("--chars", type=int)
@@ -1137,6 +1139,26 @@ def main():
                 print(f"{sk}\t{se}\t{sc:.2f}\tงานจริง {n_} ครั้ง\t{nt}")
         elif x.cmd == "route":
             print(f"ลำดับที่ระบบจะเลือกสำหรับ '{x.skill}':", " > ".join(f"{se} ({skill_score(c, se, x.skill):.2f})" for se in auto_pool(c, x.skill, 0.0)))
+        elif x.cmd == "crew":
+            import crew
+            cr = crew.assemble(c, x.brief, x.check, x.skill, None if x.tier == "auto" else x.tier, True if x.stakes else None, x.role, 1 if x.solo else 2)
+            if x.json:
+                print(json.dumps(cr, ensure_ascii=False, indent=1))
+            else:
+                print(f"ระดับงาน: {cr['tier']} ({cr.get('tier_why', '')}) · รูปแบบทีม: {cr['mode']}" + (f" · แก้ได้ {cr['rounds']} รอบ" if cr["rounds"] else ""))
+                for m in cr["members"]:
+                    print(f"  {m['role']:<9} {m['seat']:<8} แรง {m['strength']:.2f} — {m['why']}")
+                print(f"  ผู้ชี้ขาดสุดท้าย: {cr['final']}" + (" · Head ต้องอ่านตรวจก่อนใช้" if cr["head_review"] else ""))
+                for n_ in cr["notes"]:
+                    print("  •", n_)
+                print("  สั่งงาน:", cr["how"])
+            if x.run:
+                if not cr["members"]:
+                    sys.exit("ไม่มีช่องให้จัดทีม")
+                fl = parse_flow(cr["flow"]) if cr["flow"] else None
+                pool_ = None if fl else ",".join([cr["members"][0]["seat"]] + cr["fallback"])
+                tid = submit(c, x.brief, pool_, x.job, x.check, fl, cr["rounds"], None if fl else (cr["members"][0]["role"] if cr["members"][0]["role"] != "maker" else None), x.skill, cr["tier"])
+                print(f"ส่งงาน #{tid} ด้วยทีมนี้แล้ว (รัน: team.py worker)")
         elif x.cmd == "budget":
             print("\n".join(routing.budget_cmd(c, x.args)))
         elif x.cmd == "spend":

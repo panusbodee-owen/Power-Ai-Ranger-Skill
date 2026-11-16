@@ -638,6 +638,84 @@ class TestRanking(Base):
         self.assertEqual(v["share"]["total"], 1); self.assertEqual(len(v["recent"]), 1); self.assertEqual(v["mode"], "free-first")
 
 
+class TestCrew(Base):
+    """จัดทีมให้เหมาะกับงาน: กี่คน ใครทำหน้าที่อะไร พร้อมเหตุผล"""
+    def setUp(self):
+        super().setUp()
+        for tb in ("shadow_results", "seat_skills", "decisions"):
+            self.c.execute(f"delete from {tb}")
+        self.c.commit()
+
+    def team3(self, strong=("a", "b", "c")):
+        for i, s in enumerate(strong):
+            self.seat(s, 0, 0, url=f"https://gw{i}.test/v1", skills={"code": 0.9, "review": 0.85, "decision_calc": 0.9})
+
+    def test_light_task_is_solo(self):
+        import crew
+        self.team3(); cr = crew.assemble(self.c, "สรุปข้อความนี้เป็น 3 บรรทัด", chk="notempty")
+        self.assertEqual((cr["mode"], len(cr["members"]), cr["rounds"]), ("solo", 1, 0)); self.assertFalse(cr["flow"]); self.assertIn("--pool", cr["how"])
+
+    def test_verifiable_standard_task_is_solo_but_heavy_gets_reviewer(self):
+        import crew
+        self.team3()
+        self.assertEqual(crew.assemble(self.c, "x" * 3000, chk="py:t.py", tier="standard")["mode"], "solo")
+        cr = crew.assemble(self.c, "x" * 3000, chk="py:t.py", tier="heavy")
+        self.assertEqual(cr["mode"], "maker+reviewer"); self.assertEqual(cr["final"], "ตัวเช็กอัตโนมัติ"); self.assertFalse(cr["head_review"])
+
+    def test_judgment_without_check_gets_independent_reviewer_on_other_gateway(self):
+        import crew
+        self.team3(); cr = crew.assemble(self.c, "ช่วยตัดสินใจเลือกแนวทางออกแบบสถาปัตยกรรมระหว่างสองแบบนี้ พร้อมข้อดีข้อเสีย")
+        self.assertEqual(cr["mode"], "maker+reviewer"); mk, rv = cr["members"]
+        self.assertNotEqual(mk["seat"], rv["seat"]); self.assertEqual(rv["role"], "reviewer"); self.assertIn("คนละเกตเวย์", rv["why"])
+        self.assertEqual(cr["rounds"], 1); self.assertTrue(cr["head_review"]); self.assertIn("--flow", cr["how"]); self.assertEqual(cr["flow"], f"{mk['role']}@{mk['seat']}>reviewer@{rv['seat']}")
+        self.assertNotIn(rv["seat"], cr["fallback"]); self.assertNotIn(mk["seat"], cr["fallback"])
+
+    def test_stakes_final_is_opus(self):
+        import crew
+        self.team3(); cr = crew.assemble(self.c, "ลบข้อมูลลูกค้าที่ซ้ำออกจากระบบ")
+        self.assertEqual((cr["final"], cr["tier"], cr["stakes"], cr["mode"]), ("opus", "heavy", True, "maker+reviewer"))
+
+    def test_no_qualified_reviewer_means_no_reviewer_and_says_why(self):
+        import crew
+        self.seat("a", 0, 0, skills={"review": 0.9}); self.seat("weak", 0, 0, url="https://gw9.test/v1", skills={"review": 0.2, "code": 0.2})
+        cr = crew.assemble(self.c, "เปรียบเทียบข้อดีข้อเสียของสองแผนแล้วแนะนำหนึ่งทาง", skill="review", tier="standard")
+        self.assertEqual(cr["mode"], "solo"); self.assertTrue(any("ไม่มีช่องอื่น" in n for n in cr["notes"]))
+
+    def test_cooling_seat_is_not_picked_as_reviewer_and_single_seat_team_is_solo(self):
+        import crew
+        self.team3(("a", "b"))
+        self.c.execute("insert into audit(t,agent,model,brief,blocked) values(?,?,?,?,?)", (time.time(), "b", "m", "x", "error: HTTP 429 retry_after 600")); self.c.commit()
+        self.assertEqual(crew.assemble(self.c, "เปรียบเทียบข้อดีข้อเสียของสองแผน", tier="standard")["mode"], "solo")
+        self.assertEqual(crew.assemble(self.c, "x", tier="light")["members"][0]["seat"], "a")
+
+    def test_role_hint_and_empty_team(self):
+        import crew
+        self.assertEqual(crew.pick_role("ช่วยเขียนเคสทดสอบให้ใบสั่งขาย"), "tester"); self.assertEqual(crew.pick_role("แปลบทความนี้"), "translator"); self.assertEqual(crew.pick_role("ทำอะไรสักอย่าง"), "maker")
+        self.c.execute("delete from seats"); self.c.commit()
+        self.assertEqual(crew.assemble(self.c, "งาน")["mode"], "none")
+
+    def test_decide_attaches_crew_and_pair_how_has_flow(self):
+        self.team3(); self.c.execute("delete from settings where k like 'route:%' or k like 'exec:%'"); self.c.commit()
+        d = routing.decide(self.c, "ช่วยตัดสินใจเลือกแนวทางออกแบบสถาปัตยกรรมระหว่างสองแบบนี้ พร้อมข้อดีข้อเสีย", job="J")
+        self.assertEqual(d["executor"], "team"); self.assertEqual(d["crew"]["mode"], "maker+reviewer")
+        self.assertIn("--flow", d["how"]); self.assertIn("--needs decision_calc", d["how"]); self.assertIn("--job J", d["how"])
+
+
+class TestReasoningStructureHint(TestDecide):
+    def test_code_edit_tasks_get_reasoning_structure_hint_in_decision_and_reason(self):
+        d = self.d("refactor ฟังก์ชัน try_pool ให้รับพารามิเตอร์ใหม่", tools="yes")
+        self.assertEqual(d["use_skill"], "reasoning-structure"); self.assertTrue(any("Reasoning Brief" in w for w in d["reason"]))
+        self.assertEqual(self.d("แก้บั๊กตัดเงินซ้ำในไฟล์ pay.py", tools="yes")["use_skill"], "reasoning-structure")
+
+    def test_non_code_tasks_have_no_hint(self):
+        self.assertNotIn("use_skill", self.d("สรุปข้อความนี้เป็น 3 บรรทัด", chk="notempty"))
+        self.assertNotIn("use_skill", self.d("เข้า Odoo กดสร้างใบสั่งซื้อ 50 ใบ"))
+
+    def test_premortem_role_hint(self):
+        import crew
+        self.assertEqual(crew.pick_role("ช่วยทำ pre-mortem ของการแก้ฟังก์ชันนี้"), "premortem"); self.assertEqual(crew.pick_role("จำลองความพังของแผนนี้"), "premortem")
+
+
 class TestMigration(unittest.TestCase):
     def test_ensure_is_idempotent_and_additive(self):
         c = team.db(); routing.ensure(c); routing.ensure(c)

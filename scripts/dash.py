@@ -167,6 +167,23 @@ def act(path, b):
         else:
             tid = submit(c, brief, "@auto", job, None, None, 0, role)
         return {"ok": True, "id": tid, "job": job, "worker_started": start_worker()}
+    elif path in ("/api/crew", "/api/crew_submit"):
+        import crew
+        brief = str(b.get("brief") or "").strip()
+        if len(brief) < 5:
+            raise ValueError("เขียนโจทย์สั้นเกินไป")
+        chk = str(b.get("check") or "").strip() or None
+        tier = str(b.get("tier") or "auto")
+        cr = crew.assemble(c, brief, chk, str(b.get("skill") or "").strip() or None, tier if tier in ("light", "standard", "heavy") else None)
+        if path == "/api/crew":
+            return cr
+        if not cr["members"]:
+            raise ValueError("ไม่มีช่องให้จัดทีม")
+        fl = parse_flow(cr["flow"]) if cr["flow"] else None  # จัดทีมซ้ำฝั่งเซิร์ฟเวอร์ ไม่เชื่อ flow จากหน้าเว็บ
+        job = (str(b.get("job") or "").strip() or brief.split("\n")[0][:40])
+        pool = None if fl else ",".join([cr["members"][0]["seat"]] + cr["fallback"])
+        tid = submit(c, brief, pool, job, chk, fl, cr["rounds"], None, str(b.get("skill") or "").strip() or None, cr["tier"])
+        return {"ok": True, "id": tid, "job": job, "crew": cr, "worker_started": start_worker()}
     elif path == "/api/requeue":
         r = c.execute("select job,pool,brief,chk,flow,rounds,asrole,skill from tasks where id=?", (int(b["id"]),)).fetchone()
         if not r:
