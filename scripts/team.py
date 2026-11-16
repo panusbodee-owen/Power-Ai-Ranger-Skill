@@ -2,7 +2,7 @@
 """ทีม AI ใต้ Claude (Head): gateways -> catalog (โมเดล) -> seats (ช่องทีม)
   add SEAT --base-url URL --model M [--title T] [--role R]   ทางลัด: สร้าง gateway+catalog+seat (key ถามแบบซ่อน/env AI_TEAM_KEY)
   connect openai|gemini|xai|groq|openrouter|nvidia [--filter F] [--seat S]   ต่อผู้ให้บริการสำเร็จรูป (key: env AI_TEAM_KEY_<NAME> หรือถามแบบซ่อน)
-  connect codex-cli|agy-cli|claude-cli|gemini-cli [--model M] [--seat S]   ใช้ CLI ที่ล็อกอินแพ็กเกจไว้แล้วเป็นลูกทีม (ไม่ใช้ API key)
+  connect codex-cli|agy-cli|claude-cli|gemini-cli|vibe-cli [--model M] [--seat S]   ใช้ CLI ที่ล็อกอินแพ็กเกจไว้แล้วเป็นลูกทีม (ไม่ใช้ API key)
   presets                                            รายชื่อผู้ให้บริการสำเร็จรูป
   gateway add|ls | catalog add|ls|import|test|price|remove | seat ls|add|set|clear|remove|undo
   plan [set --n N --mode best-of-n|vote|split]      ค่าที่ผู้ใช้เลือกในแดชบอร์ด
@@ -181,7 +181,9 @@ CLI_TOOLS = {
     "gemini": {"title": "Gemini CLI (บัญชี Google)", "bin": "gemini", "login": "gemini (ล็อกอินครั้งแรกในเทอร์มินัล)"},
     "claude": {"title": "Claude Code (บัญชี Claude)", "bin": "claude", "login": "claude (ล็อกอินครั้งแรกในเทอร์มินัล)"},
     "agy":    {"title": "Antigravity CLI (บัญชี Google)", "bin": "agy", "login": "agy (ล็อกอินครั้งแรกในเทอร์มินัล)"},
+    "vibe":   {"title": "Mistral Vibe CLI (คีย์ Mistral ใน Keychain)", "bin": "vibe", "login": "vibe --setup"},
 }
+os.environ["PATH"] = os.environ.get("PATH", "") + os.pathsep + os.path.expanduser("~/.local/bin")  # vibe/uv ติดตั้งที่นี่
 
 
 def codex_models():
@@ -205,6 +207,8 @@ def cli_argv(tool, model, outfile, prompt):
         return ["claude", "-p", "--permission-mode", "plan", "--output-format", "text"] + ([] if dflt else ["--model", model]), prompt
     if tool == "agy":
         return ["agy", "--mode", "plan", "--sandbox", "--print-timeout", "280s"] + ([] if dflt else ["--model", model]) + ["-p=" + prompt], None
+    if tool == "vibe":  # headless, โหมดถาม, เปิดเฉพาะ read_file, จำกัดรอบ/เวลา
+        return ["vibe", "--agent", "ask", "--enabled-tools", "read_file", "--max-turns", "4", "--time-limit", "270"] + ([] if dflt else ["--model", model]) + ["-p", prompt], None
     raise RuntimeError(f"ไม่รู้จัก CLI '{tool}'")
 
 

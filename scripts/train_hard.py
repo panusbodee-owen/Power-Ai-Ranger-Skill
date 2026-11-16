@@ -4,7 +4,7 @@
 -> ถ้ายังไม่ถึง 75% ถอยไปฝึกที่ระดับกลาง (ชุด B เดิม) ด้วยคู่มือใหม่ เพื่อดูว่าระดับสูงสุดที่ผ่านคือระดับไหน
 ใช้:  python3 train_hard.py run | report OUT.md | apply
 """
-import datetime as dt, json, os, re, sqlite3, sys, time
+import os, datetime as dt, json, os, re, sqlite3, sys, time
 from concurrent.futures import ThreadPoolExecutor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import train as T
@@ -255,6 +255,8 @@ def worker(seat, repeats):
 def cmd_run(repeats=2):
     c = conn()
     seats = [r[0] for r in c.execute("select name from seats where catalog is not null order by rowid")]
+    only = [x for x in os.environ.get("TRAIN_SEATS", "").split(",") if x]
+    if only: seats = [x for x in seats if x in only]
     c.close()
     with ThreadPoolExecutor(len(seats)) as ex:
         list(ex.map(lambda s: worker(s, repeats), seats))
