@@ -126,6 +126,7 @@ th{text-align:left;color:var(--mu);font-weight:600;padding:6px 8px;border-bottom
 td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
 .stu{display:grid;grid-template-columns:260px 1fr;gap:14px}
 .cat{display:flex;flex-direction:column;gap:8px;max-height:62vh;overflow:auto}
+.pill{display:inline-block;border:1px solid var(--ln);border-radius:9px;padding:0 7px;font-size:10.5px;line-height:17px}
 .chip{border:1px solid var(--ln);border-radius:9px;padding:8px 10px;background:var(--p2);cursor:grab;user-select:none}
 .chip:hover,.chip.pick{border-color:var(--bl)}
 .chip.pick{box-shadow:0 0 0 1px var(--bl) inset}
@@ -1030,8 +1031,61 @@ function summary(){
   </section>`;
 }
 
-const GROUPS={now:['now'],work:['home','jobs'],team:['studio','usage','audit']};
-const SUBL={home:'สั่งงาน',jobs:'งานที่แจก',studio:'จัดทีม',usage:'การใช้ AI',audit:'บันทึก'};
+let RK=null,RT=null,rkAt=0;
+async function loadRank(){try{const [a,b]=await Promise.all([fetch('/api/ranking').then(r=>r.json()),fetch('/api/routing').then(r=>r.json())]);RK=a;RT=b;rkAt=Date.now();if(view==='ranking'||view==='routing')render()}catch(e){}}
+setInterval(()=>{if((view==='ranking'||view==='routing')&&Date.now()-rkAt>15000)loadRank()},5000);
+const pct=v=>v==null?'—':Math.round(v*100)+'%';
+const tcol=v=>v==null?'var(--mu)':v>=.85?'var(--gr)':v>=.6?'var(--or)':'var(--rd)';
+const bar=(v,c)=>`<div style="height:8px;background:var(--hair);border-radius:4px;min-width:90px"><div style="width:${Math.max(0,Math.min(1,v||0))*100}%;height:100%;background:${c};border-radius:4px"></div></div>`;
+function rankingView(){
+  if(!RK)return '<div class="card" style="color:var(--mu)">กำลังโหลดอันดับ…</div>';
+  const nm=Object.fromEntries(RK.seats.map(x=>[x.seat,x]));
+  const rows=RK.seats.map(x=>{const c=col(x.seat),tot=x.calls_ok+x.errors,ev=x.evidence.map(e=>`${e.name}: ${pct(e.score)} (${e.n})`).join('\n')||'ยังไม่มีหลักฐานคุณภาพ';
+    return `<tr><td style="font-weight:800;font-size:16px;color:${x.rank&&x.rank<=3?'var(--ac)':'var(--mu)'}">${x.rank?'#'+x.rank:'—'}</td>
+    <td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};margin-right:7px"></span><b>${esc(x.title||x.seat)}</b>${x.cli?' <span class="pill">CLI</span>':''}<div style="color:var(--mu);font-size:10.5px;margin-left:16px">${esc(x.seat)} · ${esc(x.model)}</div></td>
+    <td style="min-width:130px" title="${esc(ev)}">${x.score==null?'<span style="color:var(--mu)">ยังไม่วัด</span>':bar(x.score,tcol(x.score))}</td>
+    <td style="text-align:right;font-weight:700;color:${tcol(x.score)}" title="${esc(ev)}">${pct(x.score)}</td>
+    <td style="text-align:right" title="${esc(ev)}">${pct(x.quality)}</td>
+    <td style="text-align:right;color:${tcol(x.reliability)}" title="สำเร็จ ${x.calls_ok} / ผิดพลาด ${x.errors} (ไม่นับที่ถูกบล็อกด้วยเพดาน ${x.blocked})">${pct(x.reliability)}</td>
+    <td style="text-align:right;color:${x.errors?'var(--rd)':'var(--mu)'}">${x.errors}${x.truncated?` <span style="color:var(--or)" title="คำตอบถูกตัด (โทเคนคิดกินงบ)">+${x.truncated} ตัด</span>`:''}</td>
+    <td style="text-align:right;color:var(--mu)">${x.avg_ms?(x.avg_ms/1000).toFixed(1)+' วิ':'—'}</td>
+    <td style="text-align:right;color:var(--mu)" title="${x.reason_share!=null?'โทเคนคิด '+pct(x.reason_share)+' ของโทเคนออก':'ผู้ให้บริการไม่รายงานโทเคนคิด'}">${x.spend_calls?fmtN(Math.round(x.avg_out_tok)):'—'}</td>
+    <td>${x.thin?'<span class="pill" style="color:var(--or)" title="หลักฐานน้อย อันดับยังไม่นิ่ง">หลักฐานน้อย</span> ':''}${x.cooling?'<span class="pill" style="color:var(--rd)" title="กำลังพักจาก 402/429">พักอยู่</span>':''}</td></tr>`}).join('');
+  const tiers=[['light','งานเบา'],['standard','งานมาตรฐาน'],['heavy','งานหนัก/คุณภาพสูง']].map(([k,l])=>{const o=RK.tiers[k]||[];
+    return `<div class="card" style="flex:1;min-width:210px"><h4 style="margin:0 0 2px">${l}</h4><div style="color:var(--mu);font-size:11px;margin-bottom:8px">เกณฑ์ฝีมือขั้นต่ำ ${RK.bars[k]}</div>
+    ${o.slice(0,4).map((s,i)=>`<div style="display:flex;align-items:center;gap:8px;margin:5px 0"><span style="width:18px;color:var(--mu);font-size:11px">${i+1}</span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${col(s.seat)}"></span><b style="font-size:12.5px">${esc((nm[s.seat]||{}).title||s.seat)}</b><span style="margin-left:auto;color:var(--mu);font-size:11px">ฝีมือ ${s.score}</span></div>`).join('')}</div>`}).join('');
+  return `<div style="display:flex;flex-direction:column;gap:12px">
+  <div class="card"><h4 style="margin:0 0 4px">จัดอันดับ AI ในทีม: ฝีมือดีและพลาดน้อยที่สุด</h4>
+    <div style="color:var(--mu);font-size:11.5px;margin-bottom:10px">${esc(RK.formula)} · เอาเมาส์วางที่คะแนนเพื่อดูหลักฐาน</div>
+    <div style="overflow:auto"><table><tr><th></th><th>ช่อง</th><th></th><th style="text-align:right">คะแนนรวม</th><th style="text-align:right">คุณภาพ</th><th style="text-align:right">น่าเชื่อถือ</th><th style="text-align:right">พลาด</th><th style="text-align:right">เวลาตอบ</th><th style="text-align:right">โทเคนออก/ครั้ง</th><th></th></tr>${rows}</table></div></div>
+  <div><div style="font-weight:700;margin:2px 0 8px">ระบบจะเรียกใครก่อน ตามความยากของงาน</div><div style="display:flex;gap:10px;flex-wrap:wrap">${tiers}</div>
+  <div style="color:var(--mu);font-size:11px;margin-top:6px">ลำดับนี้มาจาก routing.rank ตัวเดียวกับตอนส่งงานจริง (ฝีมือรวมก่อน แล้วความเร็ว/ราคา — ตอนนี้ทุกช่องไม่มีราคาจึงเรียงตามฝีมือ) งานที่ระบุทักษะเฉพาะ (เช่น decision_calc) จะใช้คะแนนทักษะนั้นแทน</div></div></div>`;
+}
+function routingView(){
+  if(!RT)return '<div class="card" style="color:var(--mu)">กำลังโหลดข้อมูล routing…</div>';
+  const R=RT,kpi=(l,v,s,c)=>`<div class="card" style="flex:1;min-width:160px"><div style="color:var(--mu);font-size:11px">${l}</div><div style="font-size:22px;font-weight:800;color:${c||'var(--tx)'}">${v}</div><div style="color:var(--mu);font-size:11px">${s||''}</div></div>`;
+  const sh=R.share,shp=sh.total?Math.round(sh.team*100/sh.total):null,d0=R.caps[0];
+  const capRow=c=>{const p=c.cap_tokens?c.tokens/c.cap_tokens:null;return `<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>ทีมฟรี ${c.scope}</span><span style="color:var(--mu)">${fmtN(Math.round(c.tokens))} โทเคน${c.cap_tokens?' / เพดาน '+fmtN(c.cap_tokens):' (ไม่จำกัด)'}${c.cap_usd?` · $${c.usd.toFixed(2)} / $${c.cap_usd}`:''}</span></div>${p==null?'':bar(p,p>=.8?'var(--or)':'var(--gr)')}</div>`};
+  const lanes=[['action','ลงมือ/กด'],['general','ทั่วไป'],['judgment','ตัดสินใจ'],['bulk','งานเบาเป็นชุด']].map(([k,l])=>`<tr><td>${l}</td><td><b>${esc(R.lanes[k]||'ถามผู้ใช้')}</b></td></tr>`).join('');
+  const mx=Math.max(1,...R.days.map(d=>d.team+d.claude));
+  const days=`<div style="display:flex;align-items:flex-end;gap:4px;height:90px">${R.days.map(d=>`<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%" title="${new Date(d.t*1000).toLocaleDateString('th-TH')} · ทีมฟรี ${fmtN(Math.round(d.team))} · Claude ${fmtN(Math.round(d.claude))}"><div style="height:${d.claude/mx*100}%;background:var(--or);border-radius:2px 2px 0 0"></div><div style="height:${d.team/mx*100}%;background:var(--cy)"></div></div>`).join('')}</div><div style="display:flex;gap:12px;font-size:11px;color:var(--mu);margin-top:4px"><span><i style="display:inline-block;width:8px;height:8px;background:var(--cy);border-radius:2px"></i> ทีมฟรี</span><span><i style="display:inline-block;width:8px;height:8px;background:var(--or);border-radius:2px"></i> Claude</span><span>14 วัน</span></div>`;
+  const ex=e=>e==='team'?'<span class="pill" style="color:var(--cy)">ทีมฟรี</span>':`<span class="pill" style="color:var(--or)">${esc(e.replace('subagent:','Claude '))}</span>`;
+  const rec=R.recent.map(r=>`<tr><td style="color:var(--mu)">#${r.id}</td><td>${esc(r.lane)}</td><td>${ex(r.executor)}${r.stakes?' <span class="pill" style="color:var(--rd)">เสี่ยงสูง</span>':''}</td><td style="max-width:420px;color:var(--mu);font-size:11.5px">${esc((r.reason||'').slice(0,160))}</td><td>${r.outcome==='pass'?'<span style="color:var(--gr)">ผ่าน</span>':r.outcome==='fail'?'<span style="color:var(--rd)">ไม่ผ่าน</span>':'<span style="color:var(--mu)">รอรายงานผล</span>'}</td></tr>`).join('')||'<tr><td colspan="5" style="color:var(--mu)">ยังไม่มีการตัดสิน (ใช้ team.py decide)</td></tr>';
+  const learned=R.learned.length?R.learned.map(l=>`<div style="font-size:12px;margin:4px 0">เลน <b>${esc(l.lane)}</b>: ทีมฟรีผ่าน ${pct(l.rate)} จาก ${l.n} งาน ${l.skip?'<span style="color:var(--or)">→ ข้ามไป Claude ตรง</span>':''}</div>`).join(''):'<div style="color:var(--mu);font-size:12px">ยังไม่มีผลรายงานพอ (ต้อง ≥ '+esc(R.learn_min)+' งานต่อเลน ด้วย decide-result)</div>';
+  const sets=[...new Set(R.shadow.map(x=>x.set))];
+  const shadow=sets.map(s=>{const r=R.shadow.filter(x=>x.set===s).sort((a,b)=>b.correct/b.total-a.correct/a.total);return `<div style="margin:8px 0"><div style="font-size:12px;font-weight:700">ชุด ${esc(s)} <span style="color:var(--mu);font-weight:400">(${r[0].total} ข้อ ตรวจด้วยเฉลย)</span></div>${r.map(x=>`<div style="display:flex;align-items:center;gap:8px;margin:3px 0;font-size:12px"><span style="width:70px">${esc(x.side)}</span><div style="flex:1">${bar(x.correct/x.total,tcol(x.correct/x.total))}</div><span style="width:110px;text-align:right;color:var(--mu)">${x.correct}/${x.total}${x.answered<x.total?` · ตอบได้ ${x.answered}`:''}</span></div>`).join('')}</div>`}).join('')||'<div style="color:var(--mu);font-size:12px">ยังไม่มีผล shadow</div>';
+  const tc=R.tier_cost.length?`<table><tr><th>ระดับ</th><th style="text-align:right">งาน</th><th style="text-align:right">โทเคน</th></tr>${R.tier_cost.map(t=>`<tr><td>${esc(t.tier)}</td><td style="text-align:right">${t.n}</td><td style="text-align:right">${fmtN(Math.round(t.tokens))}</td></tr>`).join('')}</table><div style="color:var(--mu);font-size:11px;margin-top:4px">งานที่ถูกยกระดับแล้ว ${R.escalated} งาน</div>`:'<div style="color:var(--mu);font-size:12px">ยังไม่มีข้อมูลต้นทุนต่อระดับ</div>';
+  return `<div style="display:flex;flex-direction:column;gap:12px">
+  <div style="display:flex;gap:10px;flex-wrap:wrap">${kpi('โหมด',esc(R.mode),R.mode==='free-first'?'ฟรีทำก่อน Claude เฉพาะที่จำเป็น':'judgment → Opus เสมอ','var(--ac)')}${kpi('งานที่ตัดสินไว้ให้ทีมฟรี',shp==null?'—':shp+'%',`${sh.team} ทีมฟรี · ${sh.claude} Claude (จาก ${sh.total})`,'var(--cy)')}${kpi('โทเคนทีมฟรีวันนี้',fmtN(Math.round(d0.tokens)),d0.cap_tokens?'เพดาน '+fmtN(d0.cap_tokens):'ไม่จำกัด')}${kpi('โทเคน Claude วันนี้',fmtN(Math.round(R.claude_day.tokens)),R.claude_day.cap?'เพดานเตือน '+fmtN(R.claude_day.cap):'บันทึกด้วย claude-log (เตือนเท่านั้น)','var(--or)')}</div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap"><div class="card" style="flex:1;min-width:300px"><h4 style="margin:0 0 6px">เพดานค่าใช้จ่าย</h4>${R.caps.map(capRow).join('')}<div style="margin-top:10px">${days}</div></div>
+  <div class="card" style="flex:1;min-width:260px"><h4 style="margin:0 0 6px">เลนไหนใช้ใคร</h4><table>${lanes}</table><div style="font-size:11.5px;color:var(--mu);margin-top:6px">กลุ่มฟรี ${esc(R.lanes.free_pool)} · เพดานสัดส่วน Opus ${pct(+R.opus_share)} · ยกระดับหลังล้ม ${esc(R.escalate_after)} ครั้ง${R.cooling.length?`<br><span style="color:var(--rd)">ช่องที่พักอยู่: ${esc(R.cooling.join(', '))}</span>`:''}</div>
+  <h4 style="margin:12px 0 4px">เรียนรู้จากผลจริง</h4>${learned}</div></div>
+  <div class="card"><h4 style="margin:0 0 6px">การตัดสินล่าสุด</h4><div style="overflow:auto"><table><tr><th>#</th><th>เลน</th><th>ผู้ทำ</th><th>เหตุผล</th><th>ผล</th></tr>${rec}</table></div></div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap"><div class="card" style="flex:1;min-width:300px"><h4 style="margin:0 0 6px">Shadow: ฟรี vs Claude (ตรวจด้วยเฉลย)</h4>${shadow}<div style="font-size:11px;color:var(--mu)">ตัวอย่างเล็ก (16 ข้อต่อชุด) และเป็นโจทย์สังเคราะห์ ใช้ดูแนวโน้ม ไม่ใช่การรับประกัน</div></div>
+  <div class="card" style="flex:1;min-width:260px"><h4 style="margin:0 0 6px">ต้นทุนต่อระดับงาน (ทีมฟรี)</h4>${tc}</div></div></div>`;
+}
+const GROUPS={now:['now'],work:['home','jobs'],team:['studio','usage','ranking','routing','audit']};
+const SUBL={home:'สั่งงาน',jobs:'งานที่แจก',studio:'จัดทีม',usage:'การใช้ AI',ranking:'Ranking',routing:'Routing',audit:'บันทึก'};
 const grpOf=v=>Object.keys(GROUPS).find(g=>GROUPS[g].includes(v))||'now';
 function render(){
   if(view==='now')view='now';
@@ -1043,7 +1097,7 @@ function render(){
   const qn=S.queue||{}, qw=(qn.queued||0)+(qn.running||0), busy=S.audit.some(pend)||qw>0; $('live').textContent=qw?`Queue ${qn.running||0} กำลังทำ · ${qn.queued||0} รอ`:(busy?'Working':'Live'); $('live').classList.toggle('idle',!busy);
   const ae=document.activeElement;if((view==='home'&&ae&&ae.closest&&ae.closest('#hform')&&ae.matches('textarea,input[type=text],select'))||(view==='studio'&&ae&&ae.matches&&ae.matches('.stu2 select'))){$('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;return}
   document.querySelector('.main').classList.toggle('norail',!rail);$('rail').classList.toggle('on',rail);
-  $('cen').innerHTML=(view==='now'?'':aboutBox())+(view==='now'?'<h2 class="ovh">ผังการทำงานของทีม</h2>'+flow()+nowView()+trainPanel()+summary()+bottom():view==='home'?homeView():view==='studio'?studioView():view==='jobs'?jobsView():view==='usage'?usageView():auditView())+TERMS;
+  $('cen').innerHTML=(view==='now'?'':aboutBox())+(view==='now'?'<h2 class="ovh">ผังการทำงานของทีม</h2>'+flow()+nowView()+trainPanel()+summary()+bottom():view==='home'?homeView():view==='studio'?studioView():view==='jobs'?jobsView():view==='usage'?usageView():view==='ranking'?rankingView():view==='routing'?routingView():auditView())+TERMS;
   if(view==='now')applyCtx(CTX.i);
   $('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;
 }
@@ -1082,7 +1136,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('select'))return;
   const sd=e.target.closest('[data-seat]'); if(sd&&pick){const p=pick;pick=null;post('/api/seat',{seat:sd.dataset.seat,catalog:p});return}
   if(e.target.id==='rail'){rail=!rail;render();return}
-  const v=e.target.closest('[data-v]'); if(v){view=v.dataset.v;render();if(view==='usage')loadUsage();return}
+  const v=e.target.closest('[data-v]'); if(v){view=v.dataset.v;render();if(view==='usage')loadUsage();if(view==='ranking'||view==='routing')loadRank();return}
   const r=e.target.closest('[data-r]'); if(r){rtab=r.dataset.r;render();return}
   if(e.target.closest('[data-s]')){view='design';render();$('mon')?.scrollIntoView({behavior:'smooth'});return}
   const nd=e.target.closest('[data-n]'); if(nd){selNode=nd.dataset.n;rtab='insp';render();return}

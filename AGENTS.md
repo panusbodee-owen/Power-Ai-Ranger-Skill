@@ -20,6 +20,8 @@ python3 scripts/team.py list               # seats and their models
 | Read results | `python3 scripts/team.py results --job NAME` |
 | Several seats, compare | `python3 scripts/team.py run --seats a,b --mode best-of-n "brief"` |
 | Recent calls | `python3 scripts/team.py log 20` |
+| Budget caps / spend | `python3 scripts/team.py budget` · `python3 scripts/team.py spend` (never raise a cap without the human's approval) |
+| Preview routing | `python3 scripts/team.py tier "brief" --skill code --pool "@makers"` |
 | Dashboard | `python3 scripts/dash.py` → http://localhost:8790 |
 
 ## Rules for the Head

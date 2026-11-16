@@ -199,6 +199,10 @@ class H(BaseHTTPRequestHandler):
             from urllib.parse import parse_qs
             job = (parse_qs(urlparse(self.path).query).get("job") or [""])[0]
             self._send(200, report_md(db(), job).encode(), "text/markdown")
+        elif self.path in ("/api/ranking", "/api/routing"):
+            import rank
+            c = db()
+            self._send(200, json.dumps(rank.ranking(c) if self.path == "/api/ranking" else rank.routing_view(c), ensure_ascii=False, default=str).encode())
         elif self.path == "/api/state":
             self._send(200, json.dumps(state(), ensure_ascii=False).encode())
         else:

@@ -13,6 +13,7 @@ DB: ~/.ai-team/team.db (env AI_TEAM_DB) — ไม่มีคำสั่งใ
 """
 import argparse, collections, queue, shutil, subprocess, tempfile, threading, concurrent.futures as cf, getpass, json, os, re, sqlite3, sys, time, urllib.error, urllib.request
 from urllib.parse import urlparse
+import routing
 
 DB = os.environ.get("AI_TEAM_DB", os.path.expanduser("~/.ai-team/team.db"))
 BLOCK = [r"sk-[A-Za-z0-9]{20,}", r"(?i)api[_-]?key\s*[:=]", r"\b\d{13}\b", r"(?i)password\s*[:=]"]
@@ -149,6 +150,7 @@ def db():
     ensure_roles(c)
     ensure_skills(c)
     migrate(c)
+    routing.ensure(c)
     os.chmod(DB, 0o600)
     return c
 
@@ -226,18 +228,33 @@ def chat_cli(tool, model, role, brief, timeout=300):
         return text.strip()
 
 
-def chat(url, key, model, role, brief, timeout=180):
+def chat(url, key, model, role, brief, timeout=180, max_tokens=None, extra=None):
+    routing.tl.usage = None  # usage จริงของการเรียกนี้ (ถ้าผู้ให้บริการส่งมา) ให้ call() เอาไปปิดยอดงบ
+    routing.tl.finish = None  # finish_reason ของคำตอบ (length = ถูกตัดเพราะ max_tokens)
+    routing.tl.xapplied = None  # พารามิเตอร์พิเศษที่ผู้ให้บริการรับไว้จริงในการเรียกนี้
     if url.startswith("cli://"):
         return chat_cli(url[6:], model, role, brief, max(timeout, 300))
-    body = json.dumps({"model": model, "messages": [{"role": "system", "content": role or ""}, {"role": "user", "content": brief}]}).encode()
-    req = urllib.request.Request(url.rstrip("/") + "/chat/completions", body, {"Authorization": f"Bearer {key}", "Content-Type": "application/json", **UA})
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return json.load(r)["choices"][0]["message"]["content"] or ""
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(f"HTTP {e.code} {e.read()[:160].decode(errors='replace')}")
-    except Exception as e:
-        raise RuntimeError(type(e).__name__)
+    payload = {"model": model, "messages": [{"role": "system", "content": role or ""}, {"role": "user", "content": brief}]}
+    if max_tokens:
+        payload["max_tokens"] = int(max_tokens)
+    for attempt in (0, 1):
+        pl = dict(payload, **extra) if (extra and attempt == 0) else payload
+        body = json.dumps(pl).encode()
+        req = urllib.request.Request(url.rstrip("/") + "/chat/completions", body, {"Authorization": f"Bearer {key}", "Content-Type": "application/json", **UA})
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                d = json.load(r)
+                routing.tl.usage = d.get("usage")
+                ch = d["choices"][0]
+                routing.tl.finish = ch.get("finish_reason")
+                routing.tl.xapplied = sorted(extra) if (extra and attempt == 0) else None
+                return ch["message"].get("content") or ""
+        except urllib.error.HTTPError as e:
+            if e.code == 400 and extra and attempt == 0:  # ผู้ให้บริการไม่รับพารามิเตอร์พิเศษ: ลองใหม่แบบไม่มี (400 ไม่เสียโทเคน)
+                continue
+            raise RuntimeError(f"HTTP {e.code} {e.read()[:160].decode(errors='replace')}")
+        except Exception as e:
+            raise RuntimeError(type(e).__name__)
 
 
 def resolve(c, seat):
@@ -272,15 +289,36 @@ def call(c, seat, brief, job=None, role_ov=None):
     if why:
         c.execute("insert into audit(t,agent,model,brief,blocked,job) values(?,?,?,?,?,?)", (time.time(), seat, model, brief, why, job)); c.commit()
         return False, f"[BLOCKED] {why}"
+    cli_ = url.startswith("cli://")
+    kind, gmsg, sid = routing.reserve(c, seat, model, r[5], r[6], role, brief, job, cli_)  # จองงบแบบอะตอมมิกก่อนเรียก
+    if kind == "skip":  # ช่องนี้ใช้ไม่ได้ภายใต้เพดาน (เช่น ไม่มีราคา) ให้ pool ลองช่องอื่น
+        return False, f"[SKIP] {gmsg}"
+    if kind == "block":
+        c.execute("insert into audit(t,agent,model,brief,blocked,job) values(?,?,?,?,?,?)", (time.time(), seat, model, brief, gmsg, job)); c.commit()
+        return False, f"[BLOCKED] {gmsg}"
     rid = c.execute("insert into audit(t,agent,model,brief,job) values(?,?,?,?,?)", (time.time(), seat, model, brief, job)).lastrowid
+    if sid is not None:
+        c.execute("update spend set audit_id=? where id=?", (rid, sid))
     c.commit()
     t0 = time.time()
+    mt = int(routing.get(c, "guard:max_tokens") or 0) or None
+    xtra = routing.extra_for(c, r[4], getattr(routing.tl, "tier", None), getattr(routing.tl, "esc", 0))  # ลดการคิด: เฉพาะรอบแรกของงานเบา/มาตรฐาน
     try:
-        reply = chat(url, key, model, role, brief)
+        reply = chat(url, key, model, role, brief, max_tokens=mt, extra=xtra or None)
     except Exception as e:
+        routing.release(c, sid)
         c.execute("update audit set blocked=? where rowid=?", (f"error: {e}", rid)); c.commit()
         return False, f"[ERROR] {seat}: {e}"
-    c.execute("update audit set reply=?, ms=? where rowid=?", (reply, int((time.time() - t0) * 1000), rid)); c.commit()
+    routing.settle(c, sid, getattr(routing.tl, "usage", None), reply, r[5], r[6], cli_)
+    xa = getattr(routing.tl, "xapplied", None)
+    if sid is not None and xa:
+        c.execute("update spend set xparam=? where id=?", (",".join(xa), sid))
+    c.execute("update audit set reply=?, ms=? where rowid=?", (reply, int((time.time() - t0) * 1000), rid))
+    if getattr(routing.tl, "finish", None) == "length" and not reply.strip():
+        # โทเคนคิดกินงบ max_tokens หมดจนไม่มีคำตอบ: รายงานเป็น "ถูกตัด" แยกจากคำตอบว่าง (ไม่ใช่ปัญหาคุณภาพ ไม่ทำให้ช่องถูกพัก)
+        c.execute("update audit set blocked=? where rowid=?", ("error: truncated (finish_reason=length, ไม่มีคำตอบ)", rid)); c.commit()
+        return False, f"[TRUNCATED] {seat}: คำตอบถูกตัดก่อนเริ่ม (โทเคนคิดใช้งบ max_tokens หมด) ลองเพิ่ม max_tokens หรือลดการคิด"
+    c.commit()
     return True, reply
 
 
@@ -386,6 +424,8 @@ def run(c, a):
         sys.exit("ไม่มีช่องที่จะรัน")
     est, unk = estimate(c, seats, briefs)
     print(f"[ประเมิน] {len(seats)} AI · ≈ ${est:.4f}" + (" (บางโมเดลยังไม่ตั้งราคา)" if unk else "") + " · สมมติตอบ ~1000 token")
+    if a.budget is not None and unk:
+        sys.exit("[BLOCKED] มีโมเดลที่ยังไม่ตั้งราคา ประเมินงบไม่ได้ (ราคาไม่ทราบไม่ใช่ราคาฟรี) — ตั้งด้วย `catalog price NAME --in-cost X --out-cost Y` (ฟรี = 0 0)")
     if a.budget is not None and est > a.budget:
         sys.exit(f"[BLOCKED] ประเมิน ${est:.4f} เกินงบ ${a.budget}")
 
@@ -433,7 +473,7 @@ def role_skill(c, name):
     return r[0] if r else None
 
 
-def submit(c, brief, pool, job=None, chk=None, flow=None, rounds=0, asrole=None, needs=None):
+def submit(c, brief, pool, job=None, chk=None, flow=None, rounds=0, asrole=None, needs=None, tier=None):
     skill = needs or (role_skill(c, flow[0]["role"]) if flow else role_skill(c, asrole))
     pool = expand_pool(c, (pool or "").split(","), skill)
     if flow:
@@ -446,8 +486,14 @@ def submit(c, brief, pool, job=None, chk=None, flow=None, rounds=0, asrole=None,
     for sname in pool:
         if not c.execute("select 1 from seats where name=?", (sname,)).fetchone():
             raise ValueError(f"ไม่พบช่อง '{sname}'")
-    tid = c.execute("insert into tasks(job,pool,brief,chk,status,created,flow,rounds,asrole,skill) values(?,?,?,?,'queued',?,?,?,?,?)",
-                    (job, ",".join(pool), brief, chk, time.time(), json.dumps(flow, ensure_ascii=False) if flow else None, rounds, asrole, skill)).lastrowid
+    if tier not in (None, "auto", "off") + tuple(routing.TIERS):
+        raise ValueError(f"tier ต้องเป็น auto|off|{'|'.join(routing.TIERS)}")
+    rtier, rnote = None, None
+    if tier != "off" and routing.get(c, "route:enabled") == "1":
+        rtier, why = routing.classify(brief, chk, skill, tier if tier in routing.TIERS else None)
+        rnote = f"{rtier}: {why}"
+    tid = c.execute("insert into tasks(job,pool,brief,chk,status,created,flow,rounds,asrole,skill,tier,route_note) values(?,?,?,?,'queued',?,?,?,?,?,?,?)",
+                    (job, ",".join(pool), brief, chk, time.time(), json.dumps(flow, ensure_ascii=False) if flow else None, rounds, asrole, skill, rtier, rnote)).lastrowid
     c.commit()
     return tid
 
@@ -494,7 +540,7 @@ def run_py_check(test_path, text):
 
 def claim(c):
     c.execute("begin immediate")
-    r = c.execute("select id,job,pool,brief,chk,attempts,flow,rounds,asrole,skill from tasks where status='queued' order by id limit 1").fetchone()
+    r = c.execute("select id,job,pool,brief,chk,attempts,flow,rounds,asrole,skill,tier from tasks where status='queued' order by id limit 1").fetchone()
     if r:
         c.execute("update tasks set status='running',started=?,attempts=attempts+1 where id=?", (time.time(), r[0]))
     c.commit()
@@ -595,17 +641,22 @@ def race_call(c, order, n, brief, job, role_ov, sems, busy, lock, valid, hedge, 
     return False, last, None
 
 
-def try_pool(c, pool, brief, job, role_ov, sems, busy, lock, exclude=(), avoid_gw=None, skill=None, valid=None):
+def try_pool(c, pool, brief, job, role_ov, sems, busy, lock, exclude=(), avoid_gw=None, skill=None, valid=None, tier=None):
     """ลองช่องใน pool: เรียงตามความถนัด (skill) ก่อน แล้วตามเกตเวย์ที่ว่าง/ต่างเกตเวย์จาก avoid_gw  คืน (ok, text, seat, err)"""
     gw = lambda sname: (c.execute("select k.gateway from seats s join catalog k on k.name=s.catalog where s.name=?", (sname,)).fetchone() or ["?"])[0]
     cands = [x for x in pool if x not in exclude] or list(pool)
     if skill:  # ตัดช่องที่ไม่เหมาะกับงานนี้ทิ้ง (คะแนน < 0.4) ถ้ายังเหลือตัวเลือกอื่น
         good = [x for x in cands if skill_score(c, x, skill) >= 0.4]
         cands = good or cands
+    score = lambda x: skill_score(c, x, skill) if skill else quality(c, x)
     last = ""
     for rnd in range(2):
+        skips = 0
         with lock:
-            order = sorted(cands, key=lambda x: (-round(skill_score(c, x, skill) if skill else quality(c, x), 1), gw(x) == avoid_gw, busy.get(gw(x), 0), avg_ms(c, x)))
+            if tier in routing.TIERS:  # routing: ถูกที่สุดที่ฝีมือถึงเกณฑ์ของระดับงาน (heavy = ฝีมือก่อน) ข้ามช่องที่กำลังพักจาก 402/429
+                order = routing.rank(c, cands, tier, score, lambda x: avg_ms(c, x), lambda x: busy.get(gw(x), 0), gw, avoid_gw)
+            else:
+                order = sorted(routing.healthy(c, cands), key=lambda x: (-round(score(x), 1), gw(x) == avoid_gw, busy.get(gw(x), 0), avg_ms(c, x)))
         rn = int(setting(c, "race_n", 1))
         if rn >= 2 and len(order) >= 2 and rnd == 0:  # แข่งกัน: ส่งให้หลายช่อง เอาคำตอบแรกที่ใช้ได้
             ok_r, text_r, seat_r = race_call(c, order, rn, brief, job, role_ov, sems, busy, lock, valid, float(setting(c, "race_hedge_s", 6)), gw)
@@ -631,6 +682,9 @@ def try_pool(c, pool, brief, job, role_ov, sems, busy, lock, exclude=(), avoid_g
             last = text
             if text.startswith("[BLOCKED]"):
                 return False, text, sname, "blocked"
+            skips += text.startswith("[SKIP]")
+        if order and skips == len(order):  # ทุกช่องถูกข้ามเพราะเพดาน/ราคา: ลองซ้ำก็ไม่ต่าง รายงานเป็น blocked ไม่ใช่ error
+            return False, last, None, "blocked"
         time.sleep(8)
     return False, last, None, "error"
 
@@ -668,7 +722,7 @@ def parse_verdict(text):
 
 
 def run_flow(c, t, sems, busy, lock):
-    tid, job, pool, brief, chk, _, flow, rounds, asrole, skill = t
+    tid, job, pool, brief, chk, _, flow, rounds, asrole, skill, tier = t
     stages = json.loads(flow)
     mk, rv = stages[0], (stages[1] if len(stages) > 1 else None)
     mskill = mk.get("skill") or skill
@@ -683,7 +737,7 @@ def run_flow(c, t, sems, busy, lock):
     for rnd in range(int(rounds or 0) + 1):
         prev = out[:8000] + ("\n...(ตัดส่วนท้ายเพื่อประหยัดความยาว)" if len(out) > 8000 else "")
         prompt = brief if rnd == 0 else f"{brief}\n\n--- งานเดิมของคุณ\n{prev}\n\n--- ข้อบกพร่องที่พบ (แก้ให้ครบทุกข้อแล้วส่งงานฉบับเต็ม)\n{issues}"
-        ok, text, mseat, err = try_pool(c, mk["pool"], prompt, job, role_prompt(c, mk["role"]), sems, busy, lock, skill=mskill)
+        ok, text, mseat, err = try_pool(c, mk["pool"], prompt, job, role_prompt(c, mk["role"]), sems, busy, lock, skill=mskill, tier=tier)
         trace.append({"stage": mk["role"], "round": rnd, "seat": mseat, "ok": ok})
         if not ok:
             return end(err or "error", out, text)
@@ -725,17 +779,50 @@ def run_flow(c, t, sems, busy, lock):
     end("done" if good else "check_failed", out, why)
 
 
+def escalate(c, tid, tier, pool, used_seat, skill, why):
+    """งานตรวจไม่ผ่านที่ระดับต่ำ: ส่งกลับเข้าคิวที่ระดับสูงขึ้นหนึ่งขั้น (ไม่เกิน route:max_escalations รอบ และต้องเปลี่ยนตัวเลือกได้จริง)"""
+    if tier not in routing.TIERS or routing.get(c, "route:escalate") != "1":
+        return False
+    n = c.execute("select coalesce(escalated,0) from tasks where id=?", (tid,)).fetchone()[0]
+    if n >= int(routing.get(c, "route:max_escalations") or 1):
+        return False
+    score = lambda x: skill_score(c, x, skill) if skill else quality(c, x)
+    nt = routing.next_tier(c, tier, pool, used_seat, score, lambda x: avg_ms(c, x))
+    if not nt:
+        return False
+    note = f"ยกระดับ {tier}→{nt} เพราะ {used_seat} ตรวจไม่ผ่าน: {(why or '')[:120]}"
+    c.execute("update tasks set status='queued',tier=?,escalated=?,route_note=coalesce(route_note,'')||' | '||?,finished=null where id=?", (nt, n + 1, note, tid))
+    c.commit()
+    return True
+
+
 def process(c, t, sems, busy, lock):
-    tid, job, pool, brief, chk, _, flow, rounds, asrole, skill = t
+    routing.tl.task, routing.tl.tier = t[0], t[10]  # ให้ guardrails ติดป้ายงาน/ระดับกับโทเคนที่ใช้ (คิดต้นทุนยกระดับ)
+    routing.tl.esc = (c.execute("select coalesce(escalated,0) from tasks where id=?", (t[0],)).fetchone() or [0])[0]  # >0 = รอบยกระดับ ต้องคิดเต็มที่
+    try:
+        return _process(c, t, sems, busy, lock)
+    finally:
+        routing.tl.task = routing.tl.tier = None
+        routing.tl.esc = 0
+
+
+def _process(c, t, sems, busy, lock):
+    tid, job, pool, brief, chk, _, flow, rounds, asrole, skill, tier = t
     if flow:
-        return run_flow(c, t, sems, busy, lock)
+        run_flow(c, t, sems, busy, lock)
+        r_ = c.execute("select status,used_seat,error from tasks where id=?", (tid,)).fetchone()
+        if r_ and r_[0] in ("check_failed", "rejected"):
+            escalate(c, tid, tier, json.loads(flow)[0]["pool"], r_[1], json.loads(flow)[0].get("skill") or skill, r_[2])
+        return
     ov = role_prompt(c, asrole) if asrole else None
-    ok, text, seat, err = try_pool(c, pool.split(","), brief, job, ov, sems, busy, lock, skill=skill)
+    ok, text, seat, err = try_pool(c, pool.split(","), brief, job, ov, sems, busy, lock, skill=skill, tier=tier)
     if ok:
         good, why = run_check(chk, text)
         c.execute("update tasks set status=?,result=?,error=?,used_seat=?,finished=? where id=?", ("done" if good else "check_failed", text, why, seat, time.time(), tid))
         if skill:
             learn(c, seat, skill, good)
+        if not good:
+            escalate(c, tid, tier, pool.split(","), seat, skill, why)
     elif err == "blocked":
         c.execute("update tasks set status='blocked',error=?,used_seat=?,finished=? where id=?", (text, seat, time.time(), tid))
     else:
@@ -861,14 +948,17 @@ def main():
     q = k.add_parser("import"); q.add_argument("gateway"); q.add_argument("grep", nargs="?", default="")
     q = k.add_parser("test"); q.add_argument("name"); q = k.add_parser("price"); q.add_argument("name"); q.add_argument("--in-cost", type=float); q.add_argument("--out-cost", type=float)
     q = k.add_parser("remove"); q.add_argument("name")
+    q = k.add_parser("extra"); q.add_argument("name"); q.add_argument("json", nargs="?"); q.add_argument("--tiers", default="light,standard"); q.add_argument("--clear", action="store_true")
     s = sp.add_parser("seat").add_subparsers(dest="sub", required=True); s.add_parser("ls"); s.add_parser("undo"); q = s.add_parser("add"); q.add_argument("name", nargs="?")
     q = s.add_parser("position"); q.add_argument("seat"); q.add_argument("role")
     q = s.add_parser("title"); q.add_argument("seat"); q.add_argument("text")
     q = s.add_parser("set"); q.add_argument("seat"); q.add_argument("catalog"); q = s.add_parser("clear"); q.add_argument("seat"); q = s.add_parser("remove"); q.add_argument("seat")
     p = sp.add_parser("submit"); p.add_argument("brief"); p.add_argument("--pool"); p.add_argument("--job"); p.add_argument("--check")
     p.add_argument("--flow"); p.add_argument("--rounds", type=int, default=1); p.add_argument("--as", dest="asrole"); p.add_argument("--needs")
+    p.add_argument("--tier", default="auto", help="auto|off|light|standard|heavy")
     p = sp.add_parser("batch"); p.add_argument("file"); p.add_argument("--pool"); p.add_argument("--job"); p.add_argument("--check")
     p.add_argument("--flow"); p.add_argument("--rounds", type=int, default=1); p.add_argument("--as", dest="asrole"); p.add_argument("--needs")
+    p.add_argument("--tier", default="auto", help="auto|off|light|standard|heavy")
     r_ = sp.add_parser("role").add_subparsers(dest="sub", required=True); r_.add_parser("ls"); q = r_.add_parser("add"); q.add_argument("name"); q.add_argument("--title", required=True)
     q.add_argument("--prompt", required=True); q.add_argument("--kind", default="maker"); q = r_.add_parser("rm"); q.add_argument("name")
     p = sp.add_parser("worker"); p.add_argument("--concurrency", type=int, default=8); p.add_argument("--per-gateway", type=int, default=3); p.add_argument("--keep", action="store_true")
@@ -881,6 +971,14 @@ def main():
     q = w.add_parser("fetch"); q.add_argument("url")
     p = sp.add_parser("research"); p.add_argument("topic"); p.add_argument("--out", required=True); p.add_argument("--n", type=int, default=6); p.add_argument("--name"); p.add_argument("--mode", choices=["problem", "ideas"], default="problem")
     p = sp.add_parser("merge"); p.add_argument("name"); p.add_argument("files", nargs="+"); p.add_argument("--title", default="เอกสารรวม"); p.add_argument("--out", required=True); p.add_argument("--rounds", type=int, default=1)
+    p = sp.add_parser("budget"); p.add_argument("args", nargs="*")
+    p = sp.add_parser("spend"); p.add_argument("--days", type=int, default=7)
+    p = sp.add_parser("claude-log"); p.add_argument("model"); p.add_argument("tokens", type=int); p.add_argument("--job"); p.add_argument("--decision", type=int)
+    p = sp.add_parser("tier"); p.add_argument("brief"); p.add_argument("--check"); p.add_argument("--skill"); p.add_argument("--pool", default="@auto"); p.add_argument("--tier", default="auto")
+    p = sp.add_parser("decide"); p.add_argument("brief"); p.add_argument("--check"); p.add_argument("--skill"); p.add_argument("--tools", default="auto", choices=["auto", "yes", "no"])
+    p.add_argument("--job"); p.add_argument("--failed", type=int, default=0); p.add_argument("--prev"); p.add_argument("--json", action="store_true")
+    p = sp.add_parser("decide-result"); p.add_argument("id", type=int); p.add_argument("outcome", choices=["pass", "fail"])
+    p = sp.add_parser("lanes"); p.add_argument("args", nargs="*")
     p = sp.add_parser("limit"); p.add_argument("n", nargs="?", type=int); p.add_argument("--chars", type=int)
     p = sp.add_parser("race"); p.add_argument("state", nargs="?", choices=("on", "off")); p.add_argument("--n", type=int); p.add_argument("--hedge", type=float)
     p = sp.add_parser("pool"); p.add_argument("action", choices=["set", "ls", "rm"]); p.add_argument("name", nargs="?"); p.add_argument("seats", nargs="*")
@@ -947,6 +1045,17 @@ def main():
                 add = [i for i in ids if x.grep.lower() in i.lower() and not any(w in i.lower() for w in SKIP)]
                 for i in add: c.execute("insert or ignore into catalog(name,gateway,model) values(?,?,?)", (i.split("/")[-1], x.gateway, i))
                 c.commit(); print(f"นำเข้า {len(add)} โมเดล (ยังไม่ทดสอบ: ใช้ catalog test)")
+            elif x.sub == "extra":
+                if x.clear:
+                    routing.extra_clear(c, x.name); print("ลบพารามิเตอร์พิเศษของ", x.name)
+                elif x.json:
+                    try:
+                        routing.extra_set(c, x.name, x.json, x.tiers)
+                    except (ValueError, json.JSONDecodeError) as e:
+                        sys.exit(f"ตั้งไม่ได้: {e}")
+                    print(f"ตั้ง {x.name}: {x.json} (ใช้เฉพาะรอบแรกของงาน {x.tiers}; ยกระดับ/heavy/เรียกตรงไม่ใช้)")
+                else:
+                    for n_, b_, t_ in c.execute("select name,body,tiers from catalog_extra order by name"): print(f"{n_}\t{b_}\ttiers={t_}")
             elif x.sub == "test":
                 print(x.name, catalog_test(c, x.name))
             elif x.sub == "price":
@@ -988,7 +1097,7 @@ def main():
             else:
                 c.execute("delete from roles where name=?", (x.name,)); c.commit()
         elif x.cmd == "submit":
-            print(submit(c, sys.stdin.read() if x.brief == "-" else x.brief, x.pool, x.job, x.check, parse_flow(x.flow) if x.flow else None, x.rounds if x.flow else 0, x.asrole, x.needs))
+            print(submit(c, sys.stdin.read() if x.brief == "-" else x.brief, x.pool, x.job, x.check, parse_flow(x.flow) if x.flow else None, x.rounds if x.flow else 0, x.asrole, x.needs, x.tier))
         elif x.cmd == "batch":
             n = 0
             for line in open(x.file, encoding="utf-8"):
@@ -997,7 +1106,7 @@ def main():
                 d = json.loads(line)
                 fl = d.get("flow") or x.flow
                 submit(c, d["brief"], d.get("pool") or x.pool, d.get("job") or x.job, d.get("check") or x.check,
-                       parse_flow(fl) if fl else None, d.get("rounds", x.rounds) if fl else 0, d.get("as") or x.asrole, d.get("needs") or x.needs); n += 1
+                       parse_flow(fl) if fl else None, d.get("rounds", x.rounds) if fl else 0, d.get("as") or x.asrole, d.get("needs") or x.needs, d.get("tier") or x.tier); n += 1
             print(f"ส่งเข้าคิว {n} งาน")
         elif x.cmd == "research":
             import researchteam, researchpf
@@ -1028,6 +1137,34 @@ def main():
                 print(f"{sk}\t{se}\t{sc:.2f}\tงานจริง {n_} ครั้ง\t{nt}")
         elif x.cmd == "route":
             print(f"ลำดับที่ระบบจะเลือกสำหรับ '{x.skill}':", " > ".join(f"{se} ({skill_score(c, se, x.skill):.2f})" for se in auto_pool(c, x.skill, 0.0)))
+        elif x.cmd == "budget":
+            print("\n".join(routing.budget_cmd(c, x.args)))
+        elif x.cmd == "spend":
+            print("\n".join(routing.token_report(c, x.days) + [""] + routing.spend_report(c, x.days)))
+        elif x.cmd == "claude-log":
+            print(routing.claude_log(c, x.model, x.tokens, x.job, x.decision))
+        elif x.cmd == "tier":  # ดูผลการจัดระดับ+ลำดับช่องก่อนส่งงานจริง (ไม่เรียกโมเดล)
+            sk = x.skill
+            t_, why_ = routing.classify(sys.stdin.read() if x.brief == "-" else x.brief, x.check, sk, x.tier if x.tier in routing.TIERS else None)
+            print(f"ระดับงาน: {t_} ({why_})")
+            pl_ = expand_pool(c, x.pool.split(","), sk)
+            sc_ = lambda y: skill_score(c, y, sk) if sk else quality(c, y)
+            for i_, se in enumerate(routing.rank(c, pl_, t_, sc_, lambda y: avg_ms(c, y)), 1):
+                uc_ = routing.unit_cost(c, se)
+                print(f"  {i_}. {se}  คะแนน {sc_(se):.2f}  ราคา {'ไม่ทราบ' if uc_ is None else ('ฟรี/CLI' if uc_ == 0 else f'${uc_}/1M')}{'  (กำลังพัก)' if routing.cooling(c, se) else ''}")
+        elif x.cmd == "decide":  # Claude (subagent) หรือทีมฟรี? ดู routing.decide — ไม่เรียกโมเดล
+            ts_ = routing.healthy(c, expand_pool(c, ["@auto"], None)) if (routing.get(c, "exec:free_pool") == "@auto") else expand_pool(c, [routing.get(c, "exec:free_pool")], None)
+            d_ = routing.decide(c, sys.stdin.read() if x.brief == "-" else x.brief, x.check, x.skill, x.tools, x.job, x.failed, x.prev, ts_)
+            if x.json:
+                print(json.dumps(d_, ensure_ascii=False))
+            else:
+                print(f"#{d_['id']} → {d_['executor']}" + (f" ({d_['how']})" if d_.get("how") else "") + f"\n  เลน {d_['lane']}" + (f" · ระดับ {d_['tier']}" if d_["executor"] == "team" else "") + f" · ต้องใช้เครื่องมือ {'ใช่' if d_['needs_tools'] else 'ไม่'} · เสี่ยงสูง {'ใช่' if d_['stakes'] else 'ไม่'}")
+                for w_ in d_["reason"]: print("  -", w_)
+                print(f"  รายงานผลภายหลัง: team.py decide-result {d_['id']} pass|fail")
+        elif x.cmd == "decide-result":
+            routing.set_result(c, x.id, x.outcome); print("บันทึกแล้ว")
+        elif x.cmd == "lanes":
+            print("\n".join(routing.lanes_cmd(c, x.args)))
         elif x.cmd == "queue":
             print(queue_counts(c))
         elif x.cmd == "race":
