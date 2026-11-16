@@ -65,6 +65,34 @@ def report_md(c, job):
     return "\n".join(L)
 
 
+RANK_CATS = [("calc", "คำนวณ", ["short_num", "h_calc"]), ("date", "วันที่ / พ.ศ.", ["short_date", "h_date"]),
+             ("extract", "ดึงข้อมูล", ["extract", "h_extract"]), ("code", "เขียนโค้ด", ["code", "h_code"]),
+             ("review", "ตรวจงาน", ["rev_bad", "rev_good", "h_rev_bad", "h_rev_good"]),
+             ("follow", "ทำตามคำสั่ง", ["lines3", "long12", "en_one", "h_constraint", "h_long"]),
+             ("synth", "สรุป / วิเคราะห์", ["synth"]), ("safe", "กัน prompt injection", ["h_inject"])]
+
+
+def rank_state(c):
+    """อันดับความสามารถจากผลทดสอบจริงของ train.py/train_hard.py (ก่อนใส่คู่มือ, ไม่นับครั้งที่ระบบล้ม)"""
+    out = []
+    for seat, title, model, mdl in c.execute("select s.name,s.title,s.catalog,k.model from seats s join catalog k on k.name=s.catalog order by s.rowid").fetchall():
+        rows = c.execute("select task,ok,ms from train_runs where seat=? and model=? and err=0 and phase in ('A_base','B_base','H_A_base','H_B_base')", (seat, model)).fetchall()
+        if not rows:
+            continue
+        cats = {}
+        for key, _, tasks in RANK_CATS:
+            r = [x for x in rows if x[0] in tasks]
+            if r:
+                cats[key] = dict(p=round(100 * sum(x[1] for x in r) / len(r)), n=len(r))
+        hard = [x for x in rows if x[0].startswith("h_")]
+        ms = sorted(x[2] for x in rows if x[2])
+        out.append(dict(seat=seat, title=title, model=mdl, n=len(rows), cats=cats,
+                        overall=round(sum(v["p"] for v in cats.values()) / len(cats)) if cats else 0,
+                        hard=round(100 * sum(x[1] for x in hard) / len(hard)) if hard else None,
+                        speed=ms[len(ms) // 2] if ms else None))
+    return dict(cats=[[k, l] for k, l, _ in RANK_CATS], rows=out)
+
+
 def training_state(c):
     """สถานะการเทรน: ใครกำลังถูกทดสอบ อยู่ขั้นไหน ทำไปกี่ข้อ (อ่านจาก train_runs / train_levels / audit)"""
     try:
@@ -107,7 +135,7 @@ def state():
                 for n, u, k in c.execute("select name,base_url,api_key from gateways")]
     queue = dict(c.execute("select status,count(*) from tasks group by status").fetchall())
     busy = [dict(seat=ag, job=jb, since=t) for ag, jb, t in c.execute("select agent,job,t from audit where reply is null and blocked is null and t>? order by t", (time.time() - 300,))]  # เรียกโมเดลค้างอยู่ (เกิน 300 วิ ถือว่าหมดเวลา)
-    return dict(agents=agents, seats=seats, catalog=catalog, plan=plan, queue=queue, busy=busy, training=training_state(c), gateways=gateways, presets=PRESETS, roles=roles, tasks=tasks, audit=audit, notes=notes,
+    return dict(agents=agents, seats=seats, catalog=catalog, plan=plan, queue=queue, busy=busy, training=training_state(c), rank=rank_state(c), gateways=gateways, presets=PRESETS, roles=roles, tasks=tasks, audit=audit, notes=notes,
                 can_undo=bool(c.execute("select 1 from seat_log limit 1").fetchone()), worker=worker_running(), jobstats=job_stats(c),
                 taskinfo={i: dict(created=cr, finished=fi) for i, cr, fi in c.execute("select id,created,finished from tasks order by id desc limit 60")})
 

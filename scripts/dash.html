@@ -498,6 +498,22 @@ html,body{overflow-x:hidden}
   .cen{padding:14px 14px 90px}
   .cen>.canvas{height:300px}
 }
+
+.rk-champs{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+.rk-ch{background:var(--p);border-radius:10px;box-shadow:var(--shadow);padding:10px 12px}
+.rk-ch small{display:block;color:var(--mu);font-size:11px}
+.rk-ch b{display:block;font-size:15px;margin:2px 0}
+.rk-t{width:100%;border-collapse:collapse;font-size:13px}
+.rk-t th{font-size:11px;color:var(--mu);font-weight:600;text-align:center;padding:6px 6px;border-bottom:1px solid var(--ln);cursor:pointer;white-space:nowrap}
+.rk-t th:hover,.rk-t th.on{color:var(--act)}
+.rk-t td{padding:7px 6px;border-bottom:1px solid var(--hair);text-align:center;vertical-align:middle}
+.rk-t td:nth-child(2){text-align:left;white-space:nowrap}
+.rk-c{position:relative;min-width:54px}
+.rk-c i{position:absolute;left:4px;bottom:3px;height:3px;border-radius:2px;background:var(--ac);opacity:.55}
+.rk-c.best b{color:var(--gr)}
+.rk-c.low b{color:var(--mu)}
+.rk-no{color:var(--mu)}
+.rk-wrap{overflow-x:auto}
 </style>
 </head>
 <body>
@@ -1030,8 +1046,29 @@ function summary(){
   </section>`;
 }
 
-const GROUPS={now:['now'],work:['home','jobs'],team:['studio','usage','audit']};
-const SUBL={home:'สั่งงาน',jobs:'งานที่แจก',studio:'จัดทีม',usage:'การใช้ AI',audit:'บันทึก'};
+
+let rankSort='overall';
+function rankView(){
+  const R=S.rank||{cats:[],rows:[]}; if(!R.rows.length)return '<div class="card" style="color:var(--mu)">ยังไม่มีผลทดสอบ — รัน train.py / train_hard.py ก่อน</div>';
+  const keys=['overall',...R.cats.map(c=>c[0])];
+  const val=(r,k)=>k==='overall'?r.overall:k==='hard'?r.hard:k==='speed'?null:r.cats[k]?.p;
+  const rows=[...R.rows].sort((a,b)=>rankSort==='speed'?((a.speed??1e12)-(b.speed??1e12)):((val(b,rankSort)??-1)-(val(a,rankSort)??-1)||b.overall-a.overall||(a.speed??1e12)-(b.speed??1e12)));
+  const best={}; keys.concat(['hard']).forEach(k=>{const m=Math.max(-1,...R.rows.map(r=>val(r,k)??-1));best[k]=m});
+  const sp=Math.min(...R.rows.map(r=>r.speed||1e12));
+  const champs=R.cats.map(([k,l])=>{const m=best[k]; if(m<0)return ''; const w=R.rows.filter(r=>r.cats[k]?.p===m);
+    return `<div class="rk-ch"><small>${esc(l)}</small><b style="color:${col(w[0].seat)}">${w.slice(0,2).map(x=>esc(x.seat)).join(' · ')}${w.length>2?' +'+(w.length-2):''}</b><small>${m}%${w.length>1?' · เสมอ '+w.length+' ตัว':' · '+esc((w[0].model||'').split('/').pop())}</small></div>`}).join('');
+  const th=(k,l)=>`<th data-rk="${k}" class="${rankSort===k?'on':''}" title="เรียงตามคอลัมน์นี้">${esc(l)}${rankSort===k?' ▾':''}</th>`;
+  const cell=(r,k)=>{const v=val(r,k); if(v==null)return '<td class="rk-no">—</td>'; const n=k==='overall'||k==='hard'?0:r.cats[k].n;
+    return `<td class="rk-c${v===best[k]?' best':''}${n&&n<6?' low':''}" title="${n?n+' ครั้ง':''}"><b>${v}%</b><i style="width:${Math.max(3,v*.4)}px"></i></td>`};
+  return `<div style="display:flex;flex-direction:column;gap:12px">
+  <div><h3 style="margin:0 0 2px">อันดับความสามารถ AI ในทีม</h3><div style="color:var(--mu);font-size:12px">คะแนนจากโจทย์ทดสอบจริงที่ตรวจอัตโนมัติ (ก่อนใส่คู่มือสั่งงาน ไม่นับครั้งที่ระบบล้ม) · คลิกหัวคอลัมน์เพื่อเรียง · ตัวเลขจางคือโจทย์น้อยกว่า 6 ครั้ง อย่าเชื่อมาก · โจทย์ยังง่าย หลายตัวเต็ม 100% จึงเสมอกัน แยกด้วยความเร็ว</div></div>
+  <div class="rk-champs">${champs}</div>
+  <div class="card rk-wrap"><table class="rk-t"><tr><th>#</th><th style="text-align:left">สมาชิก / โมเดล</th>${th('overall','รวม')}${R.cats.map(([k,l])=>th(k,l)).join('')}${th('hard','ยาก')}${th('speed','เร็ว (กลาง)')}<th>ทดสอบ</th></tr>
+  ${rows.map((r,i)=>`<tr><td class="rk-no">${i+1}</td><td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${col(r.seat)};margin-right:7px"></span><b>${esc(r.seat)}</b> <span style="color:var(--mu);font-size:11px">${esc((r.model||'').split('/').pop())}</span></td>${cell(r,'overall')}${R.cats.map(([k])=>cell(r,k)).join('')}${cell(r,'hard')}<td class="rk-c${r.speed===sp?' best':''}"><b>${r.speed?(r.speed/1000).toFixed(1)+'s':'—'}</b></td><td class="rk-no">${r.n}</td></tr>`).join('')}</table></div></div>`;
+}
+document.addEventListener('click',e=>{const h=e.target.closest('[data-rk]');if(h){rankSort=h.dataset.rk;render()}});
+const GROUPS={now:['now'],work:['home','jobs'],team:['studio','rank','usage','audit']};
+const SUBL={home:'สั่งงาน',jobs:'งานที่แจก',studio:'จัดทีม',rank:'อันดับ',usage:'การใช้ AI',audit:'บันทึก'};
 const grpOf=v=>Object.keys(GROUPS).find(g=>GROUPS[g].includes(v))||'now';
 function render(){
   if(view==='now')view='now';
@@ -1043,7 +1080,7 @@ function render(){
   const qn=S.queue||{}, qw=(qn.queued||0)+(qn.running||0), busy=S.audit.some(pend)||qw>0; $('live').textContent=qw?`Queue ${qn.running||0} กำลังทำ · ${qn.queued||0} รอ`:(busy?'Working':'Live'); $('live').classList.toggle('idle',!busy);
   const ae=document.activeElement;if((view==='home'&&ae&&ae.closest&&ae.closest('#hform')&&ae.matches('textarea,input[type=text],select'))||(view==='studio'&&ae&&ae.matches&&ae.matches('.stu2 select'))){$('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;return}
   document.querySelector('.main').classList.toggle('norail',!rail);$('rail').classList.toggle('on',rail);
-  $('cen').innerHTML=(view==='now'?'':aboutBox())+(view==='now'?'<h2 class="ovh">ผังการทำงานของทีม</h2>'+flow()+nowView()+trainPanel()+summary()+bottom():view==='home'?homeView():view==='studio'?studioView():view==='jobs'?jobsView():view==='usage'?usageView():auditView())+TERMS;
+  $('cen').innerHTML=(view==='now'?'':aboutBox())+(view==='now'?'<h2 class="ovh">ผังการทำงานของทีม</h2>'+flow()+nowView()+trainPanel()+summary()+bottom():view==='home'?homeView():view==='studio'?studioView():view==='jobs'?jobsView():view==='usage'?usageView():view==='rank'?rankView():auditView())+TERMS;
   if(view==='now')applyCtx(CTX.i);
   $('rb').innerHTML=rtab==='insp'?inspector():rtab==='eval'?evaluations():`<div class="sec"><h4>All Traces</h4>${traces(60)}</div>`;
 }
