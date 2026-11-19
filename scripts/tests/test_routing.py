@@ -14,7 +14,7 @@ def fake_chat_factory(usage=(100, 50), text="ok", fail=None):
     def fake(url, key, model, role, brief, timeout=180, max_tokens=None, extra=None):
         calls.append(model)
         fake.extras.append(extra)
-        routing.tl.usage = None; routing.tl.finish = None; routing.tl.xapplied = sorted(extra) if extra else None
+        routing.tl.usage = None; routing.tl.finish = None; routing.tl.xapplied = sorted(extra) if extra else None; routing.tl.served = None
         if fail and model in fail:
             raise RuntimeError(fail[model])
         if usage:
@@ -714,6 +714,67 @@ class TestReasoningStructureHint(TestDecide):
     def test_premortem_role_hint(self):
         import crew
         self.assertEqual(crew.pick_role("ช่วยทำ pre-mortem ของการแก้ฟังก์ชันนี้"), "premortem"); self.assertEqual(crew.pick_role("จำลองความพังของแผนนี้"), "premortem")
+
+
+class TestLeadsAndServedBy(Base):
+    def setUp(self):
+        super().setUp()
+        for tb in ("shadow_results", "seat_skills", "decisions"):
+            self.c.execute(f"delete from {tb}")
+        self.c.execute("delete from settings where k like 'lead:%'"); self.c.commit()
+
+    def team3(self):
+        for i, s in enumerate(("a", "b", "c")):
+            self.seat(s, 0, 0, url=f"https://gw{i}.test/v1", skills={"code": 0.9, "review": 0.85, "decision_calc": 0.9})
+
+    def test_lead_set_get_clear_and_validation(self):
+        self.team3()
+        routing.lead_set(self.c, "senior", "b"); self.assertEqual(routing.leads_get(self.c), {"senior": "b"})
+        routing.lead_set(self.c, "senior", None); self.assertEqual(routing.leads_get(self.c), {})
+        with self.assertRaises(ValueError): routing.lead_set(self.c, "ceo", "a")
+        with self.assertRaises(ValueError): routing.lead_set(self.c, "ops", "ghost")
+        self.c.execute("update seats set catalog=null where name='c'"); self.c.commit()
+        routing.lead_set(self.c, "ops", "a"); self.c.execute("update seats set catalog=null where name='a'"); self.c.commit()
+        self.assertEqual(routing.leads_get(self.c), {})  # ช่องที่ถูกถอดโมเดลไม่ถูกนับเป็นหัวทีม
+
+    def test_lead_becomes_maker_for_matching_tier_only(self):
+        import crew
+        self.team3(); routing.lead_set(self.c, "senior", "c")
+        h = crew.assemble(self.c, "x" * 3000, chk="py:t.py", tier="heavy")
+        self.assertEqual(h["members"][0]["seat"], "c"); self.assertIn("หัวทีมอาวุโส", h["members"][0]["why"])
+        self.assertNotIn("c", [m["seat"] for m in h["members"][1:]])
+        self.assertNotIn("c", h["fallback"])
+        std = crew.assemble(self.c, "x" * 3000, chk="py:t.py", tier="standard")
+        self.assertNotIn("หัวทีม", std["members"][0]["why"])  # หัวทีมอาวุโสไม่มีผลกับงานมาตรฐาน
+
+    def test_weak_lead_is_used_with_warning_and_cooling_lead_is_skipped(self):
+        import crew
+        self.team3(); self.seat("weak", 0, 0, url="https://gw9.test/v1", skills={"decision_calc": 0.1, "code": 0.1}); routing.lead_set(self.c, "senior", "weak")
+        cr = crew.assemble(self.c, "x" * 3000, chk="py:t.py", tier="heavy")
+        self.assertEqual(cr["members"][0]["seat"], "weak"); self.assertTrue(any("ต่ำกว่าเกณฑ์" in n for n in cr["notes"]))
+        self.c.execute("insert into audit(t,agent,model,brief,blocked) values(?,?,?,?,?)", (time.time(), "weak", "m", "x", "error: HTTP 429 retry_after 600")); self.c.commit()
+        cr = crew.assemble(self.c, "x" * 3000, chk="py:t.py", tier="heavy")
+        self.assertNotEqual(cr["members"][0]["seat"], "weak"); self.assertTrue(any("กำลังพัก" in n for n in cr["notes"]))
+
+    def test_ranking_exposes_leads(self):
+        import rank
+        self.team3(); routing.lead_set(self.c, "ops", "b")
+        self.assertEqual(rank.ranking(self.c)["leads"], {"ops": "b"})
+
+    def test_x_routed_via_header_is_recorded_per_call(self):
+        import http.server, json
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_POST(self):
+                self.rfile.read(int(self.headers["Content-Length"]))
+                out = json.dumps({"choices": [{"message": {"content": "hi"}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 3, "completion_tokens": 2}}).encode()
+                self.send_response(200); self.send_header("X-Routed-Via", "groq/llama-3.3-70b"); self.send_header("Content-Length", str(len(out))); self.end_headers(); self.wfile.write(out)
+            def log_message(self, *a): pass
+        srv = http.server.HTTPServer(("127.0.0.1", 0), H); threading.Thread(target=srv.serve_forever, daemon=True).start(); self.addCleanup(srv.shutdown)
+        self.seat("a", 0, 0, url=f"http://127.0.0.1:{srv.server_port}/v1")
+        self.assertTrue(team.call(self.c, "a", "hi", job="j")[0])
+        self.assertEqual(self.c.execute("select served_by from spend").fetchone()[0], "groq/llama-3.3-70b")
+        team.chat = fake_chat_factory(); team.call(self.c, "a", "hi", job="j")
+        self.assertIsNone(self.c.execute("select served_by from spend order by id desc limit 1").fetchone()[0])  # เกตเวย์ที่ไม่ส่งเฮดเดอร์ ไม่มีค่าค้างจากครั้งก่อน
 
 
 class TestMigration(unittest.TestCase):

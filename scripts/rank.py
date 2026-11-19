@@ -81,7 +81,7 @@ def tier_orders(c, team):
 def ranking(c):
     import team as T
     team = seat_stats(c, T)
-    return dict(seats=team, tiers=tier_orders(c, team), bars=routing.BAR, formula="คะแนนรวม = คุณภาพ × ความน่าเชื่อถือ (ปรับ Laplace) · หลักฐานน้อยกว่า %d รายการติดป้ายเตือน" % MIN_EVIDENCE)
+    return dict(seats=team, tiers=tier_orders(c, team), bars=routing.BAR, leads=routing.leads_get(c), squads=routing.SQUADS, formula="คะแนนรวม = คุณภาพ × ความน่าเชื่อถือ (ปรับ Laplace) · หลักฐานน้อยกว่า %d รายการติดป้ายเตือน" % MIN_EVIDENCE)
 
 
 def routing_view(c):

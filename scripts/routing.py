@@ -59,7 +59,7 @@ def ensure(c):
     c.execute("""create table if not exists spend(id integer primary key autoincrement, t real, seat text, model text, job text, audit_id integer,
         state text, est_in integer, est_out integer, est_cost real, in_tok integer, out_tok integer, cost real, src text)""")
     have_s = [r[1] for r in c.execute("pragma table_info(spend)")]
-    for col, typ in (("family", "text default 'team'"), ("reason_tok", "integer"), ("usage_raw", "text"), ("task_id", "integer"), ("tier", "text"), ("lane", "text"), ("xparam", "text")):
+    for col, typ in (("family", "text default 'team'"), ("reason_tok", "integer"), ("usage_raw", "text"), ("task_id", "integer"), ("tier", "text"), ("lane", "text"), ("xparam", "text"), ("served_by", "text")):
         if col not in have_s:
             c.execute(f"alter table spend add column {col} {typ}")  # family: team = ทีม ai-team (นับเพดาน) | claude = Claude subagent (บันทึกด้วย claude-log)
     # พารามิเตอร์พิเศษต่อโมเดล (เช่น reasoning_effort) เก็บแยกตาราง: catalog ถูก insert-or-replace ในหลายจุดจะทำให้ค่าหาย
@@ -463,7 +463,34 @@ def _up(c, model):
     return chain[chain.index(model) + 1] if model in chain[:-1] else None
 
 
+NEEDS_WEB = re.compile(r"(?i)https?://|ค้นเว็บ|ค้นหาในเว็บ|เว็บไซต์|ข่าวล่าสุด|ล่าสุดตอนนี้|ราคา(?:วันนี้|ปัจจุบัน|ล่าสุด)|อัตราแลกเปลี่ยน(?:วันนี้|ล่าสุด)|search (?:the )?(?:web|online)|look up online|latest (?:news|version|price)")
 CODE_EDIT = re.compile(r"(?i)refactor|แก้บั๊ก|แก้\s*bug|fix\s+(?:the\s+)?bug|เพิ่มฟีเจอร์|implement|เปลี่ยนลายเซ็น|ลบฟังก์ชัน|แก้ไขฟังก์ชัน|แก้ฟังก์ชัน|แก้ไฟล์|ปรับโค้ด|เขียนโค้ดเพิ่ม|migrate|เปลี่ยน(?:ชื่อ|พารามิเตอร์)")
+
+
+SQUADS = {"senior": "heavy", "ops": "standard", "junior": "light"}  # แผนก -> ระดับงานที่แผนกนั้นรับ
+
+
+def leads_get(c):
+    """หัวทีมที่ผู้ใช้เลือก {squad: seat} (เฉพาะที่ช่องยังมีโมเดลอยู่)"""
+    out = {}
+    for sq in SQUADS:
+        v = get(c, "lead:" + sq)
+        if v and c.execute("select 1 from seats s join catalog k on k.name=s.catalog where s.name=?", (v,)).fetchone():
+            out[sq] = v
+    return out
+
+
+def lead_set(c, squad, seat):
+    """ตั้งหัวทีมของแผนก (seat ว่าง/None = กลับเป็นอัตโนมัติ: คนฝีมือสูงสุดของแผนกตาม Ranking)"""
+    if squad not in SQUADS:
+        raise ValueError("แผนกต้องเป็น " + "/".join(SQUADS))
+    if seat:
+        if not c.execute("select 1 from seats s join catalog k on k.name=s.catalog where s.name=?", (seat,)).fetchone():
+            raise ValueError(f"ไม่พบช่อง '{seat}' หรือช่องนี้ยังไม่ได้ใส่โมเดล")
+        c.execute("insert or replace into settings values(?,?)", ("lead:" + squad, seat))
+    else:
+        c.execute("delete from settings where k=?", ("lead:" + squad,))
+    c.commit()
 
 
 def lane_stats(c, lane):
@@ -530,6 +557,15 @@ def decide(c, brief, chk=None, skill=None, tools=None, job=None, failed=0, prev=
         if row[0] >= 4 and (row[1] + 1) / (row[0] + 1.0) > float(get(c, "route:opus_share") or 0.3):
             d = claude("sonnet"); why.append(f"สัดส่วน Opus ของงาน '{job}' เกิน {float(get(c, 'route:opus_share')):.0%} → ใช้ Sonnet (Opus เก็บไว้ที่จุดตัดสินใจจริง)")
 
+    if NEEDS_WEB.search(brief or "") and d["executor"] == "team":
+        d["needs_web"] = True
+        try:
+            import webtools
+            webtools.api_key(); keyed = True
+        except Exception:
+            keyed = False
+        why.append("โจทย์ต้องข้อมูลจากเว็บ → ให้ช่องท่องเว็บเอง (--as browse: อ่านอย่างเดียว ไม่ render JavaScript/คลิก/ล็อกอิน) ผลต้องให้ Head ตรวจแหล่งอ้างอิง"
+                   + ("" if keyed else " · ยังไม่มีคีย์ค้นหา (TINYFISH_API_KEY) จึงค้นได้เฉพาะ Wikipedia: ข่าว/ราคาล่าสุดอาจหาไม่เจอ ให้ใส่ URL ตรงในโจทย์หรือให้ผู้ใช้ตั้งคีย์เอง"))
     if CODE_EDIT.search(brief or "") and d["executor"] != "ask-user":
         d["use_skill"] = "reasoning-structure"
         why.append("เป็นงานแก้โค้ด → ทำ Reasoning Brief ก่อนลงมือ (skill reasoning-structure: blast.py + pre-mortem + convention + atomic plan แล้วรัน brief_check.py ให้ผ่าน)")
@@ -547,7 +583,9 @@ def decide(c, brief, chk=None, skill=None, tools=None, job=None, failed=0, prev=
         if skill and not d.get("skill"):
             d["skill"] = skill
         d["how"] = f'team.py submit "<brief>" --pool {d["pool"]} --tier {tier}' + (f' --needs {d["skill"]}' if d.get("skill") else "") + (f' --check {chk}' if chk else "") + (f' --job {job}' if job else "")
-        if d.get("crew") and d["crew"]["mode"] == "maker+reviewer":
+        if d.get("needs_web"):
+            d["how"] = d["how"].replace("team.py submit ", "team.py submit ", 1) + " --as browse"
+        if d.get("crew") and d["crew"]["mode"] == "maker+reviewer" and not d.get("needs_web"):
             d["how"] = d["crew"]["how"] + (f" --job {job}" if job else "")  # ทีมผู้ทำ+ผู้ตรวจที่จัดให้งานนี้
     elif d.get("model"):
         d["how"] = f'Agent(subagent_type="general-purpose", model="{d["model"]}")'

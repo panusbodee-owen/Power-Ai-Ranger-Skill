@@ -69,8 +69,19 @@ def assemble(c, brief, chk=None, skill=None, tier=None, stakes=None, role=None, 
 
     maker_order = routing.rank(c, seats, tier_c, lambda s: strength(s)[0], lambda s: T.avg_ms(c, s), lambda s: 0, gw, None)
     maker = maker_order[0]
+    lead_pick = None
+    sq = next((q for q, t in routing.SQUADS.items() if t == tier_c), None)
+    lead = routing.leads_get(c).get(sq)
+    if lead and lead in seats and not routing.cooling(c, lead):
+        lead_pick = lead
+        maker = lead
+        maker_order = [lead] + [x for x in maker_order if x != lead]
+        if strength(lead)[0] < routing.BAR[tier_c]:
+            notes.append(f"หัวทีม {lead} ฝีมือ {strength(lead)[0]:.2f} ต่ำกว่าเกณฑ์งานระดับ {tier_c} ({routing.BAR[tier_c]}) แต่คุณเลือกไว้ จึงใช้ตามนั้น")
+    elif lead:
+        notes.append(f"หัวทีมที่เลือก ({lead}) กำลังพักจาก error ใช้ผู้ทำอันดับถัดไปแทนชั่วคราว")
     mrole = pick_role(brief, role)
-    members = [dict(role=mrole, seat=maker, strength=round(strength(maker)[0], 2), why=strength(maker)[1] + f" · {'ถูกที่สุดที่ถึงเกณฑ์' if tier_c != 'heavy' else 'ฝีมือสูงสุดสำหรับงานหนัก'} (เกณฑ์ {routing.BAR[tier_c]})")]
+    members = [dict(role=mrole, seat=maker, strength=round(strength(maker)[0], 2), why=strength(maker)[1] + (f" · ★ หัวทีม{ {'senior': 'อาวุโส', 'ops': 'ปฏิบัติการ', 'junior': 'ฝึกงาน'}[sq] } ที่คุณเลือก" if lead_pick else f" · {'ถูกที่สุดที่ถึงเกณฑ์' if tier_c != 'heavy' else 'ฝีมือสูงสุดสำหรับงานหนัก'} (เกณฑ์ {routing.BAR[tier_c]})"))]
 
     solo = (verifiable and tier_c != "heavy") or tier_c == "light"
     if stakes or (pr["lane"] == "judgment" and not verifiable):  # ตัดสินใจโดยไม่มีตัวเช็ก: ต้องมีผู้ตรวจอีกคน

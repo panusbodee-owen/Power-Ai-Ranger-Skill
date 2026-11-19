@@ -195,6 +195,10 @@ def act(path, b):
         else:
             tid = submit(c, brief, "@auto", job, None, None, 0, role)
         return {"ok": True, "id": tid, "job": job, "worker_started": start_worker()}
+    elif path == "/api/lead":
+        import routing
+        routing.lead_set(c, str(b.get("squad") or ""), str(b.get("seat") or "").strip() or None)
+        return {"ok": True, "leads": routing.leads_get(c)}
     elif path in ("/api/crew", "/api/crew_submit"):
         import crew
         brief = str(b.get("brief") or "").strip()
